@@ -4,9 +4,9 @@ CREATE TABLE users (
     password VARCHAR(255) NOT NULL, -- Speichern Sie hier Hashes, nicht die tatsächlichen Passwörter
     cookie_auth_token VARCHAR(255), -- Ein langes, zufälliges Token für die Authentifizierung via Cookie
     freundes_token VARCHAR(255) UNIQUE,
-    einkaufsoption VARCHAR(255) DEFAULT 'ueblicheVerpackungsgroesse';
+    einkaufsoption VARCHAR(255) DEFAULT 'ueblicheVerpackungsgroesse',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     current_editing_recipe_id INT DEFAULT NULL;
 );
 

@@ -48,7 +48,8 @@ function showLoggedInUserContent($username) {
     echo "<!DOCTYPE html>
     <html lang='de'>
     <head>
-        include 'Views/templates/header.php';    
+        
+        <?php include 'Views/templates/header.php'; ?>  
         <title>Arbeitstitel</title>
     </head>
     <body>
@@ -71,7 +72,7 @@ function showGuestUserContent() {
     echo "<!DOCTYPE html>
     <html>
     <head>
-        include 'Views/templates/header.php';  
+        <?php include 'Views/templates/header.php'; ?>  
         <title>Willkommen bei Transforamtions-Desin</title>
     </head>
     <body>

@@ -1,126 +1,4 @@
-Path: ./transoformationsdesin/sql_create
-Content:
-CREATE TABLE users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL, -- Speichern Sie hier Hashes, nicht die tatsächlichen Passwörter
-    cookie_auth_token VARCHAR(255), -- Ein langes, zufälliges Token für die Authentifizierung via Cookie
-    freundes_token VARCHAR(255) UNIQUE,
-    einkaufsoption VARCHAR(255) DEFAULT 'ueblicheVerpackungsgroesse';
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    current_editing_recipe_id INT DEFAULT NULL;
-);
-
-CREATE TABLE essenplan (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    datum DATE NOT NULL,
-    anzahl_personen INT NOT NULL,
-    rezept_id INT, 
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (rezept_id) REFERENCES rezepte(id)
-);
-
-CREATE TABLE zutaten (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    beschreibung TEXT
-);
-
-CREATE TABLE rezepte (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    titel VARCHAR(255) NOT NULL,
-    beschreibung TEXT,
-    zubereitungszeit INT
-);
-
-
-CREATE TABLE rezept_zutaten (
-    rezept_id INT,
-    zutat_id INT,
-    menge VARCHAR(255),
-    PRIMARY KEY (rezept_id, zutat_id),
-    FOREIGN KEY (rezept_id) REFERENCES rezepte(id),
-    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
-);
-CREATE TABLE einkaufsliste (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    zutat_id INT,
-    menge VARCHAR(255),
-    gekauft BOOLEAN DEFAULT FALSE,
-    verbrauchsdatum DATE, -- Hinzugefügtes Feld für das Verbrauchsdatum
-    gefaess_id INT DEFAULT NULL,
-    FOREIGN KEY (gefaess_id) REFERENCES unverpackte_gefaesse(id),
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
-);
-
-CREATE TABLE vorratsschrank (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    zutat_id INT,
-    menge VARCHAR(255),
-    verbrauchsdatum DATE, -- Hinzugefügtes Feld für das Verbrauchsdatum
-    gefaess_id INT DEFAULT NULL,
-    FOREIGN KEY (gefaess_id) REFERENCES unverpackte_gefaesse(id),
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
-);
-
-CREATE TABLE zutaten_namen (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    zutat_id INT NOT NULL,
-    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
-);
-
-CREATE TABLE konventionen (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    single_name_id INT NOT NULL,
-    plural_name_id INT,
-    zutat_id INT NOT NULL,
-    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
-);
-
-CREATE TABLE freundschaftsanfragen (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    sender_id INT NOT NULL,
-    empfaenger_id INT NOT NULL,
-    status ENUM('pending', 'accepted', 'declined') NOT NULL,
-    FOREIGN KEY (sender_id) REFERENCES users(id),
-    FOREIGN KEY (empfaenger_id) REFERENCES users(id)
-);
-
-CREATE TABLE freunde (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id_1 INT NOT NULL,
-    user_id_2 INT NOT NULL,
-    FOREIGN KEY (user_id_1) REFERENCES users(id),
-    FOREIGN KEY (user_id_2) REFERENCES users(id)
-);
-
-CREATE TABLE unverpackte_gefaesse (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    volumen DECIMAL(10,2) NOT NULL COMMENT 'Volumen in Litern oder Kilogramm',
-    beschreibung TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-
-
-Path: ./transoformationsdesin/config\config.php
-Content:
-<?php
-// Datenbankkonfiguration
-define('DB_SERVER', 'db5015005409.hosting-data.io');
-define('DB_USER', 'dbu942629');
-define('DB_PASSWORD', 'LYpLxztKkL7HQW5rXYG2nDAxcwBFNgQMY8R8sM2E77vJB4AwM9');
-define('DB_NAME', 'dbs12468479');
-?>
-
-Path: ./transoformationsdesin/http\guest.php
+Path: ./http/guest.php
 Content:
 <?php
 require 'templates/headerGuest.php'; // Kopfzeile für Gäste
@@ -134,7 +12,7 @@ echo "<div class='welcome-container'>
 require 'templates/footer.php'; // Gemeinsamer Fußbereich
 
 
-Path: ./transoformationsdesin/http\index.php
+Path: ./http/index.php
 Content:
 <?php
 ini_set('display_errors', 1);
@@ -251,7 +129,7 @@ if (isset($_COOKIE['auth'])) {
 ?>
 
 
-Path: ./transoformationsdesin/http\loggedIn.php
+Path: ./http/loggedIn.php
 Content:
 <?php
 require_once 'Utils/db_connect.php';
@@ -272,7 +150,7 @@ echo "<p>Willkommen, ".htmlspecialchars($username, ENT_QUOTES, 'UTF-8')."!</p>";
 require 'templates/footer.php'; // Gemeinsamer Fußbereich
 
 
-Path: ./transoformationsdesin/http\login.html
+Path: ./http/login.html
 Content:
 <!-- public/login.php -->
 <!DOCTYPE html>
@@ -295,7 +173,7 @@ Content:
 </html>
 
 
-Path: ./transoformationsdesin/http\register.html
+Path: ./http/register.html
 Content:
 <!DOCTYPE html>
 <html>
@@ -318,7 +196,7 @@ Content:
 </html>
 
 
-Path: ./transoformationsdesin/http\reset.php
+Path: ./http/reset.php
 Content:
 <?php
 ini_set('display_errors', 1);
@@ -340,7 +218,7 @@ exit;
 ?>
 
 
-Path: ./transoformationsdesin/http\style.css
+Path: ./http/style.css
 Content:
 /* Grundlegende Stile für alle Geräte */
 
@@ -420,7 +298,7 @@ nav li a:hover, nav li a:focus {
 }
 
 
-Path: ./transoformationsdesin/http\test.php
+Path: ./http/test.php
 Content:
 <?php
 ini_set('display_errors', 1);
@@ -578,7 +456,7 @@ $conn->close();
 ?>
 
 
-Path: ./transoformationsdesin/http\test1.php
+Path: ./http/test1.php
 Content:
 <?php
 ini_set('display_errors', 1);
@@ -659,7 +537,7 @@ $conn->close();
 ?>
 
 
-Path: ./transoformationsdesin/http\Controllers\AddToEinkaufsliste.php
+Path: ./http/Controllers\AddToEinkaufsliste.php
 Content:
 <?php
     ini_set('display_errors', 1);
@@ -707,7 +585,7 @@ Content:
 ?>
 
 
-Path: ./transoformationsdesin/http\Controllers\einladung_erstellen.php
+Path: ./http/Controllers\einladung_erstellen.php
 Content:
 <?php
 require_once '../Utils/CheckSessionManager.php';
@@ -731,7 +609,7 @@ if ($row = $result->fetch_assoc()) {
 ?>
 
 
-Path: ./transoformationsdesin/http\Controllers\login.php
+Path: ./http/Controllers\login.php
 Content:
 <?php
 ini_set('display_errors', 1);
@@ -806,7 +684,7 @@ $conn->close();
 ?>
 
 
-Path: ./transoformationsdesin/http\Controllers\logout.php
+Path: ./http/Controllers\logout.php
 Content:
 <?php
 session_start();
@@ -818,7 +696,7 @@ exit;
 ?>
 
 
-Path: ./transoformationsdesin/http\Controllers\MoveToPantry.php
+Path: ./http/Controllers\MoveToPantry.php
 Content:
 <?php
 require_once __DIR__ . '/../Utils/db_connect.php';
@@ -849,7 +727,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 ?>
 
 
-Path: ./transoformationsdesin/http\Controllers\passwort_aendern_handler.php
+Path: ./http/Controllers\passwort_aendern_handler.php
 Content:
 <?php
 require_once '../Utils/db_connect.php';
@@ -887,7 +765,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 ?>
 
 
-Path: ./transoformationsdesin/http\Controllers\register.php
+Path: ./http/Controllers\register.php
 Content:
 <?php
 ini_set('display_errors', 1);
@@ -963,7 +841,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 ?>
 
 
-Path: ./transoformationsdesin/http\Controllers\RemoveFriend.php
+Path: ./http/Controllers\RemoveFriend.php
 Content:
 <?php
 require_once 'Utils/SessionManager.php';
@@ -999,7 +877,7 @@ exit;
 ?>
 
 
-Path: ./transoformationsdesin/http\Controllers\RespondToFriendRequest.php
+Path: ./http/Controllers\RespondToFriendRequest.php
 Content:
 <?php
 require_once 'Utils/SessionManager.php';
@@ -1052,7 +930,7 @@ if (isset($_POST['request_id']) && isset($_POST['action'])) {
 ?>
 
 
-Path: ./transoformationsdesin/http\Controllers\SendFriendRequest.php
+Path: ./http/Controllers\SendFriendRequest.php
 Content:
 <?php
 session_start();
@@ -1095,7 +973,7 @@ $conn->close();
 ?>
 
 
-Path: ./transoformationsdesin/http\Controllers\ViewFriendRequests.php
+Path: ./http/Controllers\ViewFriendRequests.php
 Content:
 <?php
 require_once 'Utils/SessionManager.php'; // Stellen Sie sicher, dass dies zu Ihrer Session-Verwaltung passt
@@ -1121,7 +999,7 @@ while ($row = $result->fetch_assoc()) {
 
 ?>
 
-Path: ./transoformationsdesin/http\Controllers\ViewFriends.php
+Path: ./http/Controllers\ViewFriends.php
 Content:
 <?php
 ini_set('display_errors', 1);
@@ -1188,7 +1066,7 @@ $conn->close();
 </html>
 
 
-Path: ./transoformationsdesin/http\js\heutigesGericht.js
+Path: ./http/js\heutigesGericht.js
 Content:
 // Datei: heutigesGericht.js
 var likeBtn = document.getElementById('likeBtn');
@@ -1212,7 +1090,7 @@ function discardRecipe() {
 }
 
 
-Path: ./transoformationsdesin/http\js\login.js
+Path: ./http/js\login.js
 Content:
 // Modified login.js
 document.addEventListener('DOMContentLoaded', function() {
@@ -1253,7 +1131,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-Path: ./transoformationsdesin/http\js\register.js
+Path: ./http/js\register.js
 Content:
 document.addEventListener('DOMContentLoaded', function() {
     var registerForm = document.getElementById('registerForm');
@@ -1297,7 +1175,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
-Path: ./transoformationsdesin/http\Utils\CheckSessionManager.php
+Path: ./http/Utils\CheckSessionManager.php
 Content:
 <?php
 // Starten der Session
@@ -1350,7 +1228,7 @@ function checkAccess() {
 checkAccess();
 ?>
 
-Path: ./transoformationsdesin/http\Utils\db_connect.php
+Path: ./http/Utils\db_connect.php
 Content:
 <?php
 // Include your configuration file
@@ -1369,7 +1247,7 @@ if ($conn->connect_error) {
 ?>
 
 
-Path: ./transoformationsdesin/http\Utils\SessionManager.php
+Path: ./http/Utils\SessionManager.php
 Content:
 <?php
 require_once __DIR__ . '/db_connect.php';
@@ -1421,7 +1299,7 @@ function checkAccess() {
 ?>
 
 
-Path: ./transoformationsdesin/http\Views\hidden\editRecipe.php
+Path: ./http/Views\hidden\editRecipe.php
 Content:
 <?php
 ini_set('display_errors', 1);
@@ -1596,11 +1474,11 @@ function deleteRecipe($recipeId, $conn) {
 </html>
 
 
-Path: ./transoformationsdesin/http\Views\pages\about.php
+Path: ./http/Views\pages\about.php
 Content:
 
 
-Path: ./transoformationsdesin/http\Views\pages\einkaufsliste.php
+Path: ./http/Views\pages\einkaufsliste.php
 Content:
 <?php 
 ini_set('display_errors', 1);
@@ -1694,7 +1572,7 @@ while ($row = $result->fetch_assoc()) {
 </html>
 
 
-Path: ./transoformationsdesin/http\Views\pages\essensplan.php
+Path: ./http/Views\pages\essensplan.php
 Content:
 <?php
 ini_set('display_errors', 1);
@@ -1779,7 +1657,7 @@ while ($row = $result->fetch_assoc()) {
 </html>
 
 
-Path: ./transoformationsdesin/http\Views\pages\freunde.php
+Path: ./http/Views\pages\freunde.php
 Content:
 <?php
 ini_set('display_errors', 1);
@@ -1876,14 +1754,14 @@ if (isset($_GET['token']) && $_GET['token'] !== $eigenerToken) {
 </html>
 
 
-Path: ./transoformationsdesin/http\Views\pages\heutiges-gericht.php
+Path: ./http/Views\pages\heutiges-gericht.php
 Content:
 <?php
 $today = date("Y-m-d");
 header("Location: rezept_detail.php?datum=" . urlencode($today));
 ?>
 
-Path: ./transoformationsdesin/http\Views\pages\passwort_aendern.php
+Path: ./http/Views\pages\passwort_aendern.php
 Content:
 <?php
 require_once '../../Utils/CheckSessionManager.php';
@@ -1926,7 +1804,7 @@ if (!isUserLoggedIn()) {
 </html>
 
 
-Path: ./transoformationsdesin/http\Views\pages\profil.php
+Path: ./http/Views\pages\profil.php
 Content:
 <?php
 require_once '../../Utils/CheckSessionManager.php';
@@ -1961,7 +1839,7 @@ $userId = $_SESSION['id'];
 </html>
 
 
-Path: ./transoformationsdesin/http\Views\pages\rezept_detail.php
+Path: ./http/Views\pages\rezept_detail.php
 Content:
 <?php
 ini_set('display_errors', 1);
@@ -2077,7 +1955,7 @@ if ($result->num_rows === 0) {
 </html>
 
 
-Path: ./transoformationsdesin/http\Views\pages\settings.php
+Path: ./http/Views\pages\settings.php
 Content:
 <?php
 require_once '../../Utils/CheckSessionManager.php';
@@ -2163,7 +2041,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['einkaufsOption'])) {
 
 
 
-Path: ./transoformationsdesin/http\Views\pages\vorratsschrank.php
+Path: ./http/Views\pages\vorratsschrank.php
 Content:
 <?php
 ini_set('display_errors', 1);
@@ -2229,7 +2107,7 @@ $result = $stmt->get_result();
 </body>
 </html>
 
-Path: ./transoformationsdesin/http\Views\pages\zufalligesGerichtPlanen.php
+Path: ./http/Views\pages\zufalligesGerichtPlanen.php
 Content:
 <?php
 session_start(); // Ensure session is started
@@ -2280,15 +2158,15 @@ if ($rezeptRow = $rezeptResult->fetch_assoc()) {
 $conn->close();
 
 
-Path: ./transoformationsdesin/http\Views\templates\footer.php
+Path: ./http/Views\templates\footer.php
 Content:
 
 
-Path: ./transoformationsdesin/http\Views\templates\header.php
+Path: ./http/Views\templates\header.php
 Content:
 
 
-Path: ./transoformationsdesin/http\Views\templates\navigation.php
+Path: ./http/Views\templates\navigation.php
 Content:
 <nav>
     <ul>
@@ -2303,7 +2181,7 @@ Content:
 </nav>
 
 
-Path: ./transoformationsdesin/http\Views\templates\navigation_ausserhalb.php
+Path: ./http/Views\templates\navigation_ausserhalb.php
 Content:
 <nav>
     <ul>
@@ -2316,5 +2194,117 @@ Content:
         <li><a href="Views/pages/profil.php">Profil</a></li>
     </ul>
 </nav>
+
+
+Path: sql_create
+Content:
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL, -- Speichern Sie hier Hashes, nicht die tatsächlichen Passwörter
+    cookie_auth_token VARCHAR(255), -- Ein langes, zufälliges Token für die Authentifizierung via Cookie
+    freundes_token VARCHAR(255) UNIQUE,
+    einkaufsoption VARCHAR(255) DEFAULT 'ueblicheVerpackungsgroesse';
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    current_editing_recipe_id INT DEFAULT NULL;
+);
+
+CREATE TABLE essenplan (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    datum DATE NOT NULL,
+    anzahl_personen INT NOT NULL,
+    rezept_id INT, 
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (rezept_id) REFERENCES rezepte(id)
+);
+
+CREATE TABLE zutaten (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    beschreibung TEXT
+);
+
+CREATE TABLE rezepte (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    titel VARCHAR(255) NOT NULL,
+    beschreibung TEXT,
+    zubereitungszeit INT
+);
+
+
+CREATE TABLE rezept_zutaten (
+    rezept_id INT,
+    zutat_id INT,
+    menge VARCHAR(255),
+    PRIMARY KEY (rezept_id, zutat_id),
+    FOREIGN KEY (rezept_id) REFERENCES rezepte(id),
+    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
+);
+CREATE TABLE einkaufsliste (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    zutat_id INT,
+    menge VARCHAR(255),
+    gekauft BOOLEAN DEFAULT FALSE,
+    verbrauchsdatum DATE, -- Hinzugefügtes Feld für das Verbrauchsdatum
+    gefaess_id INT DEFAULT NULL,
+    FOREIGN KEY (gefaess_id) REFERENCES unverpackte_gefaesse(id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
+);
+
+CREATE TABLE vorratsschrank (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    zutat_id INT,
+    menge VARCHAR(255),
+    verbrauchsdatum DATE, -- Hinzugefügtes Feld für das Verbrauchsdatum
+    gefaess_id INT DEFAULT NULL,
+    FOREIGN KEY (gefaess_id) REFERENCES unverpackte_gefaesse(id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
+);
+
+CREATE TABLE zutaten_namen (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    zutat_id INT NOT NULL,
+    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
+);
+
+CREATE TABLE konventionen (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    single_name_id INT NOT NULL,
+    plural_name_id INT,
+    zutat_id INT NOT NULL,
+    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
+);
+
+CREATE TABLE freundschaftsanfragen (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sender_id INT NOT NULL,
+    empfaenger_id INT NOT NULL,
+    status ENUM('pending', 'accepted', 'declined') NOT NULL,
+    FOREIGN KEY (sender_id) REFERENCES users(id),
+    FOREIGN KEY (empfaenger_id) REFERENCES users(id)
+);
+
+CREATE TABLE freunde (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id_1 INT NOT NULL,
+    user_id_2 INT NOT NULL,
+    FOREIGN KEY (user_id_1) REFERENCES users(id),
+    FOREIGN KEY (user_id_2) REFERENCES users(id)
+);
+
+CREATE TABLE unverpackte_gefaesse (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    volumen DECIMAL(10,2) NOT NULL COMMENT 'Volumen in Litern oder Kilogramm',
+    beschreibung TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
 
 

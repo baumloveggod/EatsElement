@@ -44,7 +44,8 @@ def send_to_stable_diffusion(changed_files):
     # Sendet die gesammelten Änderungen an Stable Diffusion
     # und erhält eine Antwort für die Commit-Nachricht.
     # Diese Funktion muss entsprechend Ihrer Stable Diffusion API implementiert werden.
-    pass
+    commit_message = "Update based on latest changes"
+    return commit_message
 
 def git_commit_and_push(commit_message):
     # Führt Git-Commit und Push mit der bereitgestellten Nachricht durch
@@ -57,7 +58,7 @@ def git_commit_and_push(commit_message):
 
 # Hauptskript
         
-write_file_info_to_output('./transoformationsdesin/', 'output.txt')
+write_file_info_to_output('./http/', 'output.txt',['sql_create'])
 changed_files = get_git_changes()
 commit_message = send_to_stable_diffusion(changed_files)
 git_commit_and_push(commit_message)

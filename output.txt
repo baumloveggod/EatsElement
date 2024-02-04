@@ -1,0 +1,2320 @@
+Path: ./transoformationsdesin/sql_create
+Content:
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL, -- Speichern Sie hier Hashes, nicht die tatsächlichen Passwörter
+    cookie_auth_token VARCHAR(255), -- Ein langes, zufälliges Token für die Authentifizierung via Cookie
+    freundes_token VARCHAR(255) UNIQUE,
+    einkaufsoption VARCHAR(255) DEFAULT 'ueblicheVerpackungsgroesse';
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    current_editing_recipe_id INT DEFAULT NULL;
+);
+
+CREATE TABLE essenplan (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    datum DATE NOT NULL,
+    anzahl_personen INT NOT NULL,
+    rezept_id INT, 
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (rezept_id) REFERENCES rezepte(id)
+);
+
+CREATE TABLE zutaten (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    beschreibung TEXT
+);
+
+CREATE TABLE rezepte (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    titel VARCHAR(255) NOT NULL,
+    beschreibung TEXT,
+    zubereitungszeit INT
+);
+
+
+CREATE TABLE rezept_zutaten (
+    rezept_id INT,
+    zutat_id INT,
+    menge VARCHAR(255),
+    PRIMARY KEY (rezept_id, zutat_id),
+    FOREIGN KEY (rezept_id) REFERENCES rezepte(id),
+    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
+);
+CREATE TABLE einkaufsliste (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    zutat_id INT,
+    menge VARCHAR(255),
+    gekauft BOOLEAN DEFAULT FALSE,
+    verbrauchsdatum DATE, -- Hinzugefügtes Feld für das Verbrauchsdatum
+    gefaess_id INT DEFAULT NULL,
+    FOREIGN KEY (gefaess_id) REFERENCES unverpackte_gefaesse(id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
+);
+
+CREATE TABLE vorratsschrank (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    zutat_id INT,
+    menge VARCHAR(255),
+    verbrauchsdatum DATE, -- Hinzugefügtes Feld für das Verbrauchsdatum
+    gefaess_id INT DEFAULT NULL,
+    FOREIGN KEY (gefaess_id) REFERENCES unverpackte_gefaesse(id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
+);
+
+CREATE TABLE zutaten_namen (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    zutat_id INT NOT NULL,
+    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
+);
+
+CREATE TABLE konventionen (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    single_name_id INT NOT NULL,
+    plural_name_id INT,
+    zutat_id INT NOT NULL,
+    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
+);
+
+CREATE TABLE freundschaftsanfragen (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sender_id INT NOT NULL,
+    empfaenger_id INT NOT NULL,
+    status ENUM('pending', 'accepted', 'declined') NOT NULL,
+    FOREIGN KEY (sender_id) REFERENCES users(id),
+    FOREIGN KEY (empfaenger_id) REFERENCES users(id)
+);
+
+CREATE TABLE freunde (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id_1 INT NOT NULL,
+    user_id_2 INT NOT NULL,
+    FOREIGN KEY (user_id_1) REFERENCES users(id),
+    FOREIGN KEY (user_id_2) REFERENCES users(id)
+);
+
+CREATE TABLE unverpackte_gefaesse (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    volumen DECIMAL(10,2) NOT NULL COMMENT 'Volumen in Litern oder Kilogramm',
+    beschreibung TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+
+Path: ./transoformationsdesin/config\config.php
+Content:
+<?php
+// Datenbankkonfiguration
+define('DB_SERVER', 'db5015005409.hosting-data.io');
+define('DB_USER', 'dbu942629');
+define('DB_PASSWORD', 'LYpLxztKkL7HQW5rXYG2nDAxcwBFNgQMY8R8sM2E77vJB4AwM9');
+define('DB_NAME', 'dbs12468479');
+?>
+
+Path: ./transoformationsdesin/http\guest.php
+Content:
+<?php
+require 'templates/headerGuest.php'; // Kopfzeile für Gäste
+// Inhalt für Gäste
+echo "<div class='welcome-container'>
+        <h1>Willkommen bei Transformations-Design</h1>
+        <p>Bitte melden Sie sich an, um fortzufahren.</p>
+        <a href='login.html'>Anmelden</a>
+        <p>Noch kein Konto? <a href='register.html'>Registrieren Sie sich hier</a></p>
+      </div>";
+require 'templates/footer.php'; // Gemeinsamer Fußbereich
+
+
+Path: ./transoformationsdesin/http\index.php
+Content:
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+
+require_once __DIR__ . '/Utils/db_connect.php';
+require_once __DIR__ . '/Utils/SessionManager.php';
+
+// Überprüfen, ob der Benutzer eingeloggt ist und ob ein potenzieller Freund Cookie existiert
+if (isUserLoggedIn() && isset($_COOKIE['potenzieller_freund'])) {
+    $userId = $_SESSION['id'];
+    $freundId = $_COOKIE['potenzieller_freund'];
+
+    // Überprüfen, ob die Freundschaftsanfrage schon besteht oder Freunde bereits
+    $checkSql = "SELECT * FROM freunde WHERE (user_id_1 = ? AND user_id_2 = ?) OR (user_id_1 = ? AND user_id_2 = ?)";
+    $stmt = $conn->prepare($checkSql);
+    $stmt->bind_param("iiii", $userId, $freundId, $freundId, $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows == 0) {
+        // Füge den Freund hinzu, wenn noch keine Beziehung besteht
+        $insertSql = "INSERT INTO freunde (user_id_1, user_id_2) VALUES (?, ?)";
+        $stmt = $conn->prepare($insertSql);
+        $stmt->bind_param("ii", $userId, $freundId);
+        $stmt->execute();
+
+        // Bestätigung für den Benutzer
+        $freundHinzugefügt = true;
+    }
+
+    // Lösche das Cookie, unabhängig davon, ob der Freund hinzugefügt wurde oder nicht
+    setcookie('potenzieller_freund', '', time() - 3600, "/");
+}
+// Function to show logged-in user content
+function showLoggedInUserContent($username) {
+    if (empty($username)) {
+        // Handle the case where the username is not provided or is empty
+        echo "Fehler: Benutzername ist nicht angegeben.";
+        return;
+    }
+
+    // Sanitize the username to prevent XSS attacks
+    $safeUsername = htmlspecialchars($username, ENT_QUOTES, 'UTF-8');
+
+    // HTML content for logged-in users
+    echo "<!DOCTYPE html>
+    <html lang='de'>
+    <head>
+        <link rel='stylesheet' href='style.css'>
+        <meta name='viewport' content='width=device-width, initial-scale=1'>
+        <meta charset='UTF-8'>
+        <title>Arbeitstitel</title>
+    </head>
+    <body>
+    <header>
+        <h1>main navigator page</h1>";
+        include 'Views/templates/navigation_ausserhalb.php'; // Correctly including the navigation part
+
+            echo "</header>
+        <main>
+            <p>Willkommen, $safeUsername!</p>
+            <!-- Other content for logged-in users -->
+        </main>
+    </body>
+    </html>";
+}
+
+// Function to show guest user content
+function showGuestUserContent() {
+    // HTML content for guests
+    echo "<!DOCTYPE html>
+    <html>
+    <head>
+        <meta name='viewport' content='width=device-width, initial-scale=1'>
+        <link rel='stylesheet' href='style.css'>
+        <title>Willkommen bei Transforamtions-Desin</title>
+    </head>
+    <body>
+        <div class='welcome-container'>
+            <h1>Willkommen bei Transforamtions-Desin</h1>
+            <p>Bitte melden Sie sich an, um fortzufahren.</p>
+            <a href='login.html'>Anmelden</a>
+            <p>Noch kein Konto? <a href='register.html'>Registrieren Sie sich hier</a></p>
+        </div>
+    </body>
+    </html>";
+}
+
+// Check if a cookie is set
+if (isset($_COOKIE['auth'])) {
+    $cookieId = $_COOKIE['auth'];
+    $sql = "SELECT id, username FROM users WHERE cookie_auth_token = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("s", $cookieId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        $user = $result->fetch_assoc();
+        $_SESSION['loggedin'] = true;
+        $_SESSION['username'] = $user['username'];
+        $_SESSION['id'] = $user['id'];
+
+        showLoggedInUserContent($user['username']);
+    } else {
+        showGuestUserContent();
+    }
+} else {
+    showGuestUserContent();
+}
+?>
+
+
+Path: ./transoformationsdesin/http\loggedIn.php
+Content:
+<?php
+require_once 'Utils/db_connect.php';
+require_once 'Utils/SessionManager.php';
+
+// Sicherstellen, dass nur eingeloggte Benutzer Zugriff haben
+if (!isUserLoggedIn()) {
+    header('Location: index.php');
+    exit;
+}
+
+// Benutzerbezogene Logik hier...
+$username = $_SESSION['username']; // Beispiel für den Zugriff auf Benutzerdaten
+
+require 'templates/headerLoggedIn.php'; // Kopfzeile für eingeloggte Benutzer
+echo "<p>Willkommen, ".htmlspecialchars($username, ENT_QUOTES, 'UTF-8')."!</p>";
+// Weitere Inhalte für eingeloggte Benutzer
+require 'templates/footer.php'; // Gemeinsamer Fußbereich
+
+
+Path: ./transoformationsdesin/http\login.html
+Content:
+<!-- public/login.php -->
+<!DOCTYPE html>
+<html>
+<head>    
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <link rel='stylesheet' href='style.css'>
+    <title>Login</title>
+</head>
+<body>
+    <form id="loginForm" action="Controllers/Login.php" method="post">
+        <h2>Login</h2>
+        <input type="text" id="username" name="username" placeholder="Benutzername" required>
+        <input type="password" id="password" name="password" placeholder="Passwort" required>
+        <button type="submit">Einloggen</button>
+        <p>Noch nicht registriert? <a href="register.php">Registrieren</a></p>
+    </form>
+    <script src="js/login.js"></script>
+</body>
+</html>
+
+
+Path: ./transoformationsdesin/http\register.html
+Content:
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <link rel='stylesheet' href='style.css'>
+    <title>Registrierung</title>
+</head>
+<body>
+    <form id="registerForm" action="Controllers/register.php" method="post">
+        <h2>Registrierung</h2>
+        <input type="text" id="newUsername" name="username" placeholder="Benutzername" required>
+        <input type="password" id="newPassword" name="password" placeholder="Passwort" required>
+        <button type="submit">Registrieren</button>
+    </form>
+    <h1> ihr müsste keine mail adresse angeben, und bitte verwende nicht euer standart password</h1>
+    <script src="js/register.js"></script>
+</body>
+</html>
+
+
+Path: ./transoformationsdesin/http\reset.php
+Content:
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+require_once 'Utils/CheckSessionManager.php';
+require_once 'Utils/db_connect.php';
+
+// Leere alle Tabellen außer 'users'
+$tablesToReset = ['konventionen','zutaten_namen','rezept_zutaten', 'essenplan', 'einkaufsliste', 'vorratsschrank', 'rezepte', 'zutaten'];
+foreach ($tablesToReset as $table) {
+    $conn->query("DELETE FROM `$table`"); // Verwende DELETE statt TRUNCATE
+    $conn->query("ALTER TABLE `$table` AUTO_INCREMENT = 1"); // Setze den Auto-Increment-Wert zurück, falls gewünscht
+}
+
+// Weiterleitung zu test.php
+header("Location: /test.php");
+exit;
+?>
+
+
+Path: ./transoformationsdesin/http\style.css
+Content:
+/* Grundlegende Stile für alle Geräte */
+
+body {font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; /* Moderne, lesbare Schriftart */
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4; /* Hintergrundfarbe für einen leichteren Look */
+}
+
+nav ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    background-color: #333;
+}
+
+nav li {
+    text-align: center; /* Zentriert die Navigationselemente auf allen Geräten */
+}
+
+nav li a {
+    display: block;
+    color: white;
+    padding: 14px 16px;
+    text-decoration: none;
+}
+
+nav li a:hover, nav li a:focus {
+    background-color: #555; /* Dunkleres Grau für Hover-/Fokuseffekt */
+}
+
+/* Verbesserungen für Mobilgeräte */
+@media (max-width: 600px) {
+    nav ul {
+        padding: 0;
+    }
+
+    nav li {
+        display: block; /* Stapelt die Links auf kleinen Bildschirmen */
+    }
+
+    nav li a {
+        text-align: left; /* Text linksbündig, mit Padding für Touch-Freundlichkeit */
+        padding: 20px; /* Größeres Padding für leichteres Antippen */
+    }
+
+    .welcome-container {
+        padding: 20px; /* Gibt dem Hauptinhalt etwas Raum */
+        background-color: #fff; /* Heller Hintergrund für den Inhalt */
+        margin: 20px; /* Fügt außen einen Margin hinzu, um nicht am Bildschirmrand zu kleben */
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Leichter Schatten für eine schwebende Optik */
+    }
+
+    body {
+        font-size: 18px; /* Größere Schrift für bessere Lesbarkeit */
+    }
+
+    h1 {
+        font-size: 24px; /* Größere Überschrift für mehr Aufmerksamkeit */
+        margin-top: 0; /* Entfernt den oberen Margin der Überschrift für konsistenten Raum */
+    }
+
+    a {
+        background-color: #007bff; /* Helle, auffällige Farbe für Links */
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px; /* Abgerundete Ecken für einen modernen Look */
+        margin-top: 10px; /* Abstand oben, um Links voneinander zu trennen */
+        display: inline-block; /* Behält die Link-Struktur bei, ermöglicht Padding */
+        text-decoration: none; /* Entfernt die Unterstreichung für eine saubere Optik */
+    }
+
+    a:hover, a:focus {
+        background-color: #0056b3; /* Dunklere Farbe für Hover-/Fokuseffekt */
+    }
+}
+
+
+Path: ./transoformationsdesin/http\test.php
+Content:
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once 'Utils/db_connect.php';
+
+// Schritt 1: Überprüfen, ob Rezepte vorhanden sind
+$sql = "SELECT COUNT(*) FROM rezepte";
+$result = $conn->query($sql);
+$row = $result->fetch_row();
+
+if ($row[0] == 0) {
+    // Schritt 2: Keine Rezepte vorhanden, füge Beispielrezepte ein
+    $beispielRezepte = [
+        [
+        "titel" => "Chicken Tikka Masala",
+        "beschreibung" => "Beliebtes indisches Gericht mit cremiger Tomatensoße.",
+        "zubereitungszeit" => 40,
+        "zutaten" => [
+            ["name" => "Hühnerbrust","menge" =>  "500g"],
+            ["name" => "Joghurt", "menge" =>  "100ml"],
+            ["name" => "Tikka Masala Paste", "menge" =>  "3 EL"],
+            ["name" => "Tomaten", "menge" =>  "400g"],
+            ["name" => "Sahne", "menge" =>  "100ml"]
+        ]
+        ],[
+            "titel" => "Spaghetti Carbonara",
+            "beschreibung" => "Klassisches italienisches Pasta-Gericht mit Speck und Sahnesoße.",
+            "zubereitungszeit" => 20,
+            "zutaten" => [
+                ["name" => "Ei", "menge" =>  "2 Stück"],
+                ["name" => "Speck", "menge" =>  "100g"],
+                ["name" => "Spaghetti","menge" =>   "200g"],
+                ["name" => "Parmesan","menge" =>   "50g"]
+            ]
+        ],
+        [
+            "titel" => "Gemüsecurry",
+            "beschreibung" => "Würziges und gesundes Gemüsecurry mit Reis.",
+            "zubereitungszeit" => 30,
+            "zutaten" => [
+                ["name" => "Kokosmilch","menge" =>   "250ml"],
+                ["name" => "Currypaste","menge" =>   "2 EL"],
+                ["name" => "Brokkoli","menge" =>   "1 Kopf"],
+                ["name" => "Karotten","menge" =>   "2 Stück"]
+            ]
+        ],
+        [
+            "titel" => "Caesar Salad",
+            "beschreibung" => "Klassischer Caesar Salad mit knusprigen Croutons und Parmesan.",
+            "zubereitungszeit" => 15,
+            "zutaten" => [
+                ["name" => "Römersalat","menge" =>   "1 Kopf"],
+                ["name" => "Croutons","menge" =>   "100g"],
+                ["name" => "Parmesan","menge" =>   "30g"],
+                ["name" => "Caesar-Dressing","menge" =>   "50ml"]
+            ]
+        ],[
+        
+        "titel" => "Linsensuppe",
+        "beschreibung" => "Herzhafte Linsensuppe, perfekt für kalte Tage.",
+        "zubereitungszeit" => 45,
+        "zutaten" => [
+            ["name" => "Linsen","menge" =>   "200g"],
+            ["name" => "Zwiebel","menge" =>   "1 Stück"],
+            ["name" => "Karotten","menge" =>   "2 Stück"],
+            ["name" => "Sellerie","menge" =>   "1 Stange"],
+            ["name" => "Gemüsebrühe","menge" =>   "1 Liter"]
+        ]
+    ],[
+        "titel" => "Vegane Bolognese",
+        "beschreibung" => "Pflanzenbasierte Version des italienischen Klassikers.",
+        "zubereitungszeit" => 30,
+        "zutaten" => [
+            ["name" => "Tofu","menge" =>   "200g"],
+            ["name" => "Tomatensoße","menge" =>   "500ml"],
+            ["name" => "Zwiebel","menge" =>   "1 Stück"],
+            ["name" => "Knoblauch","menge" =>   "2 Zehen"],
+            ["name" => "Pasta","menge" =>   "300g"]
+        ]
+    ],[
+        "titel" => "Ratatouille",
+        "beschreibung" => "Französisches Gemüsegericht, bunt und aromatisch.",
+        "zubereitungszeit" => 60,
+        "zutaten" => [
+            ["name" => "Zucchini","menge" =>   "2 Stück"],
+            ["name" => "Aubergine","menge" =>   "1 Stück"],
+            ["name" => "Paprika","menge" =>   "2 Stück"],
+            ["name" => "Tomaten","menge" =>   "3 Stück"],
+            ["name" => "Thymian","menge" =>   "1 Zweig"]
+        ]
+    ],[
+        "titel" => "Pfannkuchen",
+        "beschreibung" => "Einfache und leckere Pfannkuchen, süß oder herzhaft.",
+        "zubereitungszeit" => 20,
+        "zutaten" => ["name" => 
+            ["name" => "Mehl","menge" =>   "250g"],
+            ["name" => "Eier","menge" =>   "2 Stück"],
+            ["name" => "Milch","menge" =>   "500ml"],
+            ["name" => "Butter","menge" =>   "Zum Braten"],
+            ["name" => "Salz","menge" =>   "1 Prise"]
+        ]
+    ]
+    ];
+
+    $stmtRezept = $conn->prepare("INSERT INTO rezepte (titel, beschreibung, zubereitungszeit) VALUES (?, ?, ?)");
+    $stmtCheckZutat = $conn->prepare("SELECT zutat_id FROM zutaten_namen WHERE name = ?");
+    $stmtZutaten = $conn->prepare("INSERT INTO rezept_zutaten (rezept_id, zutat_id, menge) VALUES (?, ?, ?)");
+    foreach ($beispielRezepte as $rezept) {
+        $stmtRezept->bind_param("ssi", $rezept['titel'], $rezept['beschreibung'], $rezept['zubereitungszeit']);
+        $stmtRezept->execute();
+        $rezeptId = $stmtRezept->insert_id;
+    
+        foreach ($rezept['zutaten'] as $zutat) {
+            // Debug statement
+            echo "Debug: Ingredient Name - " . $zutat['name'] . "<br>";
+            $stmtCheckZutat->bind_param("s", $zutat['name']);
+            $stmtCheckZutat->execute();
+            $result = $stmtCheckZutat->get_result();
+            if ($result->num_rows > 0) {
+                // Zutat exists, get its id
+                $row = $result->fetch_assoc();
+                $zutatId = $row['zutat_id'];
+            } else {
+                // Zutat does not exist, insert and get id
+                
+                $stmtInsertZutat = $conn->prepare("INSERT INTO zutaten () VALUES ()");
+                $stmtInsertZutat->execute();
+                $zutatId = $conn->insert_id;
+            
+                // Insert into zutaten_namen
+                $stmtInsertZutatName = $conn->prepare("INSERT INTO zutaten_namen (name, zutat_id) VALUES (?, ?)");
+                $stmtInsertZutatName->bind_param("si", $zutat['name'], $zutatId);
+                $stmtInsertZutatName->execute();
+                $zutatenNameId = $conn->insert_id;
+            
+                // Insert into konventionen (wenn nötig, können Sie hier auch eine plural_name_id hinzufügen)
+                $stmtInsertKonvention = $conn->prepare("INSERT INTO konventionen (single_name_id, zutat_id) VALUES (?, ?)");
+                $stmtInsertKonvention->bind_param("ii", $zutatenNameId, $zutatId);
+                $stmtInsertKonvention->execute();
+            }
+            // Now insert into rezept_zutaten with the correct zutatId
+            $stmtZutaten->bind_param("iis", $rezeptId, $zutatId, $zutat['menge']);
+            $stmtZutaten->execute();
+        }
+    }
+    echo "Beispielrezepte und Zutatenverbindungen wurden hinzugefügt.";
+} else {
+    echo "Es sind bereits Rezepte in der Datenbank vorhanden.";
+}
+
+$conn->close();
+?>
+
+
+Path: ./transoformationsdesin/http\test1.php
+Content:
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once 'Utils/CheckSessionManager.php';
+require_once 'Utils/db_connect.php';
+
+$userId = $_SESSION['id'];
+$today = date("Y-m-d");
+$fourteenDaysLater = date("Y-m-d", strtotime("+14 days"));
+
+// Ermittle Tage ohne Rezept
+$sql = "SELECT datum FROM essenplan WHERE user_id = ? AND datum BETWEEN ? AND ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("iss", $userId, $today, $fourteenDaysLater);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$besetzteTage = [];
+while ($row = $result->fetch_assoc()) {
+    $besetzteTage[] = $row['datum'];
+}
+
+$tageOhneRezept = [];
+for ($i = 0; $i < 14; $i++) {
+    $datum = date("Y-m-d", strtotime("$today +$i days"));
+    if (!in_array($datum, $besetzteTage)) {
+        $tageOhneRezept[] = $datum;
+    }
+}
+
+// Wähle ein zufälliges Tag ohne Rezept aus
+if (!empty($tageOhneRezept)) {
+    $zufallstag = $tageOhneRezept[array_rand($tageOhneRezept)];
+
+    // Wähle ein zufälliges Rezept aus
+    $rezeptSql = "SELECT id FROM rezepte ORDER BY RAND() LIMIT 1";
+    $rezeptResult = $conn->query($rezeptSql);
+    if ($rezeptRow = $rezeptResult->fetch_assoc()) {
+        $zufallsRezeptId = $rezeptRow['id'];
+
+        // Füge das ausgewählte Rezept zum ausgewählten Datum in den Essensplan ein
+        $insertSql = "INSERT INTO essenplan (user_id, datum, rezept_id, anzahl_personen) VALUES (?, ?, ?, ?)";
+        $insertStmt = $conn->prepare($insertSql);
+        $anzahlPersonen = 1; // Setze eine Standardanzahl von Personen
+        $insertStmt->bind_param("isii", $userId, $zufallstag, $zufallsRezeptId, $anzahlPersonen);
+        
+        if ($insertStmt->execute()) {
+            echo "Rezept erfolgreich zum Datum $zufallstag hinzugefügt.";
+        } else {
+            echo "Fehler beim Hinzufügen des Rezepts: " . $conn->error;
+        }
+        // Hole die Zutaten für das ausgewählte Rezept
+        $zutatenSql = "SELECT zutat_id, menge FROM rezept_zutaten WHERE rezept_id = ?";
+        $zutatenStmt = $conn->prepare($zutatenSql);
+        $zutatenStmt->bind_param("i", $zufallsRezeptId);
+        $zutatenStmt->execute();
+        $zutatenResult = $zutatenStmt->get_result();
+
+        while ($zutat = $zutatenResult->fetch_assoc()) {
+            // Füge jede Zutat zur Einkaufsliste hinzu
+            $einkaufslisteSql = "INSERT INTO einkaufsliste (user_id, zutat_id, menge, verbrauchsdatum) VALUES (?, ?, ?, ?)";
+            $einkaufslisteStmt = $conn->prepare($einkaufslisteSql);
+            $einkaufslisteStmt->bind_param("iiss", $userId, $zutat['zutat_id'], $zutat['menge'], $zufallstag);
+            $einkaufslisteStmt->execute();
+        }
+        echo "Zutaten wurden der Einkaufsliste für das Datum $zufallstag hinzugefügt.";
+    } else {
+        echo "Keine Rezepte gefunden.";
+    }
+} else {
+    echo "Keine freien Tage in den nächsten 14 Tagen.";
+}
+
+$conn->close();
+?>
+
+
+Path: ./transoformationsdesin/http\Controllers\AddToEinkaufsliste.php
+Content:
+<?php
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
+    require_once __DIR__ . '/../Utils/db_connect.php';
+    require_once __DIR__ . '/../Utils/CheckSessionManager.php';
+
+    if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+        if (empty($_POST['zutatenName']) || empty($_POST['menge'])) {
+            exit('Fehler: Zutatenname oder Menge fehlt.');
+        }
+        $zutatenName = $_POST['zutatenName'];
+        $menge = $_POST['menge'];
+        $userId = $_SESSION['id']; // Stellen Sie sicher, dass die Session gestartet wurde
+
+        // Überprüfen, ob die Zutat bereits existiert
+        $stmt = $conn->prepare("SELECT id FROM zutaten_namen WHERE name = ?");
+        $stmt->bind_param("s", $zutatenName);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result->num_rows === 0) {
+            // Zutat existiert nicht, also füge sie ein
+            $stmt = $conn->prepare("INSERT INTO zutaten (beschreibung) VALUES ('Neue Zutat')");
+            $stmt->execute();
+            $zutatId = $conn->insert_id;
+            
+            // Füge den Namen in zutaten_namen ein
+            $stmt = $conn->prepare("INSERT INTO zutaten_namen (name, zutatId) VALUES (?, ?)");
+            $stmt->bind_param("si", $zutatenName, $zutatId);
+            $stmt->execute();
+        } else {
+            // Zutat existiert, hole die zutat_id
+            $zutat = $result->fetch_assoc();
+            $zutatId = $zutat['id'];
+        }
+
+        // Füge die Zutat in die Einkaufsliste ein
+        $stmt = $conn->prepare("INSERT INTO einkaufsliste (user_id, zutat_id, menge) VALUES (?, ?, ?)");
+        $stmt->bind_param("iis", $userId, $zutatId, $menge);
+        $stmt->execute();
+        header("Location: /Views/pages/einkaufsliste.php");
+    exit;
+    }
+?>
+
+
+Path: ./transoformationsdesin/http\Controllers\einladung_erstellen.php
+Content:
+<?php
+require_once '../Utils/CheckSessionManager.php';
+require_once '../Utils/db_connect.php';
+
+$userId = $_SESSION['id'];
+
+// Token des eingeloggten Benutzers abrufen
+$sql = "SELECT freundes_token FROM users WHERE id = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($row = $result->fetch_assoc()) {
+    $freundesToken = $row['freundes_token'];
+    $einladungsLink = "https://noadscollective.de/freunde.php?token=" . $freundesToken;
+} else {
+    echo "Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.";
+    exit;
+}
+?>
+
+
+Path: ./transoformationsdesin/http\Controllers\login.php
+Content:
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once __DIR__ . '/../Utils/db_connect.php';
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
+function sanitizeInput($data) {
+    $data = trim($data);
+    $data = stripslashes($data);
+    $data = htmlspecialchars($data);
+    return $data;
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $username = sanitizeInput($_POST['username']);
+    $password = sanitizeInput($_POST['password']);
+
+    // Validate inputs
+    if (empty($username) || empty($password)) {
+        echo "Bitte Benutzername und Passwort eingeben.";
+        exit;
+    }
+
+    // Prepare SQL statement to prevent SQL injection
+    $sql = "SELECT id, username, password FROM users WHERE username = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows === 1) {
+        $user = $result->fetch_assoc();
+
+        if (password_verify($password, $user['password'])) {
+            // Set session variables
+            $_SESSION['loggedin'] = true;
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['id'] = $user['id'];
+        
+            // Generate a random token for the cookie
+            $cookieToken = bin2hex(random_bytes(25));
+        
+            // Set cookie for authentication
+            setcookie('auth', $cookieToken, time() + (86400 * 30), "/"); // 86400 = 1 day, adjust as needed
+        
+            // Update the cookie token in the database
+            $updateSql = "UPDATE users SET cookie_auth_token = ? WHERE id = ?";
+            $updateStmt = $conn->prepare($updateSql);
+            $updateStmt->bind_param("si", $cookieToken, $user['id']);
+            $updateStmt->execute();
+            $updateStmt->close();
+        
+            // Redirect to the main page
+            header("Location: /index.php");
+            exit;
+        } else {
+            // Incorrect password
+            echo "Falscher Benutzername oder Passwort.";
+        }
+    } else {
+        echo "Falscher Benutzername oder Passwort.";
+    }
+
+    $stmt->close();
+}
+$conn->close();
+?>
+
+
+Path: ./transoformationsdesin/http\Controllers\logout.php
+Content:
+<?php
+session_start();
+session_unset();
+session_destroy();
+setcookie('auth', '', time() - 3600, "/"); // Löscht das Auth-Cookie
+header("Location: /login.html");
+exit;
+?>
+
+
+Path: ./transoformationsdesin/http\Controllers\MoveToPantry.php
+Content:
+<?php
+require_once __DIR__ . '/../Utils/db_connect.php';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $itemId = $_POST['id'];
+
+    // Artikel aus der Einkaufsliste abrufen
+    $getItemStmt = $conn->prepare("SELECT user_id, zutat_id, menge, verbrauchsdatum FROM einkaufsliste WHERE id = ?");
+    $getItemStmt->bind_param("i", $itemId);
+    $getItemStmt->execute();
+    $itemResult = $getItemStmt->get_result();
+    $item = $itemResult->fetch_assoc();
+
+    // Artikel in den Vorratsschrank einfügen
+    $insertStmt = $conn->prepare("INSERT INTO vorratsschrank (user_id, zutat_id, menge, verbrauchsdatum) VALUES (?, ?, ?, ?)");
+    $insertStmt->bind_param("iiss", $item['user_id'], $item['zutat_id'], $item['menge'], $item['verbrauchsdatum']);
+    $insertStmt->execute();
+
+    // Artikel aus der Einkaufsliste entfernen
+    $deleteStmt = $conn->prepare("DELETE FROM einkaufsliste WHERE id = ?");
+    $deleteStmt->bind_param("i", $itemId);
+    $deleteStmt->execute();
+
+    header("Location: /Views/pages/einkaufsliste.php?status=moved");
+    exit;
+}
+?>
+
+
+Path: ./transoformationsdesin/http\Controllers\passwort_aendern_handler.php
+Content:
+<?php
+require_once '../Utils/db_connect.php';
+require_once '../Utils/CheckSessionManager.php';
+
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $userId = $_SESSION['id'];
+    $currentPassword = $_POST['currentPassword'];
+    $newPassword = $_POST['newPassword'];
+
+    // Überprüfe das aktuelle Passwort
+    $stmt = $conn->prepare("SELECT password FROM users WHERE id = ?");
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($user = $result->fetch_assoc()) {
+        if (password_verify($currentPassword, $user['password'])) {
+            // Aktualisiere das Passwort
+            $newHashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+            $updateStmt = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
+            $updateStmt->bind_param("si", $newHashedPassword, $userId);
+            if ($updateStmt->execute()) {
+                echo "Passwort erfolgreich geändert.";
+            } else {
+                echo "Fehler beim Aktualisieren des Passworts.";
+            }
+        } else {
+            echo "Das aktuelle Passwort ist falsch.";
+        }
+    } else {
+        echo "Benutzer nicht gefunden.";
+    }
+}
+?>
+
+
+Path: ./transoformationsdesin/http\Controllers\register.php
+Content:
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once __DIR__ . '/../Utils/db_connect.php';
+
+session_start();
+
+function sanitizeInput($data) {
+    $data = trim($data);
+    $data = stripslashes($data);
+    $data = htmlspecialchars($data);
+    return $data;
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $username = sanitizeInput($_POST['username']);
+    $password = sanitizeInput($_POST['password']);
+
+    // Überprüfe, ob der Benutzername bereits existiert
+    $stmt = $conn->prepare("SELECT id FROM users WHERE username = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows > 0) {
+        // Benutzername bereits vergeben
+        echo "Benutzername existiert bereits.";
+    } else {
+        // Benutzername ist verfügbar, fahre mit der Registrierung fort
+
+        // Passwort hashen
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+        $freundesToken = bin2hex(random_bytes(16)); // Generiert einen eindeutigen Token
+
+        // Neuen Benutzer einfügen
+        $insertStmt = $conn->prepare("INSERT INTO users (username, password, freundes_token) VALUES (?, ?, ?)");
+        $insertStmt->bind_param("sss", $username, $hashedPassword, $freundesToken);
+
+        if ($insertStmt->execute()) {
+            // Registrierung erfolgreich, Benutzer-ID des neu erstellten Benutzers holen
+            $userId = $conn->insert_id;
+            
+            // Generiere ein einzigartiges Authentifizierungs-Token
+            $authToken = bin2hex(random_bytes(50)); // Erhöhe die Byte-Anzahl für mehr Einzigartigkeit
+            
+            // Speichere das Token im Benutzerdatensatz
+            $tokenStmt = $conn->prepare("UPDATE users SET cookie_auth_token = ? WHERE id = ?");
+            $tokenStmt->bind_param("si", $authToken, $userId);
+            $tokenStmt->execute();
+            
+            // Setze ein Cookie mit dem Authentifizierungs-Token
+            setcookie("auth", $authToken, time() + (86400 * 30), "/"); // Gültig für 30 Tage
+            
+            // Setze Session-Variablen
+            $_SESSION['loggedin'] = true;
+            $_SESSION['username'] = $username;
+            $_SESSION['id'] = $userId;
+            
+            // Registrierung erfolgreich, sende eine spezifische Nachricht zurück
+            echo "Registrierung erfolgreich!";
+        } else {
+            // Fehler beim Einfügen in die Datenbank
+            echo "Fehler bei der Registrierung: " . $conn->error;
+        }
+    }
+
+    $stmt->close();
+    $conn->close();
+}
+?>
+
+
+Path: ./transoformationsdesin/http\Controllers\RemoveFriend.php
+Content:
+<?php
+require_once 'Utils/SessionManager.php';
+require_once 'Utils/db_connect.php';
+
+if (!isUserLoggedIn()) {
+    header("Location: login.html");
+    exit;
+}
+
+$userId = $_SESSION['id'];
+$friendId = $_POST['friendId'] ?? null; // Ersetzen Sie dies durch die tatsächliche Benutzer-ID des Freundes
+
+if ($friendId) {
+    // Freund-Beziehung entfernen
+    $sql = "DELETE FROM freunde WHERE (user_id_1 = ? AND user_id_2 = ?) OR (user_id_1 = ? AND user_id_2 = ?)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("iiii", $userId, $friendId, $friendId, $userId);
+
+    if ($stmt->execute()) {
+        echo "Freund erfolgreich entfernt.";
+    } else {
+        echo "Fehler beim Entfernen des Freundes.";
+    }
+    $stmt->close();
+} else {
+    echo "Keine Freund-ID angegeben.";
+}
+
+$conn->close();
+header("Location: freunde.php"); // Weiterleitung zur Freundeseite
+exit;
+?>
+
+
+Path: ./transoformationsdesin/http\Controllers\RespondToFriendRequest.php
+Content:
+<?php
+require_once 'Utils/SessionManager.php';
+require_once 'Utils/db_connect.php';
+
+// Stellen Sie sicher, dass der Benutzer eingeloggt ist
+if (!isUserLoggedIn()) {
+    header("Location: /login.html");
+    exit;
+}
+
+// Überprüfen, ob die erforderlichen Daten übergeben wurden
+if (isset($_POST['request_id']) && isset($_POST['action'])) {
+    $requestId = intval($_POST['request_id']);
+    $action = $_POST['action'];
+
+    // Verbindung zur Datenbank
+    $conn = ...; // Ihre bestehende Datenbankverbindung
+
+    if ($action === 'accept') {
+        // Akzeptieren der Freundschaftsanfrage
+        // Aktualisieren Sie zuerst den Status in der freundschaftsanfragen Tabelle
+        $updateStmt = $conn->prepare("UPDATE freundschaftsanfragen SET status = 'accepted' WHERE id = ?");
+        $updateStmt->bind_param("i", $requestId);
+        $updateStmt->execute();
+
+        // Dann fügen Sie die Freundschaft in die freunde Tabelle ein
+        // Angenommen, Sie haben die Sender- und Empfänger-IDs in der Anfrage gespeichert
+        $stmt = $conn->prepare("SELECT sender_id, empfaenger_id FROM freundschaftsanfragen WHERE id = ?");
+        $stmt->bind_param("i", $requestId);
+        $stmt->execute();
+        $result = $stmt->fetch_assoc();
+
+        $insertStmt = $conn->prepare("INSERT INTO freunde (user_id_1, user_id_2) VALUES (?, ?)");
+        $insertStmt->bind_param("ii", $result['sender_id'], $result['empfaenger_id']);
+        $insertStmt->execute();
+    } elseif ($action === 'decline') {
+        // Ablehnen der Freundschaftsanfrage
+        $updateStmt = $conn->prepare("UPDATE freundschaftsanfragen SET status = 'declined' WHERE id = ?");
+        $updateStmt->bind_param("i", $requestId);
+        $updateStmt->execute();
+    }
+
+    // Weiterleitung oder Ausgabe
+    header("Location: /freunde.php");
+    exit;
+} else {
+    echo "Fehler: Daten fehlen.";
+}
+?>
+
+
+Path: ./transoformationsdesin/http\Controllers\SendFriendRequest.php
+Content:
+<?php
+session_start();
+require_once 'db_connect.php'; // Pfad zur Datenbankverbindung
+
+// Überprüfen, ob der Benutzer eingeloggt ist
+if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+    exit('Sie müssen sich zuerst anmelden');
+}
+
+// Überprüfen, ob die Freund-ID gesetzt ist
+if (!isset($_POST['friendId'])) {
+    exit('Keine Freund-ID angegeben');
+}
+
+$userId = $_SESSION['id'];
+$friendId = $_POST['friendId'];
+
+// Überprüfen, ob bereits eine Freundschaftsanfrage besteht
+$stmt = $conn->prepare("SELECT * FROM freundschaftsanfragen WHERE sender_id = ? AND empfaenger_id = ?");
+$stmt->bind_param("ii", $userId, $friendId);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($result->num_rows > 0) {
+    exit('Eine Freundschaftsanfrage besteht bereits.');
+}
+
+// Einfügen der Freundschaftsanfrage in die Datenbank
+$insertStmt = $conn->prepare("INSERT INTO freundschaftsanfragen (sender_id, empfaenger_id, status) VALUES (?, ?, 'pending')");
+$insertStmt->bind_param("ii", $userId, $friendId);
+
+if ($insertStmt->execute()) {
+    echo "Freundschaftsanfrage erfolgreich gesendet!";
+} else {
+    echo "Fehler: " . $conn->error;
+}
+
+$conn->close();
+?>
+
+
+Path: ./transoformationsdesin/http\Controllers\ViewFriendRequests.php
+Content:
+<?php
+require_once 'Utils/SessionManager.php'; // Stellen Sie sicher, dass dies zu Ihrer Session-Verwaltung passt
+
+if (!isUserLoggedIn()) {
+    header("Location: login.html"); // Umleitung zum Login, falls nicht eingeloggt
+    exit;
+}
+$userId = $_SESSION['id']; // Angenommen, die Benutzer-ID wird in der Session gespeichert
+
+require_once 'Utils/db_connect.php'; // Passen Sie dies an Ihren Pfad zur Datenbankverbindung an
+
+$sql = "SELECT id, sender_id FROM freundschaftsanfragen WHERE empfaenger_id = ? AND status = 'pending'";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$anfragen = [];
+while ($row = $result->fetch_assoc()) {
+    $anfragen[] = $row;
+}
+
+?>
+
+Path: ./transoformationsdesin/http\Controllers\ViewFriends.php
+Content:
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once 'Utils/SessionManager.php'; // Pfad anpassen
+require_once 'Utils/db_connect.php'; // Pfad anpassen
+
+// Stellen Sie sicher, dass der Benutzer eingeloggt ist
+if (!isUserLoggedIn()) {
+    header("Location: login.html");
+    exit;
+}
+
+$userId = $_SESSION['id'];
+
+// SQL-Abfrage, um Freunde des Benutzers zu finden
+$sql = "SELECT u.id, u.username 
+        FROM users u
+        INNER JOIN freunde f ON u.id = f.user_id_1 OR u.id = f.user_id_2
+        WHERE (f.user_id_1 = ? OR f.user_id_2 = ?) AND u.id != ?";
+
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("iii", $userId, $userId, $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$freunde = [];
+while ($row = $result->fetch_assoc()) {
+    $freunde[] = $row;
+}
+
+$conn->close();
+?>
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Freundesliste</title>
+    <!-- Fügen Sie hier Ihren CSS-Link ein -->
+</head>
+<body>
+    <header>
+        <!-- Navigation und so weiter -->
+    </header>
+    <main>
+        <h2>Meine Freunde</h2>
+        <?php if (count($freunde) > 0): ?>
+            <ul>
+            <?php foreach ($freunde as $freund): ?>
+                <li><?= htmlspecialchars($freund['username']) ?></li> <!-- Weitere Informationen anzeigen oder Aktionen ermöglichen -->
+            <?php endforeach; ?>
+            </ul>
+        <?php else: ?>
+            <p>Sie haben noch keine Freunde hinzugefügt.</p>
+        <?php endif; ?>
+    </main>
+    <footer>
+        <!-- Footer-Inhalt -->
+    </footer>
+</body>
+</html>
+
+
+Path: ./transoformationsdesin/http\js\heutigesGericht.js
+Content:
+// Datei: heutigesGericht.js
+var likeBtn = document.getElementById('likeBtn');
+if (likeBtn) {
+    likeBtn.addEventListener('click', function() {
+        // Implementieren Sie Logik, um ein "Like" zu senden
+    alert('Geliked!');
+    });
+}
+var dislikeBtn = document.getElementById('dislikeBtn');
+if (dislikeBtn) {
+    dislikeBtn.addEventListener('click', function() {
+     // Implementieren Sie Logik, um ein "Dislike" zu senden
+     alert('Disliked!');
+    });
+}
+
+function discardRecipe() {
+    // Implementieren Sie Logik, um das Rezept zu verwerfen
+    alert('Rezept verworfen');
+}
+
+
+Path: ./transoformationsdesin/http\js\login.js
+Content:
+// Modified login.js
+document.addEventListener('DOMContentLoaded', function() {
+    var loginForm = document.getElementById('loginForm');
+
+    loginForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        var username = document.getElementById('username').value;
+
+        var password = document.getElementById('password').value;
+
+        // Einfache Clientseitige Validierung
+        if (!username || !password) {
+            alert("Bitte Benutzername und Passwort eingeben.");
+            return;
+        }
+
+        // Anmeldedaten an Server senden
+        var xhr = new XMLHttpRequest();xhr.open('POST', 'Controllers/login.php', true);
+        xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+        xhr.onload = function() {
+            // Antwort vom Server verarbeiten
+            if (this.status == 200) {
+                if (this.responseText.includes("Falsches Passwort") || this.responseText.includes("Benutzername existiert nicht")) {
+                    alert(this.responseText);
+                } else {
+                    window.location.href = 'index.php'; // Weiterleitung zur Hauptseite
+                }
+            } else {
+                alert("Es gab einen Fehler beim Senden der Anfrage.");
+            }
+        };
+
+        xhr.send('username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password));
+    });
+});
+
+
+
+Path: ./transoformationsdesin/http\js\register.js
+Content:
+document.addEventListener('DOMContentLoaded', function() {
+    var registerForm = document.getElementById('registerForm');
+
+    registerForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        // Validierung
+        var username = document.getElementById('newUsername').value;
+        var password = document.getElementById('newPassword').value;    
+        var errorMessages = [];
+
+        if (!username || username.length < 5) {
+            errorMessages.push("Benutzername muss mindestens 5 Zeichen lang sein.");
+        }
+
+        if (!password || password.length < 8) {
+            errorMessages.push("Passwort muss mindestens 8 Zeichen lang sein.");
+        }
+
+        // Zeige Fehlermeldungen an, falls vorhanden
+        if (errorMessages.length > 0) {
+            alert(errorMessages.join('\n'));
+            return;
+        }
+
+        // Daten an Server senden
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'Controllers/register.php', true);
+        xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+        xhr.onload = function() {
+            if (this.responseText.includes("Registrierung erfolgreich!") || this.responseText.includes("Benutzername existiert nicht")) {
+                window.location.href = 'index.php'; // Weiterleitung zur Hauptseite
+            } else {
+                alert(this.responseText);
+            }
+        };
+
+        xhr.send('username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password));
+    });
+});
+
+
+Path: ./transoformationsdesin/http\Utils\CheckSessionManager.php
+Content:
+<?php
+// Starten der Session
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+// Überprüfen, ob der Benutzer eingeloggt ist
+function isUserLoggedIn() {
+    // Überprüft, ob das Session-Flag gesetzt ist oder ob ein gültiges Auth-Cookie vorhanden ist
+    if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
+        return true;
+    }
+
+    if (isset($_COOKIE['auth'])) {
+        // Verbindung zur Datenbank herstellen (möglicherweise benötigen Sie den globalen $conn)
+        require_once 'db_connect.php';
+
+        $cookieToken = $_COOKIE['auth'];
+        $sql = "SELECT id FROM users WHERE cookie_auth_token = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("s", $cookieToken);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows === 1) {
+            // Wenn das Cookie gültig ist, wird die Session entsprechend gesetzt
+            $user = $result->fetch_assoc();
+            $_SESSION['loggedin'] = true;
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['id'] = $user['id'];
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Überprüfen, ob der Benutzer auf eine Seite zugreifen darf
+function checkAccess() {
+    $allowedPagesForGuests = ['/index.php', '/login.html', '/register.html'];
+    $currentPage = basename($_SERVER['PHP_SELF']);
+
+    if (!isUserLoggedIn() && !in_array($currentPage, $allowedPagesForGuests)) {
+        header("Location: /index.php"); // Umleitung zur Index-Seite
+        exit;
+    }
+}
+
+checkAccess();
+?>
+
+Path: ./transoformationsdesin/http\Utils\db_connect.php
+Content:
+<?php
+// Include your configuration file
+require_once __DIR__ . '/../../config/config.php';
+
+
+// Create a MySQL database connection
+$conn = new mysqli(DB_SERVER, DB_USER, DB_PASSWORD, DB_NAME);
+
+// Check the connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+// Use this $conn object in your other scripts to interact with the database
+?>
+
+
+Path: ./transoformationsdesin/http\Utils\SessionManager.php
+Content:
+<?php
+require_once __DIR__ . '/db_connect.php';
+// Starten der Session
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+// Überprüfen, ob der Benutzer eingeloggt ist
+function isUserLoggedIn() {
+    // Überprüft, ob das Session-Flag gesetzt ist oder ob ein gültiges Auth-Cookie vorhanden ist
+    if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
+        return true;
+    }
+
+    if (isset($_COOKIE['auth'])) {
+        global $conn; // Corrected from "globalen" to "global"
+        $cookieToken = $_COOKIE['auth'];
+        // Updated SQL to select username as well
+        $sql = "SELECT id, username FROM users WHERE cookie_auth_token = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("s", $cookieToken);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows === 1) {
+            // Wenn das Cookie gültig ist, wird die Session entsprechend gesetzt
+            $user = $result->fetch_assoc();
+            $_SESSION['loggedin'] = true;
+            $_SESSION['username'] = $user['username']; // Now correctly setting username
+            $_SESSION['id'] = $user['id'];
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Überprüfen, ob der Benutzer auf eine Seite zugreifen darf
+function checkAccess() {
+    $allowedPagesForGuests = ['/index.php', '/login.html', '/register.html'];
+    $currentPage = basename($_SERVER['PHP_SELF']);
+
+    if (!isUserLoggedIn() && !in_array($currentPage, $allowedPagesForGuests)) {
+        header("Location: /index.php"); // Umleitung zur Index-Seite
+        exit;
+    }
+}
+?>
+
+
+Path: ./transoformationsdesin/http\Views\hidden\editRecipe.php
+Content:
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/db_connect.php';
+
+$userId = $_SESSION['id'];
+$recipeId = isset($_GET['recipeId']) ? intval($_GET['recipeId']) : null;
+
+// Wenn recipeId vorhanden ist, überprüfe, ob sie mit der des Benutzers übereinstimmt
+if ($recipeId !== null) {
+    $stmt = $conn->prepare("SELECT current_editing_recipe_id FROM users WHERE id = ?");
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
+
+    if ($recipeId != $user['current_editing_recipe_id']) {
+        deleteRecipe($recipeId, $conn);
+    
+        // Kopiere das neue Rezept und erstelle eine neue ID
+        $newRecipeId = copyRecipe($recipeId, $conn);
+    
+        // Aktualisiere die current_editing_recipe_id des Benutzers
+        $updateStmt = $conn->prepare("UPDATE users SET current_editing_recipe_id = ? WHERE id = ?");
+        $updateStmt->bind_param("ii", $newRecipeId, $userId);
+        $updateStmt->execute();
+    
+        // Setze die neue recipeId für die weitere Verarbeitung
+        $recipeId = $newRecipeId;
+    }
+    $zutatenStmt = $conn->prepare("
+            SELECT z.name, rz.menge 
+            FROM rezept_zutaten AS rz 
+            JOIN zutaten AS z ON rz.zutat_id = z.id 
+            WHERE rz.rezept_id = ?
+        ");
+    $zutatenStmt->bind_param("i", $recipeId);
+    $zutatenStmt->execute();
+        
+    $zutatenResult = $zutatenStmt->get_result();
+        
+    while ($row = $zutatenResult->fetch_assoc()) {
+        $zutaten[] = $row; // Füge jede Zutat zum Array hinzu
+    }
+}
+        
+// Funktion zum Kopieren eines Rezepts
+function copyRecipe($recipeId, $conn) {
+    // Schritt 1: Auslesen des originalen Rezepts
+    $stmt = $conn->prepare("SELECT titel, beschreibung, zubereitungszeit FROM rezepte WHERE id = ?");
+    $stmt->bind_param("i", $recipeId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        // Schritt 2: Kopieren des Rezepts
+        $insertStmt = $conn->prepare("INSERT INTO rezepte (titel, beschreibung, zubereitungszeit) VALUES (?, ?, ?)");
+        $insertStmt->bind_param("ssi", $row['titel'], $row['beschreibung'], $row['zubereitungszeit']);
+        $insertStmt->execute();
+
+        // Schritt 3: Rückgabe der neuen recipeId
+        $newRecipeId = $conn->insert_id;
+        return $newRecipeId;
+    } else {
+        // Fehlerbehandlung, falls das Originalrezept nicht gefunden wurde
+        echo "Originalrezept nicht gefunden.";
+        exit;
+    }
+}
+
+function deleteRecipe($recipeId, $conn) {
+    // Lösche das Rezept aus der rezepte-Tabelle
+    $deleteStmt = $conn->prepare("DELETE FROM rezepte WHERE id = ?");
+    $deleteStmt->bind_param("i", $recipeId);
+
+    if ($deleteStmt->execute()) {
+        echo "Rezept erfolgreich gelöscht.";
+    } else {
+        echo "Fehler beim Löschen des Rezepts: " . $conn->error;
+    }
+
+    // Zusätzliche Schritte, um alle verknüpften Daten zu bereinigen
+    // Beispiel: Löschen von Einträgen aus der rezept_zutaten-Tabelle
+    $deleteIngredientsStmt = $conn->prepare("DELETE FROM rezept_zutaten WHERE rezept_id = ?");
+    $deleteIngredientsStmt->bind_param("i", $recipeId);
+    $deleteIngredientsStmt->execute();
+
+    // Hier können weitere Bereinigungen für andere verknüpfte Tabellen hinzugefügt werden
+}
+?>
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Rezept Bearbeiten</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body>
+    <header>
+        <?php include '../templates/navigation.php'; ?>
+    </header>
+    <main>
+        <h2>Rezept Bearbeiten</h2>
+        <form action="../../Controllers/UpdateRecipe.php" method="post">
+            <input type="hidden" name="recipeId" value="<?= $recipeId ?>">
+            <label for="titel">Titel:</label>
+            <input type="text" id="titel" name="titel" value="<?= htmlspecialchars($rezept['titel']) ?>" required>
+
+            <label for="beschreibung">Beschreibung:</label>
+            <textarea id="beschreibung" name="beschreibung" required><?= htmlspecialchars($rezept['beschreibung']) ?></textarea>
+
+            <label for="zeit">Zubereitungszeit (in Minuten):</label>
+            <input type="number" id="zeit" name="zeit" value="<?= $rezept['zubereitungszeit'] ?>" required>
+
+            <h3>Zutaten:</h3>
+            <table id="zutatenTable">
+                <tr>
+                    <th>Name</th>
+                    <th>Menge</th>
+                    <th>Aktion</th>
+                </tr>
+                <?php 
+                $zutaten = []; // Initialize as an empty array
+                foreach ($zutaten as $zutat): 
+                ?>
+                <tr>
+                    <td><input type="text" name="zutatenName[]" value="<?= htmlspecialchars($zutat['name']) ?>"></td>
+                    <td><input type="text" name="zutatenMenge[]" value="<?= htmlspecialchars($zutat['menge']) ?>"></td>
+                    <td><button type="button" class="removeRow">Entfernen</button></td>
+                </tr>
+                <?php endforeach; ?>
+                <tr>
+                    <td><input type="text" name="zutatenName[]"></td>
+                    <td><input type="text" name="zutatenMenge[]"></td>
+                    <td><button type="button" class="removeRow">Entfernen</button></td>
+                </tr>
+            </table>
+            <button type="button" id="addRow">Zutat hinzufügen</button>
+
+            <button type="submit" name="save">Speichern</button>
+            <button type="button" name="discard" onclick="window.location.href='heutiges-gericht.php'">Verwerfen</button>
+        </form>
+    </main>
+    <footer>
+        <p>&copy; 2024 Transforamtions-Design</p>
+    </footer>
+
+    <script>
+        document.getElementById('addRow').addEventListener('click', function() {
+            var table = document.getElementById('zutatenTable');
+            var newRow = table.insertRow();
+            var cell1 = newRow.insertCell(0);
+            var cell2 = newRow.insertCell(1);
+            var cell3 = newRow.insertCell(2);
+            cell1.innerHTML = '<input type="text" name="zutatenName[]">';
+            cell2.innerHTML = '<input type="text" name="zutatenMenge[]">';
+            cell3.innerHTML = '<button type="button" class="removeRow">Entfernen</button>';
+        });
+
+        document.getElementById('zutatenTable').addEventListener('click', function(e) {
+            if (e.target && e.target.classList.contains('removeRow')) {
+                var row = e.target.closest('tr');
+                row.parentNode.removeChild(row);
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+Path: ./transoformationsdesin/http\Views\pages\about.php
+Content:
+
+
+Path: ./transoformationsdesin/http\Views\pages\einkaufsliste.php
+Content:
+<?php 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/db_connect.php';
+
+$userId = $_SESSION['id'];
+
+$sql = "SELECT zn.name, e.menge, e.verbrauchsdatum, e.id
+        FROM einkaufsliste e
+        JOIN zutaten_namen zn ON e.zutat_id = zn.zutat_id
+        WHERE e.user_id = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$einkaufsliste = [];
+while ($row = $result->fetch_assoc()) {
+    $einkaufsliste[] = [
+        'name' => $row['name'],
+        'menge' => $row['menge'],
+        'verbrauchsdatum' => $row['verbrauchsdatum'],
+        'id' => $row['id']
+    ];
+}
+?>
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Einkaufsliste</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>main navigator page</h1>
+        <?php include '../templates/navigation.php'; ?>
+    </header>
+    <main>
+        <h2>Einkaufsliste</h2>
+        <table>
+            <tr>
+                <th>Name</th>
+                <th>Menge</th>
+                <th>Geplantes Datum</th>
+                <th>Aktion</th>
+            </tr>
+            <?php foreach ($einkaufsliste as $item): ?>
+            <tr>
+                <td><?= htmlspecialchars($item['name']) ?></td>
+                <td><?= htmlspecialchars($item['menge']) ?></td>
+                <td>
+                    <?php if ($item['verbrauchsdatum']): ?>
+                        <a href="rezept_detail.php?datum=<?= urlencode($item['verbrauchsdatum']) ?>">
+                            <?= htmlspecialchars($item['verbrauchsdatum']) ?>
+                        </a>
+                    <?php else: ?>
+                        <form method="post" action="Controllers/RemoveFromEinkaufsliste.php">
+                            <input type="hidden" name="id" value="<?= $item['id'] ?>">
+                            <button type="submit">Entfernen</button>
+                        </form>
+                    <?php endif; ?>
+                </td>
+                <td>
+                    <form method="post" action="/Controllers/MoveToPantry.php">
+                        <input type="hidden" name="id" value="<?= $item['id'] ?>">
+                        <button type="submit">In Vorratsschrank verschieben</button>
+                    </form>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </table>
+
+        <h3>Neuen Eintrag hinzufügen</h3>
+        <form method="post" action="/Controllers/AddToEinkaufsliste.php">
+            <input type="text" name="zutatenName" placeholder="Zutatenname" required>
+            <input type="text" name="menge" placeholder="Menge" required>
+            <button type="submit">Zutat hinzufügen</button>
+        </form>
+
+    </main>
+    <footer>
+        <p>&copy; 2024 Transforamtions-Design</p>
+    </footer>
+</body>
+</html>
+
+
+Path: ./transoformationsdesin/http\Views\pages\essensplan.php
+Content:
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/db_connect.php';
+
+// Stelle sicher, dass der Benutzer eingeloggt ist
+if (!isUserLoggedIn()) {
+    header("Location: /login.html");
+    exit;
+}
+
+$userId = $_SESSION['id'];
+$today = date("Y-m-d");
+$twoWeeksLater = date("Y-m-d", strtotime("+14 days"));
+
+// Modified SQL query to include recipe title
+$sql = "SELECT e.datum, e.anzahl_personen, COALESCE(r.titel, 'Nicht geplant') AS titel
+        FROM essenplan e
+        LEFT JOIN rezepte r ON e.rezept_id = r.id
+        WHERE e.user_id = ? AND e.datum BETWEEN ? AND ?
+        ORDER BY e.datum ASC";
+
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("iss", $userId, $today, $twoWeeksLater);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$essenspläne = [];  
+while ($row = $result->fetch_assoc()) {
+    $essenspläne[$row['datum']] = [
+        'anzahl_personen' => $row['anzahl_personen'],
+        'rezept' => $row['titel']
+    ];
+}
+?>
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Essensplan</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body>
+    <header>
+        <?php include '../templates/navigation.php'; ?>
+    </header>
+    <main>
+        <h2>Essensplan für die nächsten 14 Tage</h2>
+        <ul>
+            <?php
+            $startDate = new DateTime($today);
+            $endDate = new DateTime($twoWeeksLater);
+            $endDate = $endDate->modify('+1 day'); // Inkludiert das Enddatum
+
+            $datumRange = new DatePeriod($startDate, new DateInterval('P1D'), $endDate);
+
+            foreach ($datumRange as $datum) {
+                $formattedDatum = $datum->format("Y-m-d");
+                if (array_key_exists($formattedDatum, $essenspläne)) {
+                    $plan = $essenspläne[$formattedDatum];
+                    $anzahlPersonen = $plan['anzahl_personen'];
+                    $rezeptTitel = $plan['rezept'];
+                } else {
+                    $anzahlPersonen = "Unbekannt";
+                    $rezeptTitel = "Nicht geplant";
+                }
+                $link = "rezept_detail.php?datum=" . urlencode($formattedDatum);
+                echo "<li><a href='" . htmlspecialchars($link) . "'>" . htmlspecialchars($formattedDatum) . ": " . htmlspecialchars($anzahlPersonen) . " Personen - " . htmlspecialchars($rezeptTitel) . "</a></li>";
+            }
+            ?>
+        </ul>
+    </main>
+    <footer>
+        <p>&copy; 2024 Transforamtions-Design</p>
+    </footer>
+</body>
+</html>
+
+
+Path: ./transoformationsdesin/http\Views\pages\freunde.php
+Content:
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/db_connect.php';
+
+$userId = $_SESSION['id'];
+$eigenerToken = "";
+
+// Hole den eigenen Freundes-Token
+$sqlEigen = "SELECT freundes_token FROM users WHERE id = ?";
+$stmtEigen = $conn->prepare($sqlEigen);
+$stmtEigen->bind_param("i", $userId);
+$stmtEigen->execute();
+$resultEigen = $stmtEigen->get_result();
+if ($eigenRow = $resultEigen->fetch_assoc()) {
+    $eigenerToken = $eigenRow['freundes_token'];
+}
+
+// Generiere den Einladungslink und den QR-Code mit dem eigenen Token
+$einladungsLink = "https://noadscollective.de/Views/pages/freunde.php?token=" . $eigenerToken;
+
+// Überprüfe, ob ein Token-Parameter gesetzt und nicht der eigene Token ist
+if (isset($_GET['token']) && $_GET['token'] !== $eigenerToken) {
+    $freundesToken = $_GET['token'];
+
+    // Finde den Benutzer mit dem gegebenen Freundes-Token
+    $userSql = "SELECT id FROM users WHERE freundes_token = ?";
+    $userStmt = $conn->prepare($userSql);
+    $userStmt->bind_param("s", $freundesToken);
+    $userStmt->execute();
+    $userResult = $userStmt->get_result();
+
+    if ($userResult->num_rows === 1) {
+        $freund = $userResult->fetch_assoc();
+        $freundId = $freund['id'];
+
+        // Füge den Freund hinzu, wenn noch keine Beziehung besteht
+        $checkSql = "SELECT id FROM freunde WHERE (user_id_1 = ? AND user_id_2 = ?) OR (user_id_1 = ? AND user_id_2 = ?)";
+        $checkStmt = $conn->prepare($checkSql);
+        $checkStmt->bind_param("iiii", $userId, $freundId, $freundId, $userId);
+        $checkStmt->execute();
+        $checkResult = $checkStmt->get_result();
+
+        if ($checkResult->num_rows === 0) {
+            $insertFreundeSql = "INSERT INTO freunde (user_id_1, user_id_2) VALUES (?, ?), (?, ?)";
+            $insertFreundeStmt = $conn->prepare($insertFreundeSql);
+            $insertFreundeStmt->bind_param("iiii", $userId, $freundId, $freundId, $userId);
+            $insertFreundeStmt->execute();
+            echo "Freundschaft erfolgreich hinzugefügt.";
+        } else {
+            echo "Ihr seid bereits Freunde.";
+        }
+    } else {
+        echo "Ungültiger Freundes-Token.";
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+
+    <meta charset="UTF-8">
+    <title>Freunde einladen</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script> <!-- QR Code JS Bibliothek -->
+    <script>
+        // Funktion zum Kopieren des Einladungslinks in die Zwischenablage
+        function kopiereLink() {
+            // Erstelle ein temporäres Input-Element
+            var tempInput = document.createElement("input");
+            tempInput.value = "Melde dich auf der Webseite an, dann können wir zusammen kochen  " + "<?= $einladungsLink; ?>"; // Setze den Einladungslink als Wert
+            document.body.appendChild(tempInput); // Füge das Input-Element zum DOM hinzu
+            tempInput.select(); // Wähle den Text im Input-Element aus
+            document.execCommand("copy"); // Kopiere den ausgewählten Text in die Zwischenablage
+            document.body.removeChild(tempInput); // Entferne das temporäre Input-Element
+        }
+    </script>
+</head>
+<body>
+    
+    <?php include '../templates/navigation.php'; ?>
+    <h2>Freunde einladen</h2>
+    <p>Teile diesen Link, um einen Freund einzuladen:</p>
+    <button onclick="kopiereLink()">link kopieren</button>
+    <div id="qrcode" style="margin-top: 20px;"></div>
+    <script>
+        new QRCode(document.getElementById("qrcode"), "<?= $einladungsLink; ?>");
+    </script>
+</body>
+</html>
+
+
+Path: ./transoformationsdesin/http\Views\pages\heutiges-gericht.php
+Content:
+<?php
+$today = date("Y-m-d");
+header("Location: rezept_detail.php?datum=" . urlencode($today));
+?>
+
+Path: ./transoformationsdesin/http\Views\pages\passwort_aendern.php
+Content:
+<?php
+require_once '../../Utils/CheckSessionManager.php';
+
+// Stelle sicher, dass der Benutzer eingeloggt ist
+if (!isUserLoggedIn()) {
+    header("Location: /login.html");
+    exit;
+}
+
+// Passwort-Änderungslogik wird hier behandelt
+
+?>
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Passwort ändern</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body>
+    <header>
+        <?php include '../templates/navigation.php'; ?>
+    </header>
+    <main>
+        <h2>Passwort ändern</h2>
+        <form action="/Controllers/passwort_aendern_handler.php" method="post">
+            <label for="currentPassword">Aktuelles Passwort:</label>
+            <input type="password" id="currentPassword" name="currentPassword" required>
+            <label for="newPassword">Neues Passwort:</label>
+            <input type="password" id="newPassword" name="newPassword" required>
+            <button type="submit">Ändern</button>
+        </form>
+    </main>
+    <footer>
+        <p>&copy; 2024 Transforamtions-Design</p>
+    </footer>
+</body>
+</html>
+
+
+Path: ./transoformationsdesin/http\Views\pages\profil.php
+Content:
+<?php
+require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/db_connect.php';
+
+$userId = $_SESSION['id'];
+?>
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Profil</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body>
+    <header>
+        <?php include '../templates/navigation.php'; ?>
+    </header>
+    <main>
+        <h2>Profil</h2>
+        <div>
+            <button onclick="location.href='/http/Controllers/logout.php'">Ausloggen</button>
+            <button onclick="location.href='passwort_aendern.php'">Passwort ändern</button>
+            <!-- Weitere Profilaktionen hier hinzufügen -->
+        </div>
+    </main>
+    <footer>
+        <p>&copy; 2024 Transforamtions-Design</p>
+    </footer>
+</body>
+</html>
+
+
+Path: ./transoformationsdesin/http\Views\pages\rezept_detail.php
+Content:
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/db_connect.php';
+
+if (!isUserLoggedIn()) {
+    header("Location: /login.html");
+    exit;
+}
+
+$datum = $_GET['datum'] ?? date("Y-m-d");
+$userId = $_SESSION['id'];
+
+$sql = "SELECT r.titel, r.beschreibung, e.rezept_id
+        FROM essenplan e
+        JOIN rezepte r ON e.rezept_id = r.id
+        WHERE e.user_id = $userId AND e.datum = '$datum'";
+
+$result = $conn->query($sql);
+
+if ($result->num_rows === 0) {
+    echo "Kein Rezept für das gewählte Datum gefunden.";
+} else {
+    $rezept = $result->fetch_assoc();
+    $rezeptId = $rezept['rezept_id'];
+}
+?>
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Rezept Details</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body>
+    <header>
+        <?php include '../templates/navigation.php'; ?>
+    </header>
+    <main>
+        <?php if (isset($rezept)): ?>
+            <h2><?= htmlspecialchars($rezept['titel']); ?></h2>
+
+            <!-- Vor dem Kochen -->
+            <section>
+                <h3>Vor dem Kochen</h3>
+                <?php
+                    $sqlAnzahlPersonen = "SELECT anzahl_personen FROM essenplan WHERE user_id = $userId AND datum = '$datum'";
+                    $resultAnzahlPersonen = $conn->query($sqlAnzahlPersonen);
+                    $rowAnzahlPersonen = $resultAnzahlPersonen->fetch_assoc();
+                    $anzahlPersonen = $rowAnzahlPersonen['anzahl_personen'];
+
+                    $sqlZutaten = "SELECT zn.name, rz.menge, 
+                                   IF(vs.id IS NOT NULL, 'Im Vorrat', 'Einkaufen') AS status
+                                   FROM rezept_zutaten rz
+                                   JOIN zutaten_namen zn ON rz.zutat_id = zn.zutat_id
+                                   LEFT JOIN vorratsschrank vs ON zn.zutat_id = vs.zutat_id AND vs.user_id = $userId
+                                   WHERE rz.rezept_id = $rezeptId";
+
+                    $resultZutaten = $conn->query($sqlZutaten);
+
+                    if ($resultZutaten->num_rows > 0) {
+                        echo "<p>Zutatenliste und Verfügbarkeit:</p>";
+                        echo "<ul>";
+                        while ($zutat = $resultZutaten->fetch_assoc()) {
+                            echo "<li>" . htmlspecialchars($zutat['name']) . " - " . htmlspecialchars($zutat['menge']) . " (" . htmlspecialchars($zutat['status']) . ")</li>";
+                        }
+                        echo "</ul>";
+                    } else {
+                        echo "Keine Zutaten gefunden.";
+                    }
+                ?>
+            </section>
+
+            <!-- Während des Kochens -->
+            <section>
+                <h3>Während des Kochens</h3>
+                <p>... Kochanweisungen und Details ...</p>
+            </section>
+
+            <!-- Nach dem Essen -->
+            <section>
+                <h3>Nach dem Essen</h3>
+                <p>Reflektion und Planung:</p>
+                <ul>
+                    <li><a href="#">Wie hat es geschmeckt?</a></li>
+                    <li><a href="#">Noch Hunger?</a></li>
+                    <li><a href="#">Gibt es Reste?</a>
+                        <ul>
+                            <li><a href="#">Für morgen aufheben</a></li>
+                            <li><a href="#">Dem Nachbarn geben</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+
+            <?php else: ?>
+            <p>Kein Rezept für das gewählte Datum gefunden.</p>
+            <form method="post" action="zufalligesGerichtPlanen.php">
+                <input type="hidden" name="datum" value="<?= htmlspecialchars($datum); ?>">
+                <button type="submit">Zufälliges Gericht planen</button>
+            </form>
+        <?php endif; ?>
+    </main>
+    <footer>
+        <p>&copy; 2024 Transformations-Design</p>
+    </footer>
+</body>
+</html>
+
+
+Path: ./transoformationsdesin/http\Views\pages\settings.php
+Content:
+<?php
+require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/db_connect.php';
+
+$userId = $_SESSION['id'];
+$aktuelleEinkaufsoption = '';
+
+// Abfrage der aktuellen Einkaufsoption
+$sql = "SELECT einkaufsoption FROM users WHERE id = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($row = $result->fetch_assoc()) {
+    $aktuelleEinkaufsoption = $row['einkaufsoption'];
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['einkaufsOption'])) {
+    $auswahl = $_POST['einkaufsOption'];
+
+    // SQL-Anweisung zum Aktualisieren der Einkaufsoption des Benutzers
+    $sql = "UPDATE users SET einkaufsoption = ? WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("si", $auswahl, $userId);
+    if ($stmt->execute()) {
+        echo "<p>Ihre Auswahl wurde erfolgreich gespeichert.</p>";
+    } else {
+        echo "<p>Fehler beim Speichern Ihrer Auswahl.</p>";
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Einstellungen</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body>
+    <?php include '../templates/header.php'; ?>
+    <?php include '../templates/navigation.php'; ?>
+
+    <main>
+        <h2>Einstellungen</h2>
+        <form action="settings.php" method="post">
+            <label>Wählen Sie Ihre bevorzugte Einkaufsmethode:</label>
+            <div>
+                <input type="radio" id="perfekteMenge" name="einkaufsOption" value="perfekteMenge" <?php echo ($aktuelleEinkaufsoption == 'perfekteMenge') ? 'checked' : ''; ?>>
+                <label for="perfekteMenge">Perfekte Menge verwenden</label>
+            </div>
+            <div>
+                <input type="radio" id="ueblicheVerpackungsgroesse" name="einkaufsOption" value="ueblicheVerpackungsgroesse" <?php echo ($aktuelleEinkaufsoption == 'ueblicheVerpackungsgroesse') ? 'checked' : ''; ?>>
+                <label for="ueblicheVerpackungsgroesse">Übliche Verpackungsgröße verwenden</label>
+            </div>
+            <div>
+                <input type="radio" id="unverpackt" name="einkaufsOption" value="unverpackt" <?php echo ($aktuelleEinkaufsoption == 'unverpackt') ? 'checked' : ''; ?>>
+                <label for="unverpackt">Unverpackt - Größe von Gefäßen berücksichtigen</label>
+            </div>
+            <button type="submit">Auswahl speichern</button>
+        </form>
+        <h3>Unverpackte Gefäße verwalten</h3>
+            <form id="gefaessForm" method="post">
+                <label for="gefaessName">Name:</label>
+                <input type="text" id="gefaessName" name="gefaessName" required>
+                
+                <label for="volumen">Volumen (in Litern oder Kilogramm):</label>
+                <input type="number" id="volumen" name="volumen" step="0.01" required>
+                
+                <label for="beschreibung">Beschreibung (optional):</label>
+                <textarea id="beschreibung" name="beschreibung"></textarea>
+                
+                <input type="hidden" id="gefaessId" name="gefaessId">
+                <button type="submit">Speichern</button>
+            </form>
+            <div id="gefaessListe"></div>
+    </main>
+
+    <?php include '../templates/footer.php'; ?>
+</body>
+</html>
+
+
+
+Path: ./transoformationsdesin/http\Views\pages\vorratsschrank.php
+Content:
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/db_connect.php';
+
+$userId = $_SESSION['id'];
+
+$sql = "SELECT vs.id, zn.name, vs.menge, vs.verbrauchsdatum 
+        FROM vorratsschrank vs
+        JOIN zutaten_namen zn ON vs.zutat_id = zn.zutat_id
+        WHERE vs.user_id = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+
+?>
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Vorratsschrank</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body>
+    <header>
+        <!-- Navigation usw. -->
+    </header>
+    <main>
+        <h2>Vorratsschrank</h2>
+        <table>
+            <tr>
+                <th>Zutat</th>
+                <th>Menge</th>
+                <th>geplantes Verbauchs datum</th>
+                <th>Aktion</th>
+            </tr>
+            <?php while ($row = $result->fetch_assoc()): ?>
+            <tr>
+                <td><?= htmlspecialchars($row['name']) ?></td>
+                <td><?= htmlspecialchars($row['menge']) ?></td>
+                <td><?= $row['verbrauchsdatum'] ? htmlspecialchars($row['verbrauchsdatum']) : 'N/A' ?></td>
+                <td>
+                    <?php if (!$row['verbrauchsdatum']): ?>
+                        <form method="post" action="Controllers/PlanIntelligently.php">
+                            <input type="hidden" name="zutat_id" value="<?= $row['zutat_id'] ?>">
+                            <button type="submit">Intelligent einplanen</button>
+                        </form>
+                    <?php endif; ?>
+                </td>
+            </tr>
+            <?php endwhile; ?>
+        </table>
+    </main>
+    <footer>
+        <!-- Footer-Inhalt -->
+    </footer>
+</body>
+</html>
+
+Path: ./transoformationsdesin/http\Views\pages\zufalligesGerichtPlanen.php
+Content:
+<?php
+session_start(); // Ensure session is started
+require_once '../../Utils/db_connect.php';
+require_once '../../Utils/CheckSessionManager.php';
+
+$datum = $_POST['datum'] ?? date("Y-m-d");
+$userId = $_SESSION['id'];
+
+// Wähle ein zufälliges Rezept
+$rezeptSql = "SELECT id FROM rezepte ORDER BY RAND() LIMIT 1";
+$rezeptResult = $conn->query($rezeptSql);
+if ($rezeptRow = $rezeptResult->fetch_assoc()) {
+    $zufallsRezeptId = $rezeptRow['id'];
+
+    // Füge das ausgewählte Rezept zum ausgewählten Datum in den Essensplan ein
+    $insertSql = "INSERT INTO essenplan (user_id, datum, rezept_id, anzahl_personen) VALUES (?, ?, ?, ?)";
+    $insertStmt = $conn->prepare($insertSql);
+    $anzahlPersonen = 1; // Setze eine Standardanzahl von Personen
+    if (!$insertStmt->bind_param("isii", $userId, $datum, $zufallsRezeptId, $anzahlPersonen)) {
+        echo "Bind Param Error";
+    } else {
+        if (!$insertStmt->execute()) {
+            echo "Execute Error";
+        } else {
+            // Hole die Zutaten für das ausgewählte Rezept
+            $zutatenSql = "SELECT zutat_id, menge FROM rezept_zutaten WHERE rezept_id = ?";
+            $zutatenStmt = $conn->prepare($zutatenSql);
+            $zutatenStmt->bind_param("i", $zufallsRezeptId);
+            $zutatenStmt->execute();
+            $zutatenResult = $zutatenStmt->get_result();
+
+            while ($zutat = $zutatenResult->fetch_assoc()) {
+                // Füge jede Zutat zur Einkaufsliste hinzu
+                $einkaufslisteSql = "INSERT INTO einkaufsliste (user_id, zutat_id, menge, verbrauchsdatum) VALUES (?, ?, ?, ?)";
+                $einkaufslisteStmt = $conn->prepare($einkaufslisteSql);
+                $einkaufslisteStmt->bind_param("iiss", $userId, $zutat['zutat_id'], $zutat['menge'], $datum);
+                $einkaufslisteStmt->execute();
+            }
+            header("Location: rezept_detail.php?datum=" . urlencode($datum));
+            exit; // Ensure script execution ends after redirection
+        }
+    }
+    $insertStmt->close();
+} else {
+    echo "Keine Rezepte zur Planung verfügbar.";
+}
+$conn->close();
+
+
+Path: ./transoformationsdesin/http\Views\templates\footer.php
+Content:
+
+
+Path: ./transoformationsdesin/http\Views\templates\header.php
+Content:
+
+
+Path: ./transoformationsdesin/http\Views\templates\navigation.php
+Content:
+<nav>
+    <ul>
+        <li><a href="heutiges-gericht.php">Heutiges Gericht</a></li>
+        <li><a href="essensplan.php">Essensplan</a></li>
+        <li><a href="einkaufsliste.php">Einkaufsliste</a></li>
+        <li><a href="vorratsschrank.php">Vorratsschrank</a></li>
+        <li><a href="freunde.php">freunde</a></li>
+        <li><a href="settings.php">Einstellungen</a></li>
+        <li><a href="profil.php">Profil</a></li>
+    </ul>
+</nav>
+
+
+Path: ./transoformationsdesin/http\Views\templates\navigation_ausserhalb.php
+Content:
+<nav>
+    <ul>
+        <li><a href="Views/pages/heutiges-gericht.php">Heutiges Gericht</a></li>
+        <li><a href="Views/pages/essensplan.php">Essensplan</a></li>
+        <li><a href="Views/pages/einkaufsliste.php">Einkaufsliste</a></li>
+        <li><a href="Views/pages/vorratsschrank.php">Vorratsschrank</a></li>
+        <li><a href="Views/pages/settings.php">Einstellungen</a></li>
+        <li><a href="Views/pages/freunde.php">freunde</a></li>
+        <li><a href="Views/pages/profil.php">Profil</a></li>
+    </ul>
+</nav>
+
+

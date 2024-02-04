@@ -1,0 +1,76 @@
+/* Grundlegende Stile für alle Geräte */
+
+body {font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; /* Moderne, lesbare Schriftart */
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4; /* Hintergrundfarbe für einen leichteren Look */
+}
+
+nav ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    background-color: #333;
+}
+
+nav li {
+    text-align: center; /* Zentriert die Navigationselemente auf allen Geräten */
+}
+
+nav li a {
+    display: block;
+    color: white;
+    padding: 14px 16px;
+    text-decoration: none;
+}
+
+nav li a:hover, nav li a:focus {
+    background-color: #555; /* Dunkleres Grau für Hover-/Fokuseffekt */
+}
+
+/* Verbesserungen für Mobilgeräte */
+@media (max-width: 600px) {
+    nav ul {
+        padding: 0;
+    }
+
+    nav li {
+        display: block; /* Stapelt die Links auf kleinen Bildschirmen */
+    }
+
+    nav li a {
+        text-align: left; /* Text linksbündig, mit Padding für Touch-Freundlichkeit */
+        padding: 20px; /* Größeres Padding für leichteres Antippen */
+    }
+
+    .welcome-container {
+        padding: 20px; /* Gibt dem Hauptinhalt etwas Raum */
+        background-color: #fff; /* Heller Hintergrund für den Inhalt */
+        margin: 20px; /* Fügt außen einen Margin hinzu, um nicht am Bildschirmrand zu kleben */
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Leichter Schatten für eine schwebende Optik */
+    }
+
+    body {
+        font-size: 18px; /* Größere Schrift für bessere Lesbarkeit */
+    }
+
+    h1 {
+        font-size: 24px; /* Größere Überschrift für mehr Aufmerksamkeit */
+        margin-top: 0; /* Entfernt den oberen Margin der Überschrift für konsistenten Raum */
+    }
+
+    a {
+        background-color: #007bff; /* Helle, auffällige Farbe für Links */
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px; /* Abgerundete Ecken für einen modernen Look */
+        margin-top: 10px; /* Abstand oben, um Links voneinander zu trennen */
+        display: inline-block; /* Behält die Link-Struktur bei, ermöglicht Padding */
+        text-decoration: none; /* Entfernt die Unterstreichung für eine saubere Optik */
+    }
+
+    a:hover, a:focus {
+        background-color: #0056b3; /* Dunklere Farbe für Hover-/Fokuseffekt */
+    }
+}

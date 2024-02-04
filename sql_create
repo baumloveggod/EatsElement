@@ -1,0 +1,108 @@
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL, -- Speichern Sie hier Hashes, nicht die tatsächlichen Passwörter
+    cookie_auth_token VARCHAR(255), -- Ein langes, zufälliges Token für die Authentifizierung via Cookie
+    freundes_token VARCHAR(255) UNIQUE,
+    einkaufsoption VARCHAR(255) DEFAULT 'ueblicheVerpackungsgroesse';
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    current_editing_recipe_id INT DEFAULT NULL;
+);
+
+CREATE TABLE essenplan (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    datum DATE NOT NULL,
+    anzahl_personen INT NOT NULL,
+    rezept_id INT, 
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (rezept_id) REFERENCES rezepte(id)
+);
+
+CREATE TABLE zutaten (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    beschreibung TEXT
+);
+
+CREATE TABLE rezepte (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    titel VARCHAR(255) NOT NULL,
+    beschreibung TEXT,
+    zubereitungszeit INT
+);
+
+
+CREATE TABLE rezept_zutaten (
+    rezept_id INT,
+    zutat_id INT,
+    menge VARCHAR(255),
+    PRIMARY KEY (rezept_id, zutat_id),
+    FOREIGN KEY (rezept_id) REFERENCES rezepte(id),
+    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
+);
+CREATE TABLE einkaufsliste (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    zutat_id INT,
+    menge VARCHAR(255),
+    gekauft BOOLEAN DEFAULT FALSE,
+    verbrauchsdatum DATE, -- Hinzugefügtes Feld für das Verbrauchsdatum
+    gefaess_id INT DEFAULT NULL,
+    FOREIGN KEY (gefaess_id) REFERENCES unverpackte_gefaesse(id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
+);
+
+CREATE TABLE vorratsschrank (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    zutat_id INT,
+    menge VARCHAR(255),
+    verbrauchsdatum DATE, -- Hinzugefügtes Feld für das Verbrauchsdatum
+    gefaess_id INT DEFAULT NULL,
+    FOREIGN KEY (gefaess_id) REFERENCES unverpackte_gefaesse(id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
+);
+
+CREATE TABLE zutaten_namen (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    zutat_id INT NOT NULL,
+    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
+);
+
+CREATE TABLE konventionen (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    single_name_id INT NOT NULL,
+    plural_name_id INT,
+    zutat_id INT NOT NULL,
+    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
+);
+
+CREATE TABLE freundschaftsanfragen (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sender_id INT NOT NULL,
+    empfaenger_id INT NOT NULL,
+    status ENUM('pending', 'accepted', 'declined') NOT NULL,
+    FOREIGN KEY (sender_id) REFERENCES users(id),
+    FOREIGN KEY (empfaenger_id) REFERENCES users(id)
+);
+
+CREATE TABLE freunde (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id_1 INT NOT NULL,
+    user_id_2 INT NOT NULL,
+    FOREIGN KEY (user_id_1) REFERENCES users(id),
+    FOREIGN KEY (user_id_2) REFERENCES users(id)
+);
+
+CREATE TABLE unverpackte_gefaesse (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    volumen DECIMAL(10,2) NOT NULL COMMENT 'Volumen in Litern oder Kilogramm',
+    beschreibung TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);

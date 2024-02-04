@@ -48,13 +48,13 @@ function showLoggedInUserContent($username) {
     echo "<!DOCTYPE html>
     <html lang='de'>
     <head>
-        <?php include 'Views/templates/header.php'; ?>  
+        <?php include 'templates/header.php'; ?>  
         <title>Arbeitstitel</title>
     </head>
     <body>
     <header>
         <h1>main navigator page</h1>";
-        include 'Views/templates/navigation_ausserhalb.php'; // Correctly including the navigation part
+        include 'templates/navigation.php'; // Correctly including the navigation part
 
             echo "</header>
         <main>
@@ -71,7 +71,7 @@ function showGuestUserContent() {
     echo "<!DOCTYPE html>
     <html>
     <head>
-        <?php include 'Views/templates/header.php'; ?>  
+        <?php include '/templates/header.php'; ?>  
         <title>Willkommen bei Transforamtions-Desin</title>
     </head>
     <body>

@@ -1,7 +1,8 @@
 <?php
 session_start(); // Ensure session is started
 require_once '../../Utils/db_connect.php';
-require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/SessionManager.php';
+checkAccess();
 
 $datum = $_POST['datum'] ?? date("Y-m-d");
 $userId = $_SESSION['id'];

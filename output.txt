@@ -165,9 +165,10 @@ Content:
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-require_once 'Utils/CheckSessionManager.php';
+require_once 'Utils/SessionManager.php';
+checkAccess();
 require_once 'Utils/db_connect.php';
-
+checkAccess();
 // Leere alle Tabellen auﬂer 'users'
 $tablesToReset = ['konventionen','zutaten_namen','rezept_zutaten', 'essenplan', 'einkaufsliste', 'vorratsschrank', 'rezepte', 'zutaten'];
 foreach ($tablesToReset as $table) {
@@ -426,7 +427,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require_once 'Utils/CheckSessionManager.php';
+require_once 'Utils/SessionManager.php';
+checkAccess();
 require_once 'Utils/db_connect.php';
 
 $userId = $_SESSION['id'];
@@ -507,7 +509,8 @@ Content:
     ini_set('display_startup_errors', 1);
     error_reporting(E_ALL);
     require_once __DIR__ . '/../Utils/db_connect.php';
-    require_once __DIR__ . '/../Utils/CheckSessionManager.php';
+    require_once __DIR__ . '/../Utils/SessionManager.php';
+checkAccess();
 
     if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (empty($_POST['zutatenName']) || empty($_POST['menge'])) {
@@ -551,7 +554,8 @@ Content:
 Path: ./http/Controllers\einladung_erstellen.php
 Content:
 <?php
-require_once '../Utils/CheckSessionManager.php';
+require_once '../Utils/SessionManager.php';
+checkAccess();
 require_once '../Utils/db_connect.php';
 
 $userId = $_SESSION['id'];
@@ -694,7 +698,8 @@ Path: ./http/Controllers\passwort_aendern_handler.php
 Content:
 <?php
 require_once '../Utils/db_connect.php';
-require_once '../Utils/CheckSessionManager.php';
+require_once '../Utils/SessionManager.php';
+checkAccess();
 
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -1159,59 +1164,6 @@ Content:
 </nav>
 
 
-Path: ./http/Utils\CheckSessionManager.php
-Content:
-<?php
-// Starten der Session
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
-// ‹berpr¸fen, ob der Benutzer eingeloggt ist
-function isUserLoggedIn() {
-    // ‹berpr¸ft, ob das Session-Flag gesetzt ist oder ob ein g¸ltiges Auth-Cookie vorhanden ist
-    if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
-        return true;
-    }
-
-    if (isset($_COOKIE['auth'])) {
-        // Verbindung zur Datenbank herstellen (mˆglicherweise benˆtigen Sie den globalen $conn)
-        require_once 'db_connect.php';
-
-        $cookieToken = $_COOKIE['auth'];
-        $sql = "SELECT id FROM users WHERE cookie_auth_token = ?";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("s", $cookieToken);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        if ($result->num_rows === 1) {
-            // Wenn das Cookie g¸ltig ist, wird die Session entsprechend gesetzt
-            $user = $result->fetch_assoc();
-            $_SESSION['loggedin'] = true;
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['id'] = $user['id'];
-
-            return true;
-        }
-    }
-
-    return false;
-}
-
-// ‹berpr¸fen, ob der Benutzer auf eine Seite zugreifen darf
-function checkAccess() {
-    $allowedPagesForGuests = ['/index.php', '/login.html', '/register.html'];
-    $currentPage = basename($_SERVER['PHP_SELF']);
-
-    if (!isUserLoggedIn() && !in_array($currentPage, $allowedPagesForGuests)) {
-        header("Location: /index.php"); // Umleitung zur Index-Seite
-        exit;
-    }
-}
-
-checkAccess();
-?>
-
 Path: ./http/Utils\db_connect.php
 Content:
 <?php
@@ -1290,7 +1242,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/SessionManager.php';
+checkAccess();
 require_once '../../Utils/db_connect.php';
 
 $userId = $_SESSION['id'];
@@ -1465,7 +1418,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/SessionManager.php';
+checkAccess();
 require_once '../../Utils/db_connect.php';
 
 $userId = $_SESSION['id'];
@@ -1558,7 +1512,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/SessionManager.php';
+checkAccess();
 require_once '../../Utils/db_connect.php';
 
 // Stelle sicher, dass der Benutzer eingeloggt ist
@@ -1642,7 +1597,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/SessionManager.php';
+checkAccess();
 require_once '../../Utils/db_connect.php';
 
 $userId = $_SESSION['id'];
@@ -1731,6 +1687,56 @@ if (isset($_GET['token']) && $_GET['token'] !== $eigenerToken) {
 </html>
 
 
+Path: ./http/Views\pages\gefaessVerwaltung.php
+Content:
+<?php
+require_once '../../Utils/SessionManager.php';
+checkAccess();
+require_once '../../Utils/db_connect.php';
+
+// Stelle sicher, dass der Benutzer eingeloggt ist
+if (!isUserLoggedIn()) {
+    header("Location: /login.html");
+    exit;
+}
+
+$userId = $_SESSION['id'];
+
+// Hier kann Logik zur Verwaltung der Gef‰ﬂe implementiert werden
+
+?>
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <?php include '../templates/header.php'; ?>
+    <title>Gef‰ﬂverwaltung</title>
+</head>
+<body>
+    <header>
+        <?php include '../templates/navigation.php'; ?>
+    </header>
+    <main>
+        <h2>Gef‰ﬂverwaltung</h2>
+            <form id="gefaessForm" method="post">
+                <label for="gefaessName">Name:</label>
+                <input type="text" id="gefaessName" name="gefaessName" required>
+                
+                <label for="volumen">Volumen (in Litern oder Kilogramm):</label>
+                <input type="number" id="volumen" name="volumen" step="0.01" required>
+                
+                <label for="beschreibung">Beschreibung (optional):</label>
+                <textarea id="beschreibung" name="beschreibung"></textarea>
+                
+                <input type="hidden" id="gefaessId" name="gefaessId">
+                <button type="submit">Speichern</button>
+            </form>
+            <div id="gefaessListe"></div>
+    </main>
+</body>
+</html>
+
+
 Path: ./http/Views\pages\heutiges-gericht.php
 Content:
 <?php
@@ -1741,7 +1747,8 @@ header("Location: rezept_detail.php?datum=" . urlencode($today));
 Path: ./http/Views\pages\passwort_aendern.php
 Content:
 <?php
-require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/SessionManager.php';
+checkAccess();
 
 // Stelle sicher, dass der Benutzer eingeloggt ist
 if (!isUserLoggedIn()) {
@@ -1783,7 +1790,8 @@ if (!isUserLoggedIn()) {
 Path: ./http/Views\pages\profil.php
 Content:
 <?php
-require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/SessionManager.php';
+checkAccess();
 require_once '../../Utils/db_connect.php';
 
 $userId = $_SESSION['id'];
@@ -1821,7 +1829,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/SessionManager.php';
+checkAccess();
 require_once '../../Utils/db_connect.php';
 
 if (!isUserLoggedIn()) {
@@ -1932,7 +1941,8 @@ if ($result->num_rows === 0) {
 Path: ./http/Views\pages\settings.php
 Content:
 <?php
-require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/SessionManager.php';
+checkAccess();
 require_once '../../Utils/db_connect.php';
 
 $userId = $_SESSION['id'];
@@ -1991,21 +2001,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['einkaufsOption'])) {
             </div>
             <button type="submit">Auswahl speichern</button>
         </form>
-        <h3>Unverpackte Gef‰ﬂe verwalten</h3>
-            <form id="gefaessForm" method="post">
-                <label for="gefaessName">Name:</label>
-                <input type="text" id="gefaessName" name="gefaessName" required>
-                
-                <label for="volumen">Volumen (in Litern oder Kilogramm):</label>
-                <input type="number" id="volumen" name="volumen" step="0.01" required>
-                
-                <label for="beschreibung">Beschreibung (optional):</label>
-                <textarea id="beschreibung" name="beschreibung"></textarea>
-                
-                <input type="hidden" id="gefaessId" name="gefaessId">
-                <button type="submit">Speichern</button>
-            </form>
-            <div id="gefaessListe"></div>
     </main>
 
     <?php include '../templates/footer.php'; ?>
@@ -2021,7 +2016,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/SessionManager.php';
+checkAccess();
 require_once '../../Utils/db_connect.php';
 
 $userId = $_SESSION['id'];
@@ -2084,7 +2080,8 @@ Content:
 <?php
 session_start(); // Ensure session is started
 require_once '../../Utils/db_connect.php';
-require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/SessionManager.php';
+checkAccess();
 
 $datum = $_POST['datum'] ?? date("Y-m-d");
 $userId = $_SESSION['id'];
@@ -2138,17 +2135,41 @@ Content:
 
 Path: ./http/Views\templates\navigation.php
 Content:
+<?php
+// F¸ge die erforderlichen Includes ein, um auf die Benutzerdaten zugreifen zu kˆnnen
+require_once '../../Utils/db_connect.php';
+require_once '../../Utils/SessionManager.php';
+
+$einkaufsoption = ''; // Initialisiere die Variable
+
+// ‹berpr¸fe, ob der Benutzer eingeloggt ist, und hole die Einkaufsoption
+
+$userId = $_SESSION['id'];
+    $sql = "SELECT einkaufsoption FROM users WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        $einkaufsoption = $row['einkaufsoption'];
+    }
+?>
+
 <nav>
     <ul>
         <li><a href="heutiges-gericht.php">Heutiges Gericht</a></li>
         <li><a href="essensplan.php">Essensplan</a></li>
         <li><a href="einkaufsliste.php">Einkaufsliste</a></li>
         <li><a href="vorratsschrank.php">Vorratsschrank</a></li>
-        <li><a href="freunde.php">freunde</a></li>
+        <li><a href="freunde.php">Freunde</a></li>
         <li><a href="settings.php">Einstellungen</a></li>
         <li><a href="profil.php">Profil</a></li>
+        <?php if ($einkaufsoption == 'unverpackt'): ?>
+            <li><a href="gefaessVerwaltung.php">Gef‰ﬂverwaltung</a></li>
+        <?php endif; ?>
     </ul>
 </nav>
+
 
 
 Path: sql_create

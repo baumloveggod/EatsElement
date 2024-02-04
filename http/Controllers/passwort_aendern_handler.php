@@ -1,6 +1,7 @@
 <?php
 require_once '../Utils/db_connect.php';
-require_once '../Utils/CheckSessionManager.php';
+require_once '../Utils/SessionManager.php';
+checkAccess();
 
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {

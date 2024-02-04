@@ -3,7 +3,8 @@
     ini_set('display_startup_errors', 1);
     error_reporting(E_ALL);
     require_once __DIR__ . '/../Utils/db_connect.php';
-    require_once __DIR__ . '/../Utils/CheckSessionManager.php';
+    require_once __DIR__ . '/../Utils/SessionManager.php';
+checkAccess();
 
     if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (empty($_POST['zutatenName']) || empty($_POST['menge'])) {

@@ -1,5 +1,6 @@
 <?php
-require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/SessionManager.php';
+checkAccess();
 require_once '../../Utils/db_connect.php';
 
 $userId = $_SESSION['id'];
@@ -58,21 +59,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['einkaufsOption'])) {
             </div>
             <button type="submit">Auswahl speichern</button>
         </form>
-        <h3>Unverpackte Gefäße verwalten</h3>
-            <form id="gefaessForm" method="post">
-                <label for="gefaessName">Name:</label>
-                <input type="text" id="gefaessName" name="gefaessName" required>
-                
-                <label for="volumen">Volumen (in Litern oder Kilogramm):</label>
-                <input type="number" id="volumen" name="volumen" step="0.01" required>
-                
-                <label for="beschreibung">Beschreibung (optional):</label>
-                <textarea id="beschreibung" name="beschreibung"></textarea>
-                
-                <input type="hidden" id="gefaessId" name="gefaessId">
-                <button type="submit">Speichern</button>
-            </form>
-            <div id="gefaessListe"></div>
     </main>
 
     <?php include '../templates/footer.php'; ?>

@@ -1,5 +1,6 @@
 <?php
-require_once '../../Utils/CheckSessionManager.php';
+require_once '../../Utils/SessionManager.php';
+checkAccess();
 
 // Stelle sicher, dass der Benutzer eingeloggt ist
 if (!isUserLoggedIn()) {

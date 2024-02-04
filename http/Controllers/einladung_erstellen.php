@@ -1,5 +1,6 @@
 <?php
-require_once '../Utils/CheckSessionManager.php';
+require_once '../Utils/SessionManager.php';
+checkAccess();
 require_once '../Utils/db_connect.php';
 
 $userId = $_SESSION['id'];

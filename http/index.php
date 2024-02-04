@@ -48,7 +48,6 @@ function showLoggedInUserContent($username) {
     echo "<!DOCTYPE html>
     <html lang='de'>
     <head>
-        
         <?php include 'Views/templates/header.php'; ?>  
         <title>Arbeitstitel</title>
     </head>

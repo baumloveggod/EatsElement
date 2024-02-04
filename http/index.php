@@ -48,9 +48,7 @@ function showLoggedInUserContent($username) {
     echo "<!DOCTYPE html>
     <html lang='de'>
     <head>
-        <link rel='stylesheet' href='style.css'>
-        <meta name='viewport' content='width=device-width, initial-scale=1'>
-        <meta charset='UTF-8'>
+        include 'Views/templates/header.php';    
         <title>Arbeitstitel</title>
     </head>
     <body>
@@ -73,8 +71,7 @@ function showGuestUserContent() {
     echo "<!DOCTYPE html>
     <html>
     <head>
-        <meta name='viewport' content='width=device-width, initial-scale=1'>
-        <link rel='stylesheet' href='style.css'>
+        include 'Views/templates/header.php';  
         <title>Willkommen bei Transforamtions-Desin</title>
     </head>
     <body>

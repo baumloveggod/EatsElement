@@ -14,9 +14,8 @@ if (!isUserLoggedIn()) {
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
+    <?php include '../templates/header.php'; ?>
     <title>Passwort ändern</title>
-    <link rel="stylesheet" href="../../css/styles.css">
 </head>
 <body>
     <header>

@@ -49,7 +49,9 @@ function showLoggedInUserContent($username) {
     <html lang='de'>
     <head>";
         include 'templates/header.php';  
-    echo "</head>
+    echo "
+        <title>Arbeitstitel</title>
+    </head>
     <body>
     <header>
         <h1>main navigator page</h1>";

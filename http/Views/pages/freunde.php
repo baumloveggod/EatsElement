@@ -62,8 +62,7 @@ if (isset($_GET['token']) && $_GET['token'] !== $eigenerToken) {
 <!DOCTYPE html>
 <html lang="de">
 <head>
-
-    <meta charset="UTF-8">
+    <?php include '../templates/header.php'; ?>
     <title>Freunde einladen</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script> <!-- QR Code JS Bibliothek -->
     <script>

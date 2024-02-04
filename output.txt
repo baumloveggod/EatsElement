@@ -51,7 +51,9 @@ function showLoggedInUserContent($username) {
     <html lang='de'>
     <head>";
         include 'templates/header.php';  
-    echo "</head>
+    echo "
+        <title>Arbeitstitel</title>
+    </head>
     <body>
     <header>
         <h1>main navigator page</h1>";
@@ -1142,8 +1144,6 @@ Content:
 <meta name='viewport' content='width=device-width, initial-scale=1'>
 <link rel='stylesheet' href='style.css'>
 
-<title>AAArbeitstitel</title>
-
 Path: ./http/templates\navigation.php
 Content:
 <nav>
@@ -1458,10 +1458,6 @@ function deleteRecipe($recipeId, $conn) {
 </html>
 
 
-Path: ./http/Views\pages\about.php
-Content:
-
-
 Path: ./http/Views\pages\einkaufsliste.php
 Content:
 <?php 
@@ -1497,9 +1493,8 @@ while ($row = $result->fetch_assoc()) {
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
+    <?php include '../templates/header.php'; ?>
     <title>Einkaufsliste</title>
-    <link rel="stylesheet" href="../../css/styles.css">
 </head>
 <body>
     <header>
@@ -1600,9 +1595,8 @@ while ($row = $result->fetch_assoc()) {
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
+    <?php include '../templates/header.php'; ?>
     <title>Essensplan</title>
-    <link rel="stylesheet" href="../../css/styles.css">
 </head>
 <body>
     <header>
@@ -1707,8 +1701,7 @@ if (isset($_GET['token']) && $_GET['token'] !== $eigenerToken) {
 <!DOCTYPE html>
 <html lang="de">
 <head>
-
-    <meta charset="UTF-8">
+    <?php include '../templates/header.php'; ?>
     <title>Freunde einladen</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script> <!-- QR Code JS Bibliothek -->
     <script>
@@ -1763,9 +1756,8 @@ if (!isUserLoggedIn()) {
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
+    <?php include '../templates/header.php'; ?>
     <title>Passwort ändern</title>
-    <link rel="stylesheet" href="../../css/styles.css">
 </head>
 <body>
     <header>
@@ -1800,9 +1792,8 @@ $userId = $_SESSION['id'];
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
+    <?php include '../templates/header.php'; ?>
     <title>Profil</title>
-    <link rel="stylesheet" href="../../css/styles.css">
 </head>
 <body>
     <header>
@@ -1859,9 +1850,8 @@ if ($result->num_rows === 0) {
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
+    <?php include '../templates/header.php'; ?>
     <title>Rezept Details</title>
-    <link rel="stylesheet" href="../../css/styles.css">
 </head>
 <body>
     <header>
@@ -1976,9 +1966,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['einkaufsOption'])) {
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
+    <?php include '../templates/header.php'; ?>
     <title>Einstellungen</title>
-    <link rel="stylesheet" href="../../css/styles.css">
 </head>
 <body>
     <?php include '../templates/header.php'; ?>
@@ -2051,9 +2040,8 @@ $result = $stmt->get_result();
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
+    <?php include '../templates/header.php'; ?>
     <title>Vorratsschrank</title>
-    <link rel="stylesheet" href="../../css/styles.css">
 </head>
 <body>
     <header>

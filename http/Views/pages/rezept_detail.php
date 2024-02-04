@@ -32,9 +32,8 @@ if ($result->num_rows === 0) {
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
+    <?php include '../templates/header.php'; ?>
     <title>Rezept Details</title>
-    <link rel="stylesheet" href="../../css/styles.css">
 </head>
 <body>
     <header>

@@ -8,9 +8,8 @@ $userId = $_SESSION['id'];
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
+    <?php include '../templates/header.php'; ?>
     <title>Profil</title>
-    <link rel="stylesheet" href="../../css/styles.css">
 </head>
 <body>
     <header>

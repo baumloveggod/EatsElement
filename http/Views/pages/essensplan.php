@@ -40,9 +40,8 @@ while ($row = $result->fetch_assoc()) {
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
+    <?php include '../templates/header.php'; ?>
     <title>Essensplan</title>
-    <link rel="stylesheet" href="../../css/styles.css">
 </head>
 <body>
     <header>

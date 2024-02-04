@@ -33,9 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['einkaufsOption'])) {
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
+    <?php include '../templates/header.php'; ?>
     <title>Einstellungen</title>
-    <link rel="stylesheet" href="../../css/styles.css">
 </head>
 <body>
     <?php include '../templates/header.php'; ?>

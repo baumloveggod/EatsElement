@@ -49,10 +49,9 @@ function showLoggedInUserContent($username) {
     // HTML content for logged-in users
     echo "<!DOCTYPE html>
     <html lang='de'>
-    <head>
-        <?php include 'templates/header.php'; ?>  
-        <title>Arbeitstitel</title>
-    </head>
+    <head>";
+        include 'templates/header.php';  
+    echo "</head>
     <body>
     <header>
         <h1>main navigator page</h1>";
@@ -73,8 +72,8 @@ function showGuestUserContent() {
     echo "<!DOCTYPE html>
     <html>
     <head>
-        <?php include '/templates/header.php'; ?>  
-        <title>Willkommen bei Transforamtions-Desin</title>
+    <?php include 'templates/header.php'; ?>
+        <title>Willkommen bei EatsElemens</title>
     </head>
     <body>
         <div class='welcome-container'>
@@ -1143,6 +1142,8 @@ Content:
 <meta name='viewport' content='width=device-width, initial-scale=1'>
 <link rel='stylesheet' href='style.css'>
 
+<title>AAArbeitstitel</title>
+
 Path: ./http/templates\navigation.php
 Content:
 <nav>
@@ -2141,10 +2142,6 @@ if ($rezeptRow = $rezeptResult->fetch_assoc()) {
 $conn->close();
 
 
-Path: ./http/Views\templates\footer.php
-Content:
-
-
 Path: ./http/Views\templates\header.php
 Content:
 <meta charset='UTF-8'>
@@ -2162,21 +2159,6 @@ Content:
         <li><a href="freunde.php">freunde</a></li>
         <li><a href="settings.php">Einstellungen</a></li>
         <li><a href="profil.php">Profil</a></li>
-    </ul>
-</nav>
-
-
-Path: ./http/Views\templates\navigation_ausserhalb.php
-Content:
-<nav>
-    <ul>
-        <li><a href="Views/pages/heutiges-gericht.php">Heutiges Gericht</a></li>
-        <li><a href="Views/pages/essensplan.php">Essensplan</a></li>
-        <li><a href="Views/pages/einkaufsliste.php">Einkaufsliste</a></li>
-        <li><a href="Views/pages/vorratsschrank.php">Vorratsschrank</a></li>
-        <li><a href="Views/pages/settings.php">Einstellungen</a></li>
-        <li><a href="Views/pages/freunde.php">freunde</a></li>
-        <li><a href="Views/pages/profil.php">Profil</a></li>
     </ul>
 </nav>
 

@@ -47,10 +47,9 @@ function showLoggedInUserContent($username) {
     // HTML content for logged-in users
     echo "<!DOCTYPE html>
     <html lang='de'>
-    <head>
-        <?php include 'templates/header.php'; ?>  
-        <title>Arbeitstitel</title>
-    </head>
+    <head>";
+        include 'templates/header.php';  
+    echo "</head>
     <body>
     <header>
         <h1>main navigator page</h1>";
@@ -71,8 +70,8 @@ function showGuestUserContent() {
     echo "<!DOCTYPE html>
     <html>
     <head>
-        <?php include '/templates/header.php'; ?>  
-        <title>Willkommen bei Transforamtions-Desin</title>
+    <?php include 'templates/header.php'; ?>
+        <title>Willkommen bei EatsElemens</title>
     </head>
     <body>
         <div class='welcome-container'>

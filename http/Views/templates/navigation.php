@@ -24,7 +24,9 @@ $userId = $_SESSION['id'];
         <li><a href="essensplan.php">Essensplan</a></li>
         <li><a href="einkaufsliste.php">Einkaufsliste</a></li>
         <li><a href="vorratsschrank.php">Vorratsschrank</a></li>
-        <li><a href="freunde.php">Freunde</a></li>
+        <?php if (!isset($_SESSION['is_temp_user'])): ?>
+            <li><a href="freunde.php">Freunde</a></li>
+        <?php endif; ?>
         <li><a href="settings.php">Einstellungen</a></li>
         <li><a href="profil.php">Profil</a></li>
         <?php if ($einkaufsoption == 'unverpackt'): ?>

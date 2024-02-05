@@ -7,6 +7,11 @@ require_once '../../Utils/SessionManager.php';
 checkAccess();
 require_once '../../Utils/db_connect.php';
 
+if (isset($_SESSION['is_temp_user'])) {
+    echo "Die Freunde-Seite ist für temporäre Profile nicht verfügbar.";
+    exit; // Stoppt die Ausführung weiteren Codes
+}
+
 $userId = $_SESSION['id'];
 $eigenerToken = "";
 

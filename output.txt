@@ -5,112 +5,38 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+require_once 'Utils/init.php'; // Stellt sicher, dass die Session und ggf. ein anonymes Profil initialisiert werden
 
-require_once __DIR__ . '/Utils/db_connect.php';
-require_once __DIR__ . '/Utils/SessionManager.php';
-
-// Überprüfen, ob der Benutzer eingeloggt ist und ob ein potenzieller Freund Cookie existiert
-if (isUserLoggedIn() && isset($_COOKIE['potenzieller_freund'])) {
-    $userId = $_SESSION['id'];
-    $freundId = $_COOKIE['potenzieller_freund'];
-
-    // Überprüfen, ob die Freundschaftsanfrage schon besteht oder Freunde bereits
-    $checkSql = "SELECT * FROM freunde WHERE (user_id_1 = ? AND user_id_2 = ?) OR (user_id_1 = ? AND user_id_2 = ?)";
-    $stmt = $conn->prepare($checkSql);
-    $stmt->bind_param("iiii", $userId, $freundId, $freundId, $userId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows == 0) {
-        // Füge den Freund hinzu, wenn noch keine Beziehung besteht
-        $insertSql = "INSERT INTO freunde (user_id_1, user_id_2) VALUES (?, ?)";
-        $stmt = $conn->prepare($insertSql);
-        $stmt->bind_param("ii", $userId, $freundId);
-        $stmt->execute();
-
-        // Bestätigung für den Benutzer
-        $freundHinzugefügt = true;
-    }
-
-    // Lösche das Cookie, unabhängig davon, ob der Freund hinzugefügt wurde oder nicht
-    setcookie('potenzieller_freund', '', time() - 3600, "/");
-}
-// Function to show logged-in user content
-function showLoggedInUserContent($username) {
-    if (empty($username)) {
-        // Handle the case where the username is not provided or is empty
-        echo "Fehler: Benutzername ist nicht angegeben.";
-        return;
-    }
-
-    // Sanitize the username to prevent XSS attacks
-    $safeUsername = htmlspecialchars($username, ENT_QUOTES, 'UTF-8');
-
-    // HTML content for logged-in users
-    echo "<!DOCTYPE html>
-    <html lang='de'>
-    <head>";
-        include 'templates/header.php';  
-    echo "
-        <title>Arbeitstitel</title>
-    </head>
-    <body>
-    <header>
-        <h1>main navigator page</h1>";
-        include 'templates/navigation.php'; // Correctly including the navigation part
-
-            echo "</header>
-        <main>
-            <p>Willkommen, $safeUsername!</p>
-            <!-- Other content for logged-in users -->
-        </main>
-    </body>
-    </html>";
-}
-
-// Function to show guest user content
-function showGuestUserContent() {
-    // HTML content for guests
-    echo "<!DOCTYPE html>
-    <html>
-    <head>
-    <?php include 'templates/header.php'; ?>
-        <title>Willkommen bei EatsElemens</title>
-    </head>
-    <body>
-        <div class='welcome-container'>
-            <h1>Willkommen bei Transforamtions-Desin</h1>
-            <p>Bitte melden Sie sich an, um fortzufahren.</p>
-            <a href='login.html'>Anmelden</a>
-            <p>Noch kein Konto? <a href='register.html'>Registrieren Sie sich hier</a></p>
-        </div>
-    </body>
-    </html>";
-}
-
-// Check if a cookie is set
-if (isset($_COOKIE['auth'])) {
-    $cookieId = $_COOKIE['auth'];
-    $sql = "SELECT id, username FROM users WHERE cookie_auth_token = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("s", $cookieId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows > 0) {
-        $user = $result->fetch_assoc();
-        $_SESSION['loggedin'] = true;
-        $_SESSION['username'] = $user['username'];
-        $_SESSION['id'] = $user['id'];
-
-        showLoggedInUserContent($user['username']);
-    } else {
-        showGuestUserContent();
-    }
-} else {
-    showGuestUserContent();
-}
+// Hier könnte weitere Logik folgen, z.B. das Laden spezifischer Inhalte für die Startseite
 ?>
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Willkommen bei Transformations-Design</title>
+    <link rel="stylesheet" href="style.css"> <!-- Pfad zu Ihrer CSS-Datei anpassen -->
+</head>
+<body>
+    <header>
+        <?php include 'Views/templates/navigation.php'; ?> <!-- Navigationsmenü einbinden -->
+    </header>
+    <main>
+        <h1>Willkommen bei Transformations-Design</h1>
+        <p>Entdecken Sie neue Rezepte, planen Sie Ihre Mahlzeiten und verwalten Sie Ihren Vorratsschrank.</p>
+        <?php if (isset($_SESSION['is_temp_user'])): ?>
+            <!-- Hinweis für Benutzer mit einem temporären Profil -->
+            <div class="alert">
+                <p><a href="login.html">Anmelden</a> für ein vollständiges Erlebnis oder <a href="register.html">registrieren</a> Sie sich, um Ihre Einstellungen zu speichern.</p>
+            </div>
+        <?php endif; ?>
+    </main>
+    <footer>
+        <p>&copy; <?= date("Y") ?> Transformations-Design. Alle Rechte vorbehalten.</p>
+    </footer>
+</body>
+</html>
+
 
 
 Path: ./http/login.html
@@ -1151,6 +1077,26 @@ Content:
 
 Path: ./http/templates\navigation.php
 Content:
+<?php
+// Füge die erforderlichen Includes ein, um auf die Benutzerdaten zugreifen zu können
+require_once '../Utils/db_connect.php';
+require_once '../Utils/SessionManager.php';
+
+$einkaufsoption = ''; // Initialisiere die Variable
+
+// Überprüfe, ob der Benutzer eingeloggt ist, und hole die Einkaufsoption
+
+$userId = $_SESSION['id'];
+    $sql = "SELECT einkaufsoption FROM users WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        $einkaufsoption = $row['einkaufsoption'];
+    }
+?>
+
 <nav>
     <ul>
         <li><a href="Views/pages/heutiges-gericht.php">Heutiges Gericht</a></li>
@@ -1158,8 +1104,13 @@ Content:
         <li><a href="Views/pages/einkaufsliste.php">Einkaufsliste</a></li>
         <li><a href="Views/pages/vorratsschrank.php">Vorratsschrank</a></li>
         <li><a href="Views/pages/settings.php">Einstellungen</a></li>
-        <li><a href="Views/pages/freunde.php">freunde</a></li>
+        <?php if (!isset($_SESSION['is_temp_user'])): ?>
+            <li><a href="Views/pages/freunde.php">Freunde</a></li>
+        <?php endif; ?>
         <li><a href="Views/pages/profil.php">Profil</a></li>
+        <?php if ($einkaufsoption == 'unverpackt'): ?>
+            <li><a href="Views/pages/gefaessVerwaltung.php">Gefäßverwaltung</a></li>
+        <?php endif; ?>
     </ul>
 </nav>
 
@@ -1182,6 +1133,29 @@ if ($conn->connect_error) {
 // Use this $conn object in your other scripts to interact with the database
 ?>
 
+
+Path: ./http/Utils\init.php
+Content:
+<?php 
+require_once 'db_connect.php';
+
+session_start();
+
+// Überprüfen, ob der Benutzer bereits eingeloggt ist oder ein temporäres Profil hat
+if (!isset($_SESSION['loggedin']) || !$_SESSION['loggedin']) {
+    // Erstelle einen anonymen Benutzer
+    $sql = "INSERT INTO users (username) VALUES ('Anonymer Benutzer')";
+    if ($conn->query($sql) === TRUE) {
+        $_SESSION['loggedin'] = true;
+        $_SESSION['username'] = 'Anonymer Benutzer';
+        $_SESSION['id'] = $conn->insert_id;
+        // Setzen eines Flags, um anzuzeigen, dass es sich um ein temporäres Profil handelt
+        $_SESSION['is_temp_user'] = true;
+    } else {
+        echo "Error: " . $sql . "<br>" . $conn->error;
+    }
+}
+?>
 
 Path: ./http/Utils\SessionManager.php
 Content:
@@ -1601,6 +1575,11 @@ require_once '../../Utils/SessionManager.php';
 checkAccess();
 require_once '../../Utils/db_connect.php';
 
+if (isset($_SESSION['is_temp_user'])) {
+    echo "Die Freunde-Seite ist für temporäre Profile nicht verfügbar.";
+    exit; // Stoppt die Ausführung weiteren Codes
+}
+
 $userId = $_SESSION['id'];
 $eigenerToken = "";
 
@@ -1810,8 +1789,11 @@ $userId = $_SESSION['id'];
     <main>
         <h2>Profil</h2>
         <div>
-            <button onclick="location.href='/http/Controllers/logout.php'">Ausloggen</button>
+            <?php if (isset($_SESSION['is_temp_user'])): ?>
+                <p>Dies ist ein temporäres Profil. <a href="register.html">Registrieren</a> Sie sich, um Ihre Daten zu speichern und auf alle Funktionen zugreifen zu können.</p>
+            <?php endif; ?>
             <button onclick="location.href='passwort_aendern.php'">Passwort ändern</button>
+            <button onclick="location.href='/http/Controllers/logout.php'">Ausloggen</button>
             <!-- Weitere Profilaktionen hier hinzufügen -->
         </div>
     </main>
@@ -2161,7 +2143,9 @@ $userId = $_SESSION['id'];
         <li><a href="essensplan.php">Essensplan</a></li>
         <li><a href="einkaufsliste.php">Einkaufsliste</a></li>
         <li><a href="vorratsschrank.php">Vorratsschrank</a></li>
-        <li><a href="freunde.php">Freunde</a></li>
+        <?php if (!isset($_SESSION['is_temp_user'])): ?>
+            <li><a href="freunde.php">Freunde</a></li>
+        <?php endif; ?>
         <li><a href="settings.php">Einstellungen</a></li>
         <li><a href="profil.php">Profil</a></li>
         <?php if ($einkaufsoption == 'unverpackt'): ?>

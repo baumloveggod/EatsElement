@@ -19,8 +19,11 @@ $userId = $_SESSION['id'];
     <main>
         <h2>Profil</h2>
         <div>
-            <button onclick="location.href='/http/Controllers/logout.php'">Ausloggen</button>
+            <?php if (isset($_SESSION['is_temp_user'])): ?>
+                <p>Dies ist ein temporäres Profil. <a href="register.html">Registrieren</a> Sie sich, um Ihre Daten zu speichern und auf alle Funktionen zugreifen zu können.</p>
+            <?php endif; ?>
             <button onclick="location.href='passwort_aendern.php'">Passwort ändern</button>
+            <button onclick="location.href='/http/Controllers/logout.php'">Ausloggen</button>
             <!-- Weitere Profilaktionen hier hinzufügen -->
         </div>
     </main>

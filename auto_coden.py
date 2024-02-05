@@ -45,18 +45,31 @@ def get_git_changes():
     return changed_files
 
 def generate_commit_message(changelog):
-    # Generiert eine Commit-Nachricht basierend auf dem detaillierten Changelog
-    prompt = f"Basierend auf den folgenden Änderungen, generiere eine prägnante und informative Commit-Nachricht, antworte dabei in max 50 zeichen:\n\n{changelog}"
+    prompt = f"Based on the following changes, generate a concise and informative commit message, respond in max 50 characters:\n\n{changelog}"
     completion = client.chat.completions.create(
-        model="code-davinci-002",  # Angenommen, dies ist Ihr Code-spezifisches Modell
+        model="code-davinci-002",
         messages=[
             {"role": "system", "content": "Generate a concise and informative git commit message based on the detailed changelog provided."},
             {"role": "user", "content": prompt}
         ],
         temperature=0.5,
     )
-    commit_message = completion.choices[0].message.strip()
+
+    # Debugging: Print the message object to understand its structure
+    print(completion.choices[0].message)
+
+    # Assuming 'completion.choices[0].message' has 'content' accessible as an attribute
+    try:
+        # If 'content' is directly accessible
+        commit_message = completion.choices[0].message.content.strip()
+    except AttributeError:
+        # Fallback or error handling if 'content' is not accessible as expected
+        print("Failed to access message content directly. Check the structure of 'message'.")
+        commit_message = "Default commit message due to error."
+
     return commit_message
+
+
 
 
 def git_commit_and_push(commit_message):

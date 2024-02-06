@@ -1,5 +1,5 @@
 <?php
-require_once 'db_connect.php';
+require_once 'Utils/db_connect.php';
 // Starten der Session
 if (session_status() == PHP_SESSION_NONE) {
     session_start();

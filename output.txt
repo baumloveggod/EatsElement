@@ -20,7 +20,7 @@ require_once 'Utils/init.php'; // Pfad entsprechend Ihrer Struktur anpassen
 </head>
 <body>
     <header>
-        <?php include './templates/navigation.php'; ?> <!-- Pfad entsprechend Ihrer Struktur anpassen -->
+        <?php include_once './templates/navigation.php'; ?> <!-- Pfad entsprechend Ihrer Struktur anpassen -->
     </header>
     <main>
         <div class="welcome-container">
@@ -1183,7 +1183,7 @@ function isUserLoggedIn() {
 Path: ./http/Utils\SessionManager.php
 Content:
 <?php
-require_once 'db_connect.php';
+require_once 'Utils/db_connect.php';
 // Starten der Session
 if (session_status() == PHP_SESSION_NONE) {
     session_start();

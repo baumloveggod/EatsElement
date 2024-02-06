@@ -3,7 +3,7 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require_once 'Utils/init.php'; // Pfad entsprechend Ihrer Struktur anpassen
+require_once './Utils/SessionManager.php';
 
 // Hier könnte weitere Logik stehen, z.B. Laden von Benutzerdaten, falls benötigt
 ?>

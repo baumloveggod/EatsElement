@@ -1,6 +1,8 @@
 <?php
 require_once 'db_connect.php'; // Stellen Sie sicher, dass der Pfad korrekt ist
 
+$userId = 0;
+
 // Starten der Session
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
@@ -22,9 +24,7 @@ function isUserLoggedIn() {
         $result = $stmt->get_result();
 
         if ($result->num_rows === 1) {
-            $user = $result->fetch_assoc();
-            $_SESSION['loggedin'] = true;
-            $_SESSION['username'] = $user['username'];
+            $userId = $result->fetch_assoc();
             $_SESSION['id'] = $user['id'];
 
             return true;
@@ -48,10 +48,7 @@ function createTemporaryUserIfNeeded() {
 
         if ($stmt->execute()) {
             $userId = $stmt->insert_id;
-            $_SESSION['loggedin'] = true;
-            $_SESSION['username'] = $tempUsername;
             $_SESSION['id'] = $userId;
-            $_SESSION['is_temp_user'] = true; // Zusätzliche Session-Variable, um temporäre Benutzer zu kennzeichnen
         } else {
             // Fehlerbehandlung, falls das Einfügen fehlschlägt
             echo "Fehler beim Erstellen eines temporären Benutzerkontos.";

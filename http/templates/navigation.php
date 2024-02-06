@@ -7,7 +7,7 @@ $einkaufsoption = ''; // Initialisiere die Variable
 
 // Überprüfe, ob der Benutzer eingeloggt ist, und hole die Einkaufsoption
 
-$userId = $_SESSION['id'];
+$userId
     $sql = "SELECT einkaufsoption FROM users WHERE id = ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $userId);

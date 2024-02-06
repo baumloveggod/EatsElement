@@ -1,5 +1,5 @@
 <?php
-require_once 'Utils/db_connect.php'; // Stellen Sie sicher, dass der Pfad zur Datenbankverbindungsdatei korrekt ist.
+require_once 'db_connect.php'; // Stellen Sie sicher, dass der Pfad zur Datenbankverbindungsdatei korrekt ist.
 
 session_start();
 

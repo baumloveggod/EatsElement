@@ -1146,7 +1146,7 @@ if ($conn->connect_error) {
 Path: ./http/Utils\init.php
 Content:
 <?php
-require_once 'Utils/db_connect.php'; // Stellen Sie sicher, dass der Pfad zur Datenbankverbindungsdatei korrekt ist.
+require_once 'db_connect.php'; // Stellen Sie sicher, dass der Pfad zur Datenbankverbindungsdatei korrekt ist.
 
 session_start();
 

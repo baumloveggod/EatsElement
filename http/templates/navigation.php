@@ -1,7 +1,7 @@
 <?php
 // Füge die erforderlichen Includes ein, um auf die Benutzerdaten zugreifen zu können
-require_once '../Utils/db_connect.php';
-require_once '../Utils/SessionManager.php';
+require_once './Utils/db_connect.php';
+require_once './Utils/SessionManager.php';
 
 $einkaufsoption = ''; // Initialisiere die Variable
 

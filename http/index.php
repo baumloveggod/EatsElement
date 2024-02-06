@@ -18,7 +18,7 @@ require_once 'Utils/init.php'; // Pfad entsprechend Ihrer Struktur anpassen
 </head>
 <body>
     <header>
-        <?php include './Views/templates/navigation.php'; ?> <!-- Pfad entsprechend Ihrer Struktur anpassen -->
+        <?php include './templates/navigation.php'; ?> <!-- Pfad entsprechend Ihrer Struktur anpassen -->
     </header>
     <main>
         <div class="welcome-container">

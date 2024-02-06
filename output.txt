@@ -10,6 +10,7 @@ require_once 'Utils/init.php'; // Stellt sicher, dass die Session und ggf. ein a
 // Hier könnte weitere Logik folgen, z.B. das Laden spezifischer Inhalte für die Startseite
 ?>
 
+
 <!DOCTYPE html>
 <html lang="de">
 <head>

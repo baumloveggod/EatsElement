@@ -5,39 +5,47 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require_once 'Utils/init.php'; // Stellt sicher, dass die Session und ggf. ein anonymes Profil initialisiert werden
+require_once 'Utils/init.php'; // Pfad entsprechend Ihrer Struktur anpassen
 
-// Hier könnte weitere Logik folgen, z.B. das Laden spezifischer Inhalte für die Startseite
+// Hier könnte weitere Logik stehen, z.B. Laden von Benutzerdaten, falls benötigt
 ?>
-
 
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Willkommen bei Transformations-Design</title>
-    <link rel="stylesheet" href="style.css"> <!-- Pfad zu Ihrer CSS-Datei anpassen -->
+    <link rel="stylesheet" href="http/style.css"> <!-- Pfad entsprechend Ihrer Struktur anpassen -->
 </head>
 <body>
     <header>
-        <?php include 'Views/templates/navigation.php'; ?> <!-- Navigationsmenü einbinden -->
+        <?php include './Views/templates/navigation.php'; ?> <!-- Pfad entsprechend Ihrer Struktur anpassen -->
     </header>
     <main>
-        <h1>Willkommen bei Transformations-Design</h1>
-        <p>Entdecken Sie neue Rezepte, planen Sie Ihre Mahlzeiten und verwalten Sie Ihren Vorratsschrank.</p>
-        <?php if (isset($_SESSION['is_temp_user'])): ?>
-            <!-- Hinweis für Benutzer mit einem temporären Profil -->
-            <div class="alert">
-                <p><a href="login.html">Anmelden</a> für ein vollständiges Erlebnis oder <a href="register.html">registrieren</a> Sie sich, um Ihre Einstellungen zu speichern.</p>
-            </div>
-        <?php endif; ?>
+        <div class="welcome-container">
+            <h1>Willkommen bei Transformations-Design</h1>
+            <p>Entdecken Sie neue Rezepte, planen Sie Ihre Mahlzeiten und verwalten Sie Ihren Vorratsschrank mit Leichtigkeit.</p>
+            
+            <?php if (isset($_SESSION['is_temp_user'])): ?>
+                <!-- Anzeigen einer Nachricht für Nutzer mit einem temporären Profil -->
+                <div>
+                    <p><a href="http/login.html">Anmelden</a> für ein vollständiges Erlebnis.</p>
+                    <p>Noch kein Konto? <a href="http/register.html">Registrieren Sie sich hier</a>.</p>
+                </div>
+            <?php else: ?>
+                <!-- Standard-Nachricht für angemeldete Nutzer oder wenn die Session nicht als temporäres Profil markiert ist -->
+                <p>Bereit, Ihr kulinarisches Abenteuer zu beginnen? Erkunden Sie unsere Rezepte oder planen Sie Ihre nächste Mahlzeit.</p>
+            <?php endif; ?>
+        </div>
     </main>
     <footer>
-        <p>&copy; <?= date("Y") ?> Transformations-Design. Alle Rechte vorbehalten.</p>
+        <div class="footer-content">
+            <p>&copy; <?= date("Y") ?> Transformations-Design. Alle Rechte vorbehalten.</p>
+        </div>
     </footer>
 </body>
 </html>
-
 
 
 Path: ./http/login.html
@@ -1137,26 +1145,40 @@ if ($conn->connect_error) {
 
 Path: ./http/Utils\init.php
 Content:
-<?php 
-require_once 'db_connect.php';
+<?php
+require_once 'Utils/db_connect.php'; // Stellen Sie sicher, dass der Pfad zur Datenbankverbindungsdatei korrekt ist.
 
 session_start();
 
-// Überprüfen, ob der Benutzer bereits eingeloggt ist oder ein temporäres Profil hat
-if (!isset($_SESSION['loggedin']) || !$_SESSION['loggedin']) {
-    // Erstelle einen anonymen Benutzer
-    $sql = "INSERT INTO users (username) VALUES ('Anonymer Benutzer')";
-    if ($conn->query($sql) === TRUE) {
-        $_SESSION['loggedin'] = true;
-        $_SESSION['username'] = 'Anonymer Benutzer';
-        $_SESSION['id'] = $conn->insert_id;
-        // Setzen eines Flags, um anzuzeigen, dass es sich um ein temporäres Profil handelt
-        $_SESSION['is_temp_user'] = true;
-    } else {
-        echo "Error: " . $sql . "<br>" . $conn->error;
+// Überprüfen, ob der Benutzer eingeloggt ist oder ein temporäres Profil hat
+if (!isset($_SESSION['loggedin'])) {
+    // Erstelle einen anonymen Benutzer, falls nicht bereits geschehen
+    if (!isset($_SESSION['temp_user_id'])) {
+        // Einen temporären Benutzer in der Datenbank erstellen
+        // Generiere einen einzigartigen Benutzernamen für das temporäre Profil
+        $tempUsername = 'Anonymer Benutzer ' . uniqid();
+        
+        // Verwenden Sie Prepared Statements, um die SQL-Anweisung sicher auszuführen
+        $stmt = $conn->prepare("INSERT INTO users (username, is_temporary) VALUES (?, 1)");
+        $stmt->bind_param("s", $tempUsername); // "s" steht für den Datentyp "string"
+        
+        if ($stmt->execute()) {
+            $_SESSION['temp_user_id'] = $stmt->insert_id; // Speichere die ID des temporären Benutzers in der Session
+            $_SESSION['is_temp_user'] = true; // Markiere die Session als temporäres Profil
+            $_SESSION['loggedin'] = true; // Optional, abhängig von der Logik Ihrer Anwendung
+        } else {
+            die("Fehler beim Erstellen eines anonymen Profils: " . $stmt->error);
+        }
+        
+        $stmt->close(); // Schließe das Prepared Statement
     }
 }
-?>
+
+// Funktion zum Überprüfen, ob der Benutzer eingeloggt ist
+function isUserLoggedIn() {
+    return isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true;
+}
+?>   
 
 Path: ./http/Utils\SessionManager.php
 Content:
@@ -2166,6 +2188,8 @@ CREATE TABLE users (
     cookie_auth_token VARCHAR(255), -- Ein langes, zufälliges Token für die Authentifizierung via Cookie
     freundes_token VARCHAR(255) UNIQUE,
     einkaufsoption VARCHAR(255) DEFAULT 'ueblicheVerpackungsgroesse',
+    is_temporary BOOLEAN NOT NULL DEFAULT 0,
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     current_editing_recipe_id INT DEFAULT NULL;

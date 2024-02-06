@@ -5,6 +5,8 @@ CREATE TABLE users (
     cookie_auth_token VARCHAR(255), -- Ein langes, zufälliges Token für die Authentifizierung via Cookie
     freundes_token VARCHAR(255) UNIQUE,
     einkaufsoption VARCHAR(255) DEFAULT 'ueblicheVerpackungsgroesse',
+    is_temporary BOOLEAN NOT NULL DEFAULT 0,
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     current_editing_recipe_id INT DEFAULT NULL;

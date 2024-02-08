@@ -3,7 +3,10 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+
+require_once './Utils/db_connect.php';
 require_once './Utils/SessionManager.php';
+checkUserAuthentication();
 
 // Überprüfe, ob der Benutzer ein temporäres Profil hat
 $sql = "SELECT is_temporary FROM users WHERE id = ?";
@@ -25,7 +28,7 @@ if ($user['is_temporary']) {
 <html lang="de">
 <head>
     <?php include './templates/header.php'; ?>
-    <title>Willkommen bei Transformations-Design</title>
+    <title>Willkommen bei EatsElements</title>
 </head>
 <body>
     <header>

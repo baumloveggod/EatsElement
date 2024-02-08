@@ -709,49 +709,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $stmt->execute();
     $result = $stmt->get_result();
     
-    if ($result->num_rows > 0) {
+    if ($result->num_rows > 0 && $_SESSION['is_temporary'] == False) {
         // Benutzername bereits vergeben
-        echo "Benutzername existiert bereits.";
+        echo "Benutzername existiert bereits. oder du bist bereits einglogt";
     } else {
         // Benutzername ist verfügbar, fahre mit der Registrierung fort
 
         // Passwort hashen
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
         $freundesToken = bin2hex(random_bytes(16)); // Generiert einen eindeutigen Token
-
-        // Neuen Benutzer einfügen
-        $insertStmt = $conn->prepare("INSERT INTO users (username, password, freundes_token) VALUES (?, ?, ?)");
-        $insertStmt->bind_param("sss", $username, $hashedPassword, $freundesToken);
-
-        if ($insertStmt->execute()) {
-            // Registrierung erfolgreich, Benutzer-ID des neu erstellten Benutzers holen
-            $userId = $conn->insert_id;
-            
-            // Generiere ein einzigartiges Authentifizierungs-Token
-            $authToken = bin2hex(random_bytes(50)); // Erhöhe die Byte-Anzahl für mehr Einzigartigkeit
-            
-            // Speichere das Token im Benutzerdatensatz
-            $tokenStmt = $conn->prepare("UPDATE users SET cookie_auth_token = ? WHERE id = ?");
-            $tokenStmt->bind_param("si", $authToken, $userId);
-            $tokenStmt->execute();
-            
-            // Setze Session-Variablen
-            $_SESSION['is_temporary'] = false;
+        $userId = $_SESSION['userId'];
+        // Update the existing user record
+        $updateStmt = $conn->prepare("UPDATE users SET username = ?, password = ?, is_temporary = 0 WHERE id = ?");
+        $updateStmt->bind_param("ssi", $username, $hashedPassword, $userId);
+        
+        if ($updateStmt->execute()) {
+            // Update session variables
             $_SESSION['username'] = $username;
-            $_SESSION['id'] = $userId;
+            $_SESSION['is_temp_user'] = false; // Remove the temporary user flag
             
             // Registrierung erfolgreich, sende eine spezifische Nachricht zurück
             echo "Registrierung erfolgreich!";
         } else {
             // Fehler beim Einfügen in die Datenbank
             echo "Fehler bei der Registrierung: " . $conn->error;
-        }
+        } 
     }
 
     $stmt->close();
     $conn->close();
 }
 ?>
+
+
+
 
 
 Path: ./http/Controllers\RemoveFriend.php
@@ -1078,7 +1069,6 @@ document.addEventListener('DOMContentLoaded', function() {
         xhr.onload = function() {
             if (this.responseText.includes("Registrierung erfolgreich!") || this.responseText.includes("Benutzername existiert nicht")) {
                 window.location.href = 'index.php'; // Weiterleitung zur Hauptseite
-                $_SESSION['is_temporary'] = False;
             } else {
                 alert(this.responseText);
             }

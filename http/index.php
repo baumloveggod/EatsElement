@@ -38,7 +38,8 @@ if ($user['is_temporary']) {
     </header>
     <main>
         <div class="welcome-container">
-            <h1>Willkommen bei Transformations-Design</h1>
+            <h1>Willkommen bei EatsElements</h1>
+                <h2>Sie sind angemeldet als <?= htmlspecialchars($_SESSION['username']); ?></h2>
             <p>Entdecken Sie neue Rezepte, planen Sie Ihre Mahlzeiten und verwalten Sie Ihren Vorratsschrank mit Leichtigkeit.</p>
                 <?php if ($istTemporaer): ?>
                 <div>

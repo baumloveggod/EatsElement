@@ -3,58 +3,40 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+// Verbindung zur Datenbank herstellen
 require_once __DIR__ . '/../Utils/db_connect.php';
+require_once __DIR__ . '/../Utils/SessionManager.php';
+checkUserAuthentication();
 
-session_start();
-
-function sanitizeInput($data) {
-    $data = trim($data);
-    $data = stripslashes($data);
-    $data = htmlspecialchars($data);
-    return $data;
-}
-
+echo $_SESSION['userId'];
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $username = sanitizeInput($_POST['username']);
-    $password = sanitizeInput($_POST['password']);
+    $username = $_POST['username'];
+    $password = $_POST['password'];
 
-    // Überprüfe, ob der Benutzername bereits existiert
-    $stmt = $conn->prepare("SELECT id FROM users WHERE username = ?");
-    $stmt->bind_param("s", $username);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($result->num_rows > 0 && $_SESSION['is_temporary'] == False) {
-        // Benutzername bereits vergeben
-        echo "Benutzername existiert bereits. oder du bist bereits einglogt";
-    } else {
-        // Benutzername ist verfügbar, fahre mit der Registrierung fort
+    // Hash das Passwort für die Speicherung
+    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-        // Passwort hashen
-        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-        $freundesToken = bin2hex(random_bytes(16)); // Generiert einen eindeutigen Token
+    if (isset($_SESSION['userId']) && $_SESSION['is_temporary'] == true) {
+        // Das bestehende temporäre Profil wird aktualisiert
         $userId = $_SESSION['userId'];
-        // Update the existing user record
-        $updateStmt = $conn->prepare("UPDATE users SET username = ?, password = ?, is_temporary = 0 WHERE id = ?");
-        $updateStmt->bind_param("ssi", $username, $hashedPassword, $userId);
+        $sql = "UPDATE users SET username=?, password=?, is_temporary=0 WHERE id=?";
+        $stmt = $conn->prepare($sql);
         
-        if ($updateStmt->execute()) {
-            // Update session variables
-            $_SESSION['username'] = $username;
-            $_SESSION['is_temp_user'] = false; // Remove the temporary user flag
+        if ($stmt->execute([$username, $hashedPassword, $userId])) {
             
-            // Registrierung erfolgreich, sende eine spezifische Nachricht zurück
+            // Aktualisiere Session-Informationen
+            $_SESSION['is_temporary'] = false;
+            $_SESSION['username'] = $username;
+            // Optional: Setze ein erfolgreiches Login-Flag oder führe eine Weiterleitung durch
             echo "Registrierung erfolgreich!";
+            header('Location: /index.php'); // Weiterleitung zur Startseite
+            exit;
         } else {
-            // Fehler beim Einfügen in die Datenbank
-            echo "Fehler bei der Registrierung: " . $conn->error;
-        } 
+            echo "Fehler beim Aktualisieren des Profils.";
+        }
+    } else {
+        echo "Keine gültige Benutzer-ID gefunden. Registrierung fehlgeschlagen.";
     }
-
-    $stmt->close();
-    $conn->close();
 }
 ?>
-
-
 

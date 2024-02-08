@@ -11,6 +11,7 @@ checkUserAuthentication();
 // Überprüfe, ob der Benutzer ein temporäres Profil hat
 $sql = "SELECT is_temporary FROM users WHERE id = ?";
 $stmt = $conn->prepare($sql);
+echo $userId;
 $stmt->bind_param("i", $userId);
 $stmt->execute();
 $result = $stmt->get_result();

@@ -3,7 +3,7 @@ require_once 'db_connect.php'; // Stellen Sie sicher, dass der Pfad korrekt ist
 
 $userId = 0;
 $username = "";
-$is_temporary = 0;
+$is_temporary = False;
 // Starten der Session
 function checkUserAuthentication() {
     global $conn; // Stellen Sie sicher, dass $conn auf Ihre Datenbankverbindung verweist
@@ -42,7 +42,7 @@ function createTemporaryUserAndRedirect() {
 
     // Erstelle einen temporären Benutzernamen
     $username = "anonym" . rand(1000, 9999);
-    $isTemporary = 1; // Markierung als temporärer Benutzer
+    $isTemporary = True; // Markierung als temporärer Benutzer
 
     // Generiere ein zufälliges Token für die Authentifizierung
     $authToken = bin2hex(random_bytes(16));

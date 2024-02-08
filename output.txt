@@ -7,16 +7,27 @@ error_reporting(E_ALL);
 
 require_once './Utils/SessionManager.php';
 
-// Hier könnte weitere Logik stehen, z.B. Laden von Benutzerdaten, falls benötigt
+// Überprüfe, ob der Benutzer ein temporäres Profil hat
+$sql = "SELECT is_temporary FROM users WHERE id = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+$user = $result->fetch_assoc();
+
+if ($user['is_temporary']) {
+    // Der Nutzer hat ein temporäres Profil
+    $istTemporaer = true;
+} else {
+    $istTemporaer = false;
+}
 ?>
 
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php include './templates/header.php'; ?>
     <title>Willkommen bei Transformations-Design</title>
-    <link rel="stylesheet" href="http/style.css"> <!-- Pfad entsprechend Ihrer Struktur anpassen -->
 </head>
 <body>
     <header>
@@ -26,15 +37,12 @@ require_once './Utils/SessionManager.php';
         <div class="welcome-container">
             <h1>Willkommen bei Transformations-Design</h1>
             <p>Entdecken Sie neue Rezepte, planen Sie Ihre Mahlzeiten und verwalten Sie Ihren Vorratsschrank mit Leichtigkeit.</p>
-            
-            <?php if (isset($_SESSION['is_temp_user'])): ?>
-                <!-- Anzeigen einer Nachricht für Nutzer mit einem temporären Profil -->
+                <?php if ($istTemporaer): ?>
                 <div>
                     <p><a href="http/login.html">Anmelden</a> für ein vollständiges Erlebnis.</p>
                     <p>Noch kein Konto? <a href="http/register.html">Registrieren Sie sich hier</a>.</p>
                 </div>
             <?php else: ?>
-                <!-- Standard-Nachricht für angemeldete Nutzer oder wenn die Session nicht als temporäres Profil markiert ist -->
                 <p>Bereit, Ihr kulinarisches Abenteuer zu beginnen? Erkunden Sie unsere Rezepte oder planen Sie Ihre nächste Mahlzeit.</p>
             <?php endif; ?>
         </div>

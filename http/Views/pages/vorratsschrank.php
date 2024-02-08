@@ -18,6 +18,15 @@ $stmt->bind_param("i", $userId);
 $stmt->execute();
 $result = $stmt->get_result();
 
+$Voratschrank = [];
+while ($row = $result->fetch_assoc()) {
+    $Voratschrank[] = [
+        'name' => $row['name'],
+        'menge' => $row['menge'],
+        'verbrauchsdatum' => $row['verbrauchsdatum'],
+        'id' => $row['id']
+    ];
+}
 ?>
 
 <!DOCTYPE html>
@@ -27,9 +36,7 @@ $result = $stmt->get_result();
     <title>Vorratsschrank</title>
 </head>
 <body>
-    <header>
-        <!-- Navigation usw. -->
-    </header>
+    <?php include '../templates/navigation.php'; ?>
     <main>
         <h2>Vorratsschrank</h2>
         <table>
@@ -39,21 +46,24 @@ $result = $stmt->get_result();
                 <th>geplantes Verbauchs datum</th>
                 <th>Aktion</th>
             </tr>
-            <?php while ($row = $result->fetch_assoc()): ?>
+            <?php foreach ( $Voratschrank as $item): ?>
             <tr>
-                <td><?= htmlspecialchars($row['name']) ?></td>
-                <td><?= htmlspecialchars($row['menge']) ?></td>
-                <td><?= $row['verbrauchsdatum'] ? htmlspecialchars($row['verbrauchsdatum']) : 'N/A' ?></td>
+                <td><?= htmlspecialchars($item['name']) ?></td>
+                <td><?= htmlspecialchars($item['menge']) ?></td>
                 <td>
-                    <?php if (!$row['verbrauchsdatum']): ?>
-                        <form method="post" action="Controllers/PlanIntelligently.php">
-                            <input type="hidden" name="zutat_id" value="<?= $row['zutat_id'] ?>">
-                            <button type="submit">Intelligent einplanen</button>
+                    <?php if ($item['verbrauchsdatum']): ?>
+                        <a href="rezept_detail.php?datum=<?= urlencode($item['verbrauchsdatum']) ?>">
+                            <?= htmlspecialchars($item['verbrauchsdatum']) ?>
+                        </a>
+                    <?php else: ?>
+                        <form method="post" action="Controllers/Inteligent_verplanen.php">
+                            <input type="hidden" name="id" value="<?= $item['id'] ?>">
+                            <button type="submit">Inteligent verplanen</button>
                         </form>
                     <?php endif; ?>
                 </td>
             </tr>
-            <?php endwhile; ?>
+            <?php endforeach; ?>
         </table>
     </main>
     <footer>

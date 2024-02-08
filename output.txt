@@ -1095,7 +1095,7 @@ if ($row = $result->fetch_assoc()) {
         <li><a href="Views/pages/einkaufsliste.php">Einkaufsliste</a></li>
         <li><a href="Views/pages/vorratsschrank.php">Vorratsschrank</a></li>
         <li><a href="Views/pages/settings.php">Einstellungen</a></li>
-        <?php if (!isset($_SESSION['is_temp_user'])): ?>
+        <?php if (!isset($_SESSION['is_temporary'])): ?>
             <li><a href="Views/pages/freunde.php">Freunde</a></li>
         <?php endif; ?>
         <li><a href="Views/pages/profil.php">Profil</a></li>
@@ -1939,7 +1939,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['einkaufsOption'])) {
     <title>Einstellungen</title>
 </head>
 <body>
-    <?php include '../templates/header.php'; ?>
     <?php include '../templates/navigation.php'; ?>
 
     <main>
@@ -1990,6 +1989,15 @@ $stmt->bind_param("i", $userId);
 $stmt->execute();
 $result = $stmt->get_result();
 
+$Voratschrank = [];
+while ($row = $result->fetch_assoc()) {
+    $Voratschrank[] = [
+        'name' => $row['name'],
+        'menge' => $row['menge'],
+        'verbrauchsdatum' => $row['verbrauchsdatum'],
+        'id' => $row['id']
+    ];
+}
 ?>
 
 <!DOCTYPE html>
@@ -1999,9 +2007,7 @@ $result = $stmt->get_result();
     <title>Vorratsschrank</title>
 </head>
 <body>
-    <header>
-        <!-- Navigation usw. -->
-    </header>
+    <?php include '../templates/navigation.php'; ?>
     <main>
         <h2>Vorratsschrank</h2>
         <table>
@@ -2011,21 +2017,24 @@ $result = $stmt->get_result();
                 <th>geplantes Verbauchs datum</th>
                 <th>Aktion</th>
             </tr>
-            <?php while ($row = $result->fetch_assoc()): ?>
+            <?php foreach ( $Voratschrank as $item): ?>
             <tr>
-                <td><?= htmlspecialchars($row['name']) ?></td>
-                <td><?= htmlspecialchars($row['menge']) ?></td>
-                <td><?= $row['verbrauchsdatum'] ? htmlspecialchars($row['verbrauchsdatum']) : 'N/A' ?></td>
+                <td><?= htmlspecialchars($item['name']) ?></td>
+                <td><?= htmlspecialchars($item['menge']) ?></td>
                 <td>
-                    <?php if (!$row['verbrauchsdatum']): ?>
-                        <form method="post" action="Controllers/PlanIntelligently.php">
-                            <input type="hidden" name="zutat_id" value="<?= $row['zutat_id'] ?>">
-                            <button type="submit">Intelligent einplanen</button>
+                    <?php if ($item['verbrauchsdatum']): ?>
+                        <a href="rezept_detail.php?datum=<?= urlencode($item['verbrauchsdatum']) ?>">
+                            <?= htmlspecialchars($item['verbrauchsdatum']) ?>
+                        </a>
+                    <?php else: ?>
+                        <form method="post" action="Controllers/Inteligent_verplanen.php">
+                            <input type="hidden" name="id" value="<?= $item['id'] ?>">
+                            <button type="submit">Inteligent verplanen</button>
                         </form>
                     <?php endif; ?>
                 </td>
             </tr>
-            <?php endwhile; ?>
+            <?php endforeach; ?>
         </table>
     </main>
     <footer>
@@ -2090,6 +2099,10 @@ if ($rezeptRow = $rezeptResult->fetch_assoc()) {
 $conn->close();
 
 
+Path: ./http/Views\templates\footer.php
+Content:
+
+
 Path: ./http/Views\templates\header.php
 Content:
 <meta charset='UTF-8'>
@@ -2124,7 +2137,7 @@ $userId = $_SESSION['userId'];
         <li><a href="essensplan.php">Essensplan</a></li>
         <li><a href="einkaufsliste.php">Einkaufsliste</a></li>
         <li><a href="vorratsschrank.php">Vorratsschrank</a></li>
-        <?php if (!isset($_SESSION['is_temp_user'])): ?>
+        <?php if (!isset($_SESSION['is_temporary'])): ?>
             <li><a href="freunde.php">Freunde</a></li>
         <?php endif; ?>
         <li><a href="settings.php">Einstellungen</a></li>

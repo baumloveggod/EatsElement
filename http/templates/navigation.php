@@ -23,7 +23,7 @@ if ($row = $result->fetch_assoc()) {
         <li><a href="Views/pages/einkaufsliste.php">Einkaufsliste</a></li>
         <li><a href="Views/pages/vorratsschrank.php">Vorratsschrank</a></li>
         <li><a href="Views/pages/settings.php">Einstellungen</a></li>
-        <?php if (!isset($_SESSION['is_temp_user'])): ?>
+        <?php if (!isset($_SESSION['is_temporary'])): ?>
             <li><a href="Views/pages/freunde.php">Freunde</a></li>
         <?php endif; ?>
         <li><a href="Views/pages/profil.php">Profil</a></li>

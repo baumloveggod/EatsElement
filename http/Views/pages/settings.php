@@ -42,7 +42,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['einkaufsOption'])) {
     <title>Einstellungen</title>
 </head>
 <body>
-    <?php include '../templates/header.php'; ?>
     <?php include '../templates/navigation.php'; ?>
 
     <main>

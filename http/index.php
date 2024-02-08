@@ -6,12 +6,13 @@ error_reporting(E_ALL);
 
 require_once './Utils/db_connect.php';
 require_once './Utils/SessionManager.php';
+
 checkUserAuthentication();
 
-// Überprüfe, ob der Benutzer ein temporäres Profil hat
+
 $sql = "SELECT is_temporary FROM users WHERE id = ?";
 $stmt = $conn->prepare($sql);
-echo $userId;
+$userId = $_SESSION['userId'];
 $stmt->bind_param("i", $userId);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -41,8 +42,8 @@ if ($user['is_temporary']) {
             <p>Entdecken Sie neue Rezepte, planen Sie Ihre Mahlzeiten und verwalten Sie Ihren Vorratsschrank mit Leichtigkeit.</p>
                 <?php if ($istTemporaer): ?>
                 <div>
-                    <p><a href="http/login.html">Anmelden</a> für ein vollständiges Erlebnis.</p>
-                    <p>Noch kein Konto? <a href="http/register.html">Registrieren Sie sich hier</a>.</p>
+                    <p><a href="login.html">Anmelden</a> für ein vollständiges Erlebnis.</p>
+                    <p>Noch kein Konto? <a href="register.html">Registrieren Sie sich hier</a>.</p>
                 </div>
             <?php else: ?>
                 <p>Bereit, Ihr kulinarisches Abenteuer zu beginnen? Erkunden Sie unsere Rezepte oder planen Sie Ihre nächste Mahlzeit.</p>

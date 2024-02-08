@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
         xhr.onload = function() {
             if (this.responseText.includes("Registrierung erfolgreich!") || this.responseText.includes("Benutzername existiert nicht")) {
                 window.location.href = 'index.php'; // Weiterleitung zur Hauptseite
+                $_SESSION['is_temporary'] = False;
             } else {
                 alert(this.responseText);
             }

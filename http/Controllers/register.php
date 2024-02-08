@@ -50,11 +50,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $tokenStmt->bind_param("si", $authToken, $userId);
             $tokenStmt->execute();
             
-            // Setze ein Cookie mit dem Authentifizierungs-Token
-            setcookie("auth", $authToken, time() + (86400 * 30), "/"); // Gültig für 30 Tage
-            
             // Setze Session-Variablen
-            $_SESSION['loggedin'] = true;
+            $_SESSION['is_temporary'] = false;
             $_SESSION['username'] = $username;
             $_SESSION['id'] = $userId;
             

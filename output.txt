@@ -8,12 +8,13 @@ error_reporting(E_ALL);
 
 require_once './Utils/db_connect.php';
 require_once './Utils/SessionManager.php';
+
 checkUserAuthentication();
 
-// Überprüfe, ob der Benutzer ein temporäres Profil hat
+
 $sql = "SELECT is_temporary FROM users WHERE id = ?";
 $stmt = $conn->prepare($sql);
-echo $userId;
+$userId = $_SESSION['userId'];
 $stmt->bind_param("i", $userId);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -43,8 +44,8 @@ if ($user['is_temporary']) {
             <p>Entdecken Sie neue Rezepte, planen Sie Ihre Mahlzeiten und verwalten Sie Ihren Vorratsschrank mit Leichtigkeit.</p>
                 <?php if ($istTemporaer): ?>
                 <div>
-                    <p><a href="http/login.html">Anmelden</a> für ein vollständiges Erlebnis.</p>
-                    <p>Noch kein Konto? <a href="http/register.html">Registrieren Sie sich hier</a>.</p>
+                    <p><a href="login.html">Anmelden</a> für ein vollständiges Erlebnis.</p>
+                    <p>Noch kein Konto? <a href="register.html">Registrieren Sie sich hier</a>.</p>
                 </div>
             <?php else: ?>
                 <p>Bereit, Ihr kulinarisches Abenteuer zu beginnen? Erkunden Sie unsere Rezepte oder planen Sie Ihre nächste Mahlzeit.</p>
@@ -734,11 +735,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $tokenStmt->bind_param("si", $authToken, $userId);
             $tokenStmt->execute();
             
-            // Setze ein Cookie mit dem Authentifizierungs-Token
-            setcookie("auth", $authToken, time() + (86400 * 30), "/"); // Gültig für 30 Tage
-            
             // Setze Session-Variablen
-            $_SESSION['loggedin'] = true;
+            $_SESSION['is_temporary'] = false;
             $_SESSION['username'] = $username;
             $_SESSION['id'] = $userId;
             
@@ -1080,6 +1078,7 @@ document.addEventListener('DOMContentLoaded', function() {
         xhr.onload = function() {
             if (this.responseText.includes("Registrierung erfolgreich!") || this.responseText.includes("Benutzername existiert nicht")) {
                 window.location.href = 'index.php'; // Weiterleitung zur Hauptseite
+                $_SESSION['is_temporary'] = False;
             } else {
                 alert(this.responseText);
             }
@@ -1156,73 +1155,72 @@ if ($conn->connect_error) {
 Path: ./http/Utils\SessionManager.php
 Content:
 <?php
-require_once 'db_connect.php'; // Stellen Sie sicher, dass der Pfad korrekt ist
+    require_once 'db_connect.php'; // Stellen Sie sicher, dass der Pfad korrekt ist
+    $_SESSION['userId'] = 0;
+    $_SESSION['username'] = "";
+    $_SESSION['is_temporary'] = False;
+    // Starten der Session
+    function checkUserAuthentication() {    
+        global $conn; // Stellen Sie sicher, dass $conn auf Ihre Datenbankverbindung verweist
+        if (isset($_COOKIE['authToken'])) {
+            $cookieToken = $_COOKIE['authToken'];
+            $sql = "SELECT id,is_temporary,username FROM users WHERE cookie_auth_token = ?";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("s", $cookieToken);
+            $stmt->execute();
+            $result = $stmt->get_result();
 
-$userId = 0;
-$username = "";
-$is_temporary = False;
-// Starten der Session
-function checkUserAuthentication() {
-    global $conn; // Stellen Sie sicher, dass $conn auf Ihre Datenbankverbindung verweist
-
-    if (isset($_COOKIE['authToken'])) {
-        $cookieToken = $_COOKIE['authToken'];
-        $sql = "SELECT id,is_temporary,username FROM users WHERE cookie_auth_token = ?";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("s", $cookieToken);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        if ($result->num_rows === 1) {
-            $user = $result->fetch_assoc();
-            $userId = $user['id'];
-            $username = $user['username'];
-            $is_temporary = $user['is_temporary'];
-            return true;
+            if ($result->num_rows === 1) {
+                $user = $result->fetch_assoc();
+                $_SESSION['userId'] = $user['id'];
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['is_temporary'] = $user['is_temporary'];
+                return true;
+            }else{
+                
+            // Kein gültiger Authentifizierungs-Cookie gefunden, erstelle einen temporären Benutzer
+            createTemporaryUserAndRedirect();
+            return false;
+            }
         }else{
-            
-        // Kein gültiger Authentifizierungs-Cookie gefunden, erstelle einen temporären Benutzer
-        createTemporaryUserAndRedirect();
-        return false;
+            // Kein gültiger Authentifizierungs-Cookie gefunden, erstelle einen temporären Benutzer
+            createTemporaryUserAndRedirect();
+            return false;
         }
-    }else{
-        // Kein gültiger Authentifizierungs-Cookie gefunden, erstelle einen temporären Benutzer
-        createTemporaryUserAndRedirect();
-        return false;
+
     }
 
-}
+    // Funktion, die aufgerufen wird, um Zugriff ohne Anmeldung zu ermöglichen
+    function createTemporaryUserAndRedirect() {
+        global $conn;
 
-// Funktion, die aufgerufen wird, um Zugriff ohne Anmeldung zu ermöglichen
-function createTemporaryUserAndRedirect() {
-    global $conn;
+        // Erstelle einen temporären Benutzernamen
+        $username = "anonym" . rand(1000, 9999);
+        $isTemporary = True; // Markierung als temporärer Benutzer
 
-    // Erstelle einen temporären Benutzernamen
-    $username = "anonym" . rand(1000, 9999);
-    $isTemporary = True; // Markierung als temporärer Benutzer
+        // Generiere ein zufälliges Token für die Authentifizierung
+        $authToken = bin2hex(random_bytes(16));
 
-    // Generiere ein zufälliges Token für die Authentifizierung
-    $authToken = bin2hex(random_bytes(16));
+        // Füge den temporären Benutzer in die Datenbank ein
+        $stmt = $conn->prepare("INSERT INTO users (username, is_temporary, cookie_auth_token) VALUES (?, ?, ?)");
+        $stmt->bind_param("sis", $username, $isTemporary, $authToken);
 
-    // Füge den temporären Benutzer in die Datenbank ein
-    $stmt = $conn->prepare("INSERT INTO users (username, is_temporary, cookie_auth_token) VALUES (?, ?, ?)");
-    $stmt->bind_param("sis", $username, $isTemporary, $authToken);
+        if ($stmt->execute()) {
+            $_SESSION['userId'] = $stmt->insert_id;
+            $_SESSION['username'] = $username;
+            $_SESSION['is_temporary'] = $isTemporary;
 
-    if ($stmt->execute()) {
-        $userId = $stmt->insert_id;
-
-        // Setze die Authentifizierungs-Cookies
-        setcookie('authToken', $authToken, time() + (86400 * 30*365), "/"); // 1 jahr Gültigkeit
-
-        // Leite zum Index weiter
-        header("Location: /index.php");
-        exit;
-    } else {
-        // Fehlerbehandlung, falls das Einfügen fehlschlägt
-        echo "Fehler beim Erstellen eines temporären Benutzerkontos.";
-        exit;
+            // Setze die Authentifizierungs-Cookies
+            setcookie('authToken', $authToken, time() + (86400 * 30*365), "/");// 1 jahr Gültigkeit
+            // Leite zum Index weiter
+            header("Location: /index.php");
+            exit;
+        } else {
+            // Fehlerbehandlung, falls das Einfügen fehlschlägt
+            echo "Fehler beim Erstellen eines temporären Benutzerkontos.";
+            exit;
+        }
     }
-}
 
 Path: ./http/Views\hidden\editRecipe.php
 Content:

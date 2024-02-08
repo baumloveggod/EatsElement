@@ -1,12 +1,7 @@
 <?php
 require_once '../../Utils/SessionManager.php';
-checkAccess();
-
-// Stelle sicher, dass der Benutzer eingeloggt ist
-if (!isUserLoggedIn()) {
-    header("Location: /login.html");
-    exit;
-}
+require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
 
 // Passwort-Änderungslogik wird hier behandelt
 

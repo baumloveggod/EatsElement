@@ -4,10 +4,10 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 require_once '../../Utils/SessionManager.php';
-checkAccess();
 require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
 
-$userId = $_SESSION['id'];
+$userId = $_SESSION['userId'];
 
 $sql = "SELECT vs.id, zn.name, vs.menge, vs.verbrauchsdatum 
         FROM vorratsschrank vs

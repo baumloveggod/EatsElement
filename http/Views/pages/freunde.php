@@ -4,15 +4,15 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 require_once '../../Utils/SessionManager.php';
-checkAccess();
 require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
+
+$userId = $_SESSION['userId'];
 
 if (isset($_SESSION['is_temp_user'])) {
     echo "Die Freunde-Seite ist für temporäre Profile nicht verfügbar.";
     exit; // Stoppt die Ausführung weiteren Codes
 }
-
-$userId = $_SESSION['id'];
 $eigenerToken = "";
 
 // Hole den eigenen Freundes-Token

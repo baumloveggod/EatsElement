@@ -1,15 +1,13 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 require_once '../../Utils/SessionManager.php';
-checkAccess();
 require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
 
-// Stelle sicher, dass der Benutzer eingeloggt ist
-if (!isUserLoggedIn()) {
-    header("Location: /login.html");
-    exit;
-}
-
-$userId = $_SESSION['id'];
+$userId = $_SESSION['userId'];
 
 // Hier kann Logik zur Verwaltung der Gefäße implementiert werden
 

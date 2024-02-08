@@ -3,10 +3,10 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+// Verbindung zur Datenbank herstellen
 require_once __DIR__ . '/../Utils/db_connect.php';
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/../Utils/SessionManager.php';
+checkUserAuthentication();
 
 function sanitizeInput($data) {
     $data = trim($data);
@@ -37,15 +37,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         if (password_verify($password, $user['password'])) {
             // Set session variables
-            $_SESSION['loggedin'] = true;
-            $_SESSION['username'] = $user['username'];
             $_SESSION['id'] = $user['id'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['is_temporary'] = False;
         
             // Generate a random token for the cookie
             $cookieToken = bin2hex(random_bytes(25));
         
             // Set cookie for authentication
-            setcookie('auth', $cookieToken, time() + (86400 * 30), "/"); // 86400 = 1 day, adjust as needed
+            setcookie('authToken', $cookieToken, time() + (86400 * 365), "/"); // 86400 = 1 day, adjust as needed
         
             // Update the cookie token in the database
             $updateSql = "UPDATE users SET cookie_auth_token = ? WHERE id = ?";

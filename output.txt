@@ -532,10 +532,10 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+// Verbindung zur Datenbank herstellen
 require_once __DIR__ . '/../Utils/db_connect.php';
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/../Utils/SessionManager.php';
+checkUserAuthentication();
 
 function sanitizeInput($data) {
     $data = trim($data);
@@ -566,15 +566,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         if (password_verify($password, $user['password'])) {
             // Set session variables
-            $_SESSION['loggedin'] = true;
-            $_SESSION['username'] = $user['username'];
             $_SESSION['id'] = $user['id'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['is_temporary'] = False;
         
             // Generate a random token for the cookie
             $cookieToken = bin2hex(random_bytes(25));
         
             // Set cookie for authentication
-            setcookie('auth', $cookieToken, time() + (86400 * 30), "/"); // 86400 = 1 day, adjust as needed
+            setcookie('authToken', $cookieToken, time() + (86400 * 365), "/"); // 86400 = 1 day, adjust as needed
         
             // Update the cookie token in the database
             $updateSql = "UPDATE users SET cookie_auth_token = ? WHERE id = ?";
@@ -1379,10 +1379,10 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 require_once '../../Utils/SessionManager.php';
-checkAccess();
 require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
 
-$userId = $_SESSION['id'];
+$userId = $_SESSION['userId'];
 
 $sql = "SELECT zn.name, e.menge, e.verbrauchsdatum, e.id
         FROM einkaufsliste e
@@ -1473,16 +1473,10 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 require_once '../../Utils/SessionManager.php';
-checkAccess();
 require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
 
-// Stelle sicher, dass der Benutzer eingeloggt ist
-if (!isUserLoggedIn()) {
-    header("Location: /login.html");
-    exit;
-}
-
-$userId = $_SESSION['id'];
+$userId = $_SESSION['userId'];
 $today = date("Y-m-d");
 $twoWeeksLater = date("Y-m-d", strtotime("+14 days"));
 
@@ -1558,15 +1552,15 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 require_once '../../Utils/SessionManager.php';
-checkAccess();
 require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
+
+$userId = $_SESSION['userId'];
 
 if (isset($_SESSION['is_temp_user'])) {
     echo "Die Freunde-Seite ist für temporäre Profile nicht verfügbar.";
     exit; // Stoppt die Ausführung weiteren Codes
 }
-
-$userId = $_SESSION['id'];
 $eigenerToken = "";
 
 // Hole den eigenen Freundes-Token
@@ -1655,17 +1649,15 @@ if (isset($_GET['token']) && $_GET['token'] !== $eigenerToken) {
 Path: ./http/Views\pages\gefaessVerwaltung.php
 Content:
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 require_once '../../Utils/SessionManager.php';
-checkAccess();
 require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
 
-// Stelle sicher, dass der Benutzer eingeloggt ist
-if (!isUserLoggedIn()) {
-    header("Location: /login.html");
-    exit;
-}
-
-$userId = $_SESSION['id'];
+$userId = $_SESSION['userId'];
 
 // Hier kann Logik zur Verwaltung der Gefäße implementiert werden
 
@@ -1713,13 +1705,8 @@ Path: ./http/Views\pages\passwort_aendern.php
 Content:
 <?php
 require_once '../../Utils/SessionManager.php';
-checkAccess();
-
-// Stelle sicher, dass der Benutzer eingeloggt ist
-if (!isUserLoggedIn()) {
-    header("Location: /login.html");
-    exit;
-}
+require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
 
 // Passwort-Änderungslogik wird hier behandelt
 
@@ -1755,11 +1742,15 @@ if (!isUserLoggedIn()) {
 Path: ./http/Views\pages\profil.php
 Content:
 <?php
-require_once '../../Utils/SessionManager.php';
-checkAccess();
-require_once '../../Utils/db_connect.php';
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-$userId = $_SESSION['id'];
+require_once '../../Utils/SessionManager.php';
+require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
+
+$userId = $_SESSION['userId'];
 ?>
 
 <!DOCTYPE html>
@@ -1798,16 +1789,12 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 require_once '../../Utils/SessionManager.php';
-checkAccess();
 require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
 
-if (!isUserLoggedIn()) {
-    header("Location: /login.html");
-    exit;
-}
+$userId = $_SESSION['userId'];
 
 $datum = $_GET['datum'] ?? date("Y-m-d");
-$userId = $_SESSION['id'];
 
 $sql = "SELECT r.titel, r.beschreibung, e.rezept_id
         FROM essenplan e
@@ -1909,11 +1896,15 @@ if ($result->num_rows === 0) {
 Path: ./http/Views\pages\settings.php
 Content:
 <?php
-require_once '../../Utils/SessionManager.php';
-checkAccess();
-require_once '../../Utils/db_connect.php';
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-$userId = $_SESSION['id'];
+require_once '../../Utils/SessionManager.php';
+require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
+
+$userId = $_SESSION['userId'];
 $aktuelleEinkaufsoption = '';
 
 // Abfrage der aktuellen Einkaufsoption
@@ -1985,10 +1976,10 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 require_once '../../Utils/SessionManager.php';
-checkAccess();
 require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
 
-$userId = $_SESSION['id'];
+$userId = $_SESSION['userId'];
 
 $sql = "SELECT vs.id, zn.name, vs.menge, vs.verbrauchsdatum 
         FROM vorratsschrank vs
@@ -2046,13 +2037,17 @@ $result = $stmt->get_result();
 Path: ./http/Views\pages\zufalligesGerichtPlanen.php
 Content:
 <?php
-session_start(); // Ensure session is started
-require_once '../../Utils/db_connect.php';
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 require_once '../../Utils/SessionManager.php';
-checkAccess();
+require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
+
+$userId = $_SESSION['userId'];
 
 $datum = $_POST['datum'] ?? date("Y-m-d");
-$userId = $_SESSION['id'];
 
 // Wähle ein zufälliges Rezept
 $rezeptSql = "SELECT id FROM rezepte ORDER BY RAND() LIMIT 1";
@@ -2112,7 +2107,7 @@ $einkaufsoption = ''; // Initialisiere die Variable
 
 // Überprüfe, ob der Benutzer eingeloggt ist, und hole die Einkaufsoption
 
-$userId = $_SESSION['id'];
+$userId = $_SESSION['userId'];
     $sql = "SELECT einkaufsoption FROM users WHERE id = ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $userId);

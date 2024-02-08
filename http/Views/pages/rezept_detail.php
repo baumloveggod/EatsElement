@@ -4,16 +4,12 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 require_once '../../Utils/SessionManager.php';
-checkAccess();
 require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
 
-if (!isUserLoggedIn()) {
-    header("Location: /login.html");
-    exit;
-}
+$userId = $_SESSION['userId'];
 
 $datum = $_GET['datum'] ?? date("Y-m-d");
-$userId = $_SESSION['id'];
 
 $sql = "SELECT r.titel, r.beschreibung, e.rezept_id
         FROM essenplan e

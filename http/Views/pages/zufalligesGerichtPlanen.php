@@ -1,11 +1,15 @@
 <?php
-session_start(); // Ensure session is started
-require_once '../../Utils/db_connect.php';
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 require_once '../../Utils/SessionManager.php';
-checkAccess();
+require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
+
+$userId = $_SESSION['userId'];
 
 $datum = $_POST['datum'] ?? date("Y-m-d");
-$userId = $_SESSION['id'];
 
 // Wähle ein zufälliges Rezept
 $rezeptSql = "SELECT id FROM rezepte ORDER BY RAND() LIMIT 1";

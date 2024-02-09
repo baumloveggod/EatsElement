@@ -46,6 +46,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['einkaufsOption'])) {
 
     <main>
         <h2>Einstellungen</h2>
+
+        
+        <h2>Einstlungen, die noch nichts tun :)</h2>
         <form action="settings.php" method="post">
             <label>Wählen Sie Ihre bevorzugte Einkaufsmethode:</label>
             <div>

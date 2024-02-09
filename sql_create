@@ -25,11 +25,17 @@ CREATE TABLE essenplan (
 
 CREATE TABLE zutaten (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    beschreibung TEXT,
     uebliche_haltbarkeit INT DEFAULT 7 COMMENT 'Haltbarkeit in Tagen',
     kategorie_id INT DEFAULT NULL,
     FOREIGN KEY (kategorie_id) REFERENCES kategorien(id)
 );
+
+CREATE TABLE kategorien (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    sortierreihenfolge INT NOT NULL
+);
+
 
 
 CREATE TABLE rezepte (
@@ -113,9 +119,3 @@ CREATE TABLE unverpackte_gefaesse (
     beschreibung TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
-CREATE TABLE kategorien (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    sortierreihenfolge INT NOT NULL
-);
-

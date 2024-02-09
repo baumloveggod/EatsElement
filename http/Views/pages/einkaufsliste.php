@@ -11,11 +11,15 @@ $userId = $_SESSION['userId'];
 
 $heute = date("Y-m-d");
 
-$sql = "SELECT e.id, zn.name, e.menge, e.verbrauchsdatum, zn.oberkategorie
+$sql = "SELECT e.id, zn.name, e.menge, e.verbrauchsdatum, k.name AS kategorie, k.id AS kategorie_id
         FROM einkaufsliste e
-        JOIN zutaten_namen zn ON e.zutat_id = zn.zutat_id
-        WHERE e.user_id = ? AND DATE_ADD(CURDATE(), INTERVAL zn.uebliche_haltbarkeit DAY) >= e.verbrauchsdatum
-        ORDER BY zn.oberkategorie ASC, e.verbrauchsdatum ASC";
+        JOIN zutaten z ON e.zutat_id = z.id
+        JOIN zutaten_namen zn ON z.id = zn.zutat_id -- Adjusted join here
+        JOIN kategorien k ON z.kategorie_id = k.id
+        WHERE e.user_id = ? AND DATE_ADD(CURDATE(), INTERVAL z.uebliche_haltbarkeit DAY) >= e.verbrauchsdatum
+        ORDER BY k.id ASC, e.verbrauchsdatum ASC";
+
+
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $userId);
 $stmt->execute();
@@ -27,7 +31,7 @@ while ($row = $result->fetch_assoc()) {
         'name' => $row['name'],
         'menge' => $row['menge'],
         'verbrauchsdatum' => $row['verbrauchsdatum'],
-        'oberkategorie' => $row['oberkategorie'],
+        'kategorie' => $row['kategorie'],
         'id' => $row['id']
     ];
 }
@@ -51,6 +55,7 @@ while ($row = $result->fetch_assoc()) {
                 <th>Name</th>
                 <th>Menge</th>
                 <th>Geplantes Datum</th>
+                <th>kategorie</th>
                 <th>Aktion</th>
             </tr>
             <?php foreach ($einkaufsliste as $item): ?>
@@ -69,6 +74,8 @@ while ($row = $result->fetch_assoc()) {
                         </form>
                     <?php endif; ?>
                 </td>
+                
+                <td><?= htmlspecialchars($item['kategorie']) ?></td>
                 <td>
                     <form method="post" action="/Controllers/MoveToPantry.php">
                         <input type="hidden" name="id" value="<?= $item['id'] ?>">

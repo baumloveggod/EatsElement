@@ -73,12 +73,17 @@ if ($row[0] == 0) {
         $kategorieStmt->execute();
         $result = $kategorieStmt->get_result();
         if ($row = $result->fetch_assoc()) {
-            $kategorieId = $row['id'];
+            $kategorie_id = $row['id'];
 
-            // Füge die Zutat in die Datenbank ein
-            $insertStmt = $conn->prepare("INSERT INTO zutaten (name, kategorie_id, haltbarkeit_tage) VALUES (?, ?, ?)");
-            $insertStmt->bind_param("sii", $zutat['name'], $kategorieId, $zutat['haltbarkeit']);
-            $insertStmt->execute();
+            $insertStmtZutaten = $conn->prepare("INSERT INTO zutaten (kategorie_id, uebliche_haltbarkeit) VALUES (?, ?)");
+            $insertStmtZutaten->bind_param("ii", $kategorie_id, $zutat['haltbarkeit']);
+            $insertStmtZutaten->execute();
+            $zutatId = $conn->insert_id; // Holt die ID der gerade eingefügten Zutat
+
+            $insertStmtNamen = $conn->prepare("INSERT INTO zutaten_namen (name, zutat_id) VALUES (?, ?)");
+            $insertStmtNamen->bind_param("si", $zutat['name'], $zutatId);
+            $insertStmtNamen->execute();
+
         }
     }
 

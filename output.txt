@@ -115,11 +115,16 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 require_once 'Utils/SessionManager.php';
-checkAccess();
 require_once 'Utils/db_connect.php';
-checkAccess();
+checkUserAuthentication();
+$userId = $_SESSION['userId'];
+
+if (isset($_SESSION['is_temp_user'])) {
+    echo "Die Freunde-Seite ist für temporäre Profile nicht verfügbar.";
+    exit; // Stoppt die Ausführung weiteren Codes
+}
 // Leere alle Tabellen außer 'users'
-$tablesToReset = ['konventionen','zutaten_namen','rezept_zutaten', 'essenplan', 'einkaufsliste', 'vorratsschrank', 'rezepte', 'zutaten'];
+$tablesToReset = ['konventionen','zutaten_namen','rezept_zutaten', 'essenplan', 'einkaufsliste', 'vorratsschrank', 'rezepte', 'zutaten', 'kategorien'];
 foreach ($tablesToReset as $table) {
     $conn->query("DELETE FROM `$table`"); // Verwende DELETE statt TRUNCATE
     $conn->query("ALTER TABLE `$table` AUTO_INCREMENT = 1"); // Setze den Auto-Increment-Wert zurück, falls gewünscht
@@ -226,7 +231,79 @@ $result = $conn->query($sql);
 $row = $result->fetch_row();
 
 if ($row[0] == 0) {
-    // Schritt 2: Keine Rezepte vorhanden, füge Beispielrezepte ein
+    // Schritt 2: Füge Kategorien hinzu, falls noch nicht vorhanden (Optional, falls nicht bereits manuell hinzugefügt)
+    $kategorienSql = "INSERT INTO kategorien (name, sortierreihenfolge) VALUES
+    ('Obst & Gemüse', 1),
+    ('Bäckerei', 2),
+    ('Fleisch & Fisch', 3),
+    ('Milchprodukte & Eier', 4),
+    ('Tiefkühlkost', 5),
+    ('Konserven & Trockenwaren', 6),
+    ('Getränke', 7),
+    ('Süßwaren & Snacks', 8),
+    ('Gesundheit & Schönheit', 9),
+    ('Haushaltswaren', 10)
+    ON DUPLICATE KEY UPDATE name=VALUES(name);"; // Verhindert Duplikate, wenn Skript erneut ausgeführt wird.
+    $conn->query($kategorienSql);
+
+    // Verbindung zur Datenbank herstellen
+
+    $zutatenListe = [
+        ['name' => 'Äpfel', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30],
+        ['name' => 'Vollkornbrot', 'kategorie' => 'Bäckerei', 'haltbarkeit' => 7],
+        ['name' => 'Hähnchenbrust', 'kategorie' => 'Fleisch & Fisch', 'haltbarkeit' => 10],
+        ['name' => 'Joghurt', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 15],
+        ['name' => 'Tikka Masala Paste', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 180],
+        ['name' => 'Tomaten', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 10],
+        ['name' => 'Sahne', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 10],
+        ['name' => 'Ei', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 21],
+        ['name' => 'Speck', 'kategorie' => 'Fleisch & Fisch', 'haltbarkeit' => 14],
+        ['name' => 'Spaghetti', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365],
+        ['name' => 'Parmesan', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 60],
+        ['name' => 'Kokosmilch', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 180],
+        ['name' => 'Currypaste', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 180],
+        ['name' => 'Brokkoli', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 15],
+        ['name' => 'Karotten', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30],
+        ['name' => 'Römersalat', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 7],
+        ['name' => 'Croutons', 'kategorie' => 'Bäckerei', 'haltbarkeit' => 60],
+        ['name' => 'Caesar-Dressing', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 90],
+        ['name' => 'Linsen', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365],
+        ['name' => 'Zwiebel', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30],
+        ['name' => 'Sellerie', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 21],
+        ['name' => 'Gemüsebrühe', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365],
+        ['name' => 'Tofu', 'kategorie' => 'Gesundheit & Schönheit', 'haltbarkeit' => 60], // Tofu könnte auch unter "Kühlgut" fallen, je nach Datenbankdesign
+        ['name' => 'Tomatensoße', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365],
+        ['name' => 'Knoblauch', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 60],
+        ['name' => 'Pasta', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365],
+        ['name' => 'Zucchini', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30],
+        ['name' => 'Aubergine', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30],
+        ['name' => 'Paprika', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30],
+        ['name' => 'Thymian', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 180],
+        ['name' => 'Mehl', 'kategorie' => 'Bäckerei', 'haltbarkeit' => 365],
+        ['name' => 'Milch', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 10],
+        ['name' => 'Butter', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 30],
+        ['name' => 'Salz', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 1095] // Salz ist praktisch unbegrenzt haltbar, aber hier als 3 Jahre angegeben
+    ];
+    
+    
+    foreach ($zutatenListe as $zutat) {
+        // Ermittle die kategorie_id basierend auf dem Kategorienamen
+        $kategorieStmt = $conn->prepare("SELECT id FROM kategorien WHERE name = ?");
+        $kategorieStmt->bind_param("s", $zutat['kategorie']);
+        $kategorieStmt->execute();
+        $result = $kategorieStmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $kategorieId = $row['id'];
+
+            // Füge die Zutat in die Datenbank ein
+            $insertStmt = $conn->prepare("INSERT INTO zutaten (name, kategorie_id, haltbarkeit_tage) VALUES (?, ?, ?)");
+            $insertStmt->bind_param("sii", $zutat['name'], $kategorieId, $zutat['haltbarkeit']);
+            $insertStmt->execute();
+        }
+    }
+
+
+    // Schritt 2.1: Keine Rezepte vorhanden, füge Beispielrezepte ein
     $beispielRezepte = [
         [
         "titel" => "Chicken Tikka Masala",
@@ -1384,10 +1461,13 @@ checkUserAuthentication();
 
 $userId = $_SESSION['userId'];
 
-$sql = "SELECT zn.name, e.menge, e.verbrauchsdatum, e.id
+$heute = date("Y-m-d");
+
+$sql = "SELECT e.id, zn.name, e.menge, e.verbrauchsdatum, zn.oberkategorie
         FROM einkaufsliste e
         JOIN zutaten_namen zn ON e.zutat_id = zn.zutat_id
-        WHERE e.user_id = ?";
+        WHERE e.user_id = ? AND DATE_ADD(CURDATE(), INTERVAL zn.uebliche_haltbarkeit DAY) >= e.verbrauchsdatum
+        ORDER BY zn.oberkategorie ASC, e.verbrauchsdatum ASC";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $userId);
 $stmt->execute();
@@ -1399,6 +1479,7 @@ while ($row = $result->fetch_assoc()) {
         'name' => $row['name'],
         'menge' => $row['menge'],
         'verbrauchsdatum' => $row['verbrauchsdatum'],
+        'oberkategorie' => $row['oberkategorie'],
         'id' => $row['id']
     ];
 }
@@ -2176,10 +2257,15 @@ CREATE TABLE essenplan (
     FOREIGN KEY (rezept_id) REFERENCES rezepte(id)
 );
 
+
 CREATE TABLE zutaten (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    beschreibung TEXT
+    beschreibung TEXT,
+    uebliche_haltbarkeit INT DEFAULT 7 COMMENT 'Haltbarkeit in Tagen',
+    kategorie_id INT DEFAULT NULL,
+    FOREIGN KEY (kategorie_id) REFERENCES kategorien(id)
 );
+
 
 CREATE TABLE rezepte (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -2262,5 +2348,11 @@ CREATE TABLE unverpackte_gefaesse (
     beschreibung TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+CREATE TABLE kategorien (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    sortierreihenfolge INT NOT NULL
+);
+
 
 

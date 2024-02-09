@@ -9,10 +9,13 @@ checkUserAuthentication();
 
 $userId = $_SESSION['userId'];
 
-$sql = "SELECT zn.name, e.menge, e.verbrauchsdatum, e.id
+$heute = date("Y-m-d");
+
+$sql = "SELECT e.id, zn.name, e.menge, e.verbrauchsdatum, zn.oberkategorie
         FROM einkaufsliste e
         JOIN zutaten_namen zn ON e.zutat_id = zn.zutat_id
-        WHERE e.user_id = ?";
+        WHERE e.user_id = ? AND DATE_ADD(CURDATE(), INTERVAL zn.uebliche_haltbarkeit DAY) >= e.verbrauchsdatum
+        ORDER BY zn.oberkategorie ASC, e.verbrauchsdatum ASC";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $userId);
 $stmt->execute();
@@ -24,6 +27,7 @@ while ($row = $result->fetch_assoc()) {
         'name' => $row['name'],
         'menge' => $row['menge'],
         'verbrauchsdatum' => $row['verbrauchsdatum'],
+        'oberkategorie' => $row['oberkategorie'],
         'id' => $row['id']
     ];
 }

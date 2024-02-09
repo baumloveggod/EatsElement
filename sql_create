@@ -6,7 +6,7 @@ CREATE TABLE users (
     freundes_token VARCHAR(255) UNIQUE,
     einkaufsoption VARCHAR(255) DEFAULT 'ueblicheVerpackungsgroesse',
     is_temporary BOOLEAN NOT NULL DEFAULT 0,
-
+    anzahl_personen_einstellung INT DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     current_editing_recipe_id INT DEFAULT NULL;

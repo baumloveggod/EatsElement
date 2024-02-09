@@ -33,6 +33,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['einkaufsOption'])) {
         echo "<p>Fehler beim Speichern Ihrer Auswahl.</p>";
     }
 }
+// Überprüfen, ob das Formular abgesendet wurde
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['anzahlPersonen'])) {
+    $anzahlPersonen = intval($_POST['anzahlPersonen']);
+    $userId = $_SESSION['userId']; // Stellen Sie sicher, dass der Benutzer eingeloggt ist und Sie die Benutzer-ID haben
+
+    // Aktualisieren der Anzahl der Personen in der Datenbank
+    // Hinweis: Sie müssen eine neue Spalte in der Tabelle `users` oder eine neue Einstellungstabelle erstellen, um diese Einstellung zu speichern, wenn Sie dies noch nicht getan haben
+    $sql = "UPDATE users SET anzahl_personen_einstellung = ? WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    if ($stmt->bind_param("ii", $anzahlPersonen, $userId)) {
+        if (!$stmt->execute()) {
+            echo "Fehler beim Aktualisieren der Anzahl der Personen.";
+        }
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -46,8 +61,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['einkaufsOption'])) {
 
     <main>
         <h2>Einstellungen</h2>
-
-        
+        <h3>Anzahl der Personen für Rezepte</h3>
+            <form action="settings.php" method="post">
+                <label for="anzahlPersonen">Anzahl Personen:</label>
+                <input type="number" id="anzahlPersonen" name="anzahlPersonen" min="1" value="2" required> <!-- Angenommener Standardwert -->
+                <button type="submit">Speichern</button>
+            </form>
         <h2>Einstlungen, die noch nichts tun :)</h2>
         <form action="settings.php" method="post">
             <label>Wählen Sie Ihre bevorzugte Einkaufsmethode:</label>

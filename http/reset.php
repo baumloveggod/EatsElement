@@ -12,7 +12,7 @@ if (isset($_SESSION['is_temp_user'])) {
     exit; // Stoppt die Ausführung weiteren Codes
 }
 // Leere alle Tabellen außer 'users'
-$tablesToReset = ['konventionen','zutaten_namen','rezept_zutaten', 'essenplan', 'einkaufsliste', 'vorratsschrank', 'rezepte', 'zutaten', 'kategorien'];
+$tablesToReset = ['konventionen','zutaten_namen','rezept_zutaten', 'essenplan', 'einkaufsliste', 'vorratsschrank', 'rezepte','naehrstoffe', 'zutaten', 'kategorien'];
 foreach ($tablesToReset as $table) {
     $conn->query("DELETE FROM `$table`"); // Verwende DELETE statt TRUNCATE
     $conn->query("ALTER TABLE `$table` AUTO_INCREMENT = 1"); // Setze den Auto-Increment-Wert zurück, falls gewünscht

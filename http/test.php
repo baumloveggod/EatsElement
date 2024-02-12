@@ -28,20 +28,174 @@ if ($row[0] == 0) {
 
     // Verbindung zur Datenbank herstellen
 
-    $zutatenListe = [
-        ['name' => 'Äpfel', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30],
-        ['name' => 'Vollkornbrot', 'kategorie' => 'Bäckerei', 'haltbarkeit' => 7],
-        ['name' => 'Hähnchenbrust', 'kategorie' => 'Fleisch & Fisch', 'haltbarkeit' => 10],
-        ['name' => 'Joghurt', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 15],
-        ['name' => 'Tikka Masala Paste', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 180],
-        ['name' => 'Tomaten', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 10],
-        ['name' => 'Sahne', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 10],
-        ['name' => 'Ei', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 21],
-        ['name' => 'Speck', 'kategorie' => 'Fleisch & Fisch', 'haltbarkeit' => 14],
-        ['name' => 'Spaghetti', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365],
-        ['name' => 'Parmesan', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 60],
-        ['name' => 'Kokosmilch', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 180],
-        ['name' => 'Currypaste', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 180],
+    $zutatenListe = [[
+        'name' => 'Äpfel',
+        'kategorie' => 'Obst & Gemüse',
+        'haltbarkeit' => 30,
+        'naehrstoffe' => [
+            'kalorien' => 52,
+            'proteine' => 0.26,
+            'fette' => 0.17,
+            'kohlenhydrate' => 13.81,
+            'ballaststoffe' => 2.4,
+            'zucker' => 10.39
+        ]
+    ],
+    [
+        'name' => 'Vollkornbrot',
+        'kategorie' => 'Bäckerei',
+        'haltbarkeit' => 7,
+        'naehrstoffe' => [
+            'kalorien' => 247,
+            'proteine' => 13,
+            'fette' => 3.4,
+            'kohlenhydrate' => 41,
+            'ballaststoffe' => 7,
+            'zucker' => 6
+        ]
+    ],
+    [
+        'name' => 'Hühnchenbrust',
+        'kategorie' => 'Fleisch & Fisch',
+        'haltbarkeit' => 10,
+        'naehrstoffe' => [
+            'kalorien' => 165,
+            'proteine' => 31,
+            'fette' => 3.6,
+            'kohlenhydrate' => 0,
+            'ballaststoffe' => 0,
+            'zucker' => 0
+        ]
+    ],
+    [
+        'name' => 'Joghurt',
+        'kategorie' => 'Milchprodukte & Eier',
+        'haltbarkeit' => 15,
+        'naehrstoffe' => [
+            'kalorien' => 59,
+            'proteine' => 10,
+            'fette' => 0.4,
+            'kohlenhydrate' => 3.6,
+            'ballaststoffe' => 0,
+            'zucker' => 3.6
+        ]
+    ],
+    [
+        'name' => 'Tikka Masala Paste',
+        'kategorie' => 'Konserven & Trockenwaren',
+        'haltbarkeit' => 180,
+        'naehrstoffe' => [
+            'kalorien' => 150,
+            'proteine' => 2,
+            'fette' => 8,
+            'kohlenhydrate' => 18,
+            'ballaststoffe' => 2,
+            'zucker' => 12
+        ]
+    ],[
+        'name' => 'Tomaten',
+        'kategorie' => 'Obst & Gemüse',
+        'haltbarkeit' => 10,
+        'naehrstoffe' => [
+            'kalorien' => 18,
+            'proteine' => 0.88,
+            'fette' => 0.2,
+            'kohlenhydrate' => 3.89,
+            'ballaststoffe' => 1.2,
+            'zucker' => 2.63
+        ]
+    ],
+    [
+        'name' => 'Sahne',
+        'kategorie' => 'Milchprodukte & Eier',
+        'haltbarkeit' => 10,
+        'naehrstoffe' => [
+            'kalorien' => 342,
+            'proteine' => 2.9,
+            'fette' => 36,
+            'kohlenhydrate' => 2.7,
+            'ballaststoffe' => 0,
+            'zucker' => 2.7
+        ]
+    ],
+    [
+        'name' => 'Ei',
+        'kategorie' => 'Milchprodukte & Eier',
+        'haltbarkeit' => 21,
+        'naehrstoffe' => [
+            'kalorien' => 155,
+            'proteine' => 13,
+            'fette' => 11,
+            'kohlenhydrate' => 1.1,
+            'ballaststoffe' => 0,
+            'zucker' => 1.1
+        ]
+    ],
+    [
+        'name' => 'Speck',
+        'kategorie' => 'Fleisch & Fisch',
+        'haltbarkeit' => 14,
+        'naehrstoffe' => [
+            'kalorien' => 541,
+            'proteine' => 37,
+            'fette' => 42,
+            'kohlenhydrate' => 1.4,
+            'ballaststoffe' => 0,
+            'zucker' => 0
+        ]
+    ],
+    [
+        'name' => 'Spaghetti',
+        'kategorie' => 'Konserven & Trockenwaren',
+        'haltbarkeit' => 365,
+        'naehrstoffe' => [
+            'kalorien' => 158,
+            'proteine' => 5.8,
+            'fette' => 0.9,
+            'kohlenhydrate' => 31,
+            'ballaststoffe' => 1.8,
+            'zucker' => 0.8
+        ]
+    ],
+    [
+        'name' => 'Parmesan',
+        'kategorie' => 'Milchprodukte & Eier',
+        'haltbarkeit' => 60,
+        'naehrstoffe' => [
+            'kalorien' => 431,
+            'proteine' => 38,
+            'fette' => 29,
+            'kohlenhydrate' => 4.1,
+            'ballaststoffe' => 0,
+            'zucker' => 0.9
+        ]
+    ],
+    [
+        'name' => 'Kokosmilch',
+        'kategorie' => 'Konserven & Trockenwaren',
+        'haltbarkeit' => 180,
+        'naehrstoffe' => [
+            'kalorien' => 230,
+            'proteine' => 2.3,
+            'fette' => 24,
+            'kohlenhydrate' => 6,
+            'ballaststoffe' => 2.2,
+            'zucker' => 3.3
+        ]
+    ],
+    [
+        'name' => 'Currypaste',
+        'kategorie' => 'Konserven & Trockenwaren',
+        'haltbarkeit' => 180,
+        'naehrstoffe' => [
+            'kalorien' => 325,
+            'proteine' => 3.8,
+            'fette' => 17,
+            'kohlenhydrate' => 40,
+            'ballaststoffe' => 9.8,
+            'zucker' => 29
+        ]
+    ],
         ['name' => 'Brokkoli', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 15],
         ['name' => 'Karotten', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30],
         ['name' => 'Römersalat', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 7],
@@ -85,6 +239,10 @@ if ($row[0] == 0) {
             $insertStmtNamen->execute();
 
         }
+        // Neuer Code zum Einfügen der Nährstoffdaten
+        $insertStmtNaehrstoffe = $conn->prepare("INSERT INTO naehrstoffe (zutat_id, kalorien, proteine, fette, kohlenhydrate, ballaststoffe, zucker) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $insertStmtNaehrstoffe->bind_param("idddddd", $zutatId, $zutat['naehrstoffe']['kalorien'], $zutat['naehrstoffe']['proteine'], $zutat['naehrstoffe']['fette'], $zutat['naehrstoffe']['kohlenhydrate'], $zutat['naehrstoffe']['ballaststoffe'], $zutat['naehrstoffe']['zucker']);
+        $insertStmtNaehrstoffe->execute();
     }
 
 
@@ -183,7 +341,9 @@ if ($row[0] == 0) {
 
     $stmtRezept = $conn->prepare("INSERT INTO rezepte (titel, beschreibung, zubereitungszeit) VALUES (?, ?, ?)");
     $stmtCheckZutat = $conn->prepare("SELECT zutat_id FROM zutaten_namen WHERE name = ?");
-    $stmtZutaten = $conn->prepare("INSERT INTO rezept_zutaten (rezept_id, zutat_id, menge) VALUES (?, ?, ?)");
+    $stmtZutaten = $conn->prepare("INSERT INTO rezept_zutaten (rezept_id, zutat_id, menge, einheit_id) VALUES (?, ?, ?, ?)");
+    
+    
     foreach ($beispielRezepte as $rezept) {
         $stmtRezept->bind_param("ssi", $rezept['titel'], $rezept['beschreibung'], $rezept['zubereitungszeit']);
         $stmtRezept->execute();
@@ -199,30 +359,33 @@ if ($row[0] == 0) {
                 // Zutat exists, get its id
                 $row = $result->fetch_assoc();
                 $zutatId = $row['zutat_id'];
-            } else {
-                // Zutat does not exist, insert and get id
-                
-                $stmtInsertZutat = $conn->prepare("INSERT INTO zutaten () VALUES ()");
-                $stmtInsertZutat->execute();
-                $zutatId = $conn->insert_id;
-            
-                // Insert into zutaten_namen
-                $stmtInsertZutatName = $conn->prepare("INSERT INTO zutaten_namen (name, zutat_id) VALUES (?, ?)");
-                $stmtInsertZutatName->bind_param("si", $zutat['name'], $zutatId);
-                $stmtInsertZutatName->execute();
-                $zutatenNameId = $conn->insert_id;
-            
-                // Insert into konventionen (wenn nötig, können Sie hier auch eine plural_name_id hinzufügen)
-                $stmtInsertKonvention = $conn->prepare("INSERT INTO konventionen (single_name_id, zutat_id) VALUES (?, ?)");
-                $stmtInsertKonvention->bind_param("ii", $zutatenNameId, $zutatId);
-                $stmtInsertKonvention->execute();
             }
-            // Now insert into rezept_zutaten with the correct zutatId
-            $stmtZutaten->bind_param("iis", $rezeptId, $zutatId, $zutat['menge']);
-            $stmtZutaten->execute();
+            // Extract quantity and unit from 'menge'
+        preg_match('/^(\d+)\s*(.*)$/', $zutat['menge'], $matches);
+        $quantity = (int)$matches[1];
+        $unit = trim($matches[2]);
+
+        // Check if the unit exists in 'einheiten', insert if not
+        $stmtCheckEinheit = $conn->prepare("SELECT id FROM einheiten WHERE name = ?");
+        $stmtCheckEinheit->bind_param("s", $unit);
+        $stmtCheckEinheit->execute();
+        $resultEinheit = $stmtCheckEinheit->get_result();
+        if ($resultEinheit->num_rows === 0) {
+            $stmtInsertEinheit = $conn->prepare("INSERT INTO einheiten (name) VALUES (?)");
+            $stmtInsertEinheit->bind_param("s", $unit);
+            $stmtInsertEinheit->execute();
+            $einheitId = $conn->insert_id;
+        } else {
+            $rowEinheit = $resultEinheit->fetch_assoc();
+            $einheitId = $rowEinheit['id'];
         }
+
+        // Insert into rezept_zutaten with the correct zutatId, quantity, and einheit_id
+        // Note: You must adjust the database schema or the statement if you haven't a column for quantity or if the einheit_id is handled differently
+        $stmtZutaten->bind_param("iiis", $rezeptId, $zutatId, $quantity, $einheitId);
+        $stmtZutaten->execute();
     }
-    echo "Beispielrezepte und Zutatenverbindungen wurden hinzugefügt.";
+}
 } else {
     echo "Es sind bereits Rezepte in der Datenbank vorhanden.";
 }

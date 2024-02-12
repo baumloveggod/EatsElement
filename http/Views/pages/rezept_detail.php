@@ -11,6 +11,7 @@ $userId = $_SESSION['userId'];
 
 $datum = $_GET['datum'] ?? date("Y-m-d");
 
+
 $sql = "SELECT r.titel, r.beschreibung, e.rezept_id
         FROM essenplan e
         JOIN rezepte r ON e.rezept_id = r.id
@@ -49,26 +50,50 @@ if ($result->num_rows === 0) {
                     $rowAnzahlPersonen = $resultAnzahlPersonen->fetch_assoc();
                     $anzahlPersonen = $rowAnzahlPersonen['anzahl_personen'];
 
-                    $sqlZutaten = "SELECT zn.name, rz.menge, 
-                                   IF(vs.id IS NOT NULL, 'Im Vorrat', 'Einkaufen') AS status
-                                   FROM rezept_zutaten rz
-                                   JOIN zutaten_namen zn ON rz.zutat_id = zn.zutat_id
-                                   LEFT JOIN vorratsschrank vs ON zn.zutat_id = vs.zutat_id AND vs.user_id = $userId
-                                   WHERE rz.rezept_id = $rezeptId";
+                    // Prepare the SQL statement with placeholders
+                    $sqlZutaten = "SELECT zn.name, rz.menge, e.name AS einheit, 
+                    IF(vs.id IS NOT NULL, 'Im Vorrat', 'Einkaufen') AS status 
+                    FROM rezept_zutaten rz 
+                    LEFT JOIN einheiten e ON rz.einheit_id = e.id 
+                    JOIN zutaten_namen zn ON rz.zutat_id = zn.zutat_id 
+                    LEFT JOIN vorratsschrank vs ON zn.zutat_id = vs.zutat_id AND vs.user_id = ? 
+                    WHERE rz.rezept_id = ?";
 
-                    $resultZutaten = $conn->query($sqlZutaten);
+                    // Prepare the statement
+                    $stmt = $conn->prepare($sqlZutaten);
 
+                    // Bind parameters to the prepared statement
+                    $stmt->bind_param("ii", $userId, $rezeptId); // "ii" means both parameters are integers
+
+                    // Execute the prepared statement
+                    $stmt->execute();
+
+                    // Get the result of the query
+                    $resultZutaten = $stmt->get_result();
+
+                    // Check if there are results
                     if ($resultZutaten->num_rows > 0) {
-                        echo "<p>Zutatenliste und Verfügbarkeit:</p>";
-                        echo "<ul>";
-                        while ($zutat = $resultZutaten->fetch_assoc()) {
-                            echo "<li>" . htmlspecialchars($zutat['name']) . " - " . htmlspecialchars($zutat['menge']) . " (" . htmlspecialchars($zutat['status']) . ")</li>";
-                        }
-                        echo "</ul>";
-                    } else {
-                        echo "Keine Zutaten gefunden.";
+                    echo "<p>Zutatenliste und Verfügbarkeit:</p>";
+                    echo "<ul>";
+                    while ($zutat = $resultZutaten->fetch_assoc()) {
+                    // Correctly concatenate and escape output to prevent XSS
+                    echo "<li>" . htmlspecialchars($zutat['name']) . " - " . htmlspecialchars($zutat['menge']) . " " . htmlspecialchars($zutat['einheit']) . " (" . htmlspecialchars($zutat['status']) . ")</li>";
                     }
+                    echo "</ul>";
+                    } else {
+                    echo "Keine Zutaten gefunden.";
+                    }
+
+                    // Close the statement
+                    $stmt->close();
                 ?>
+                <form action="updatePersonenanzahl.php" method="post">
+                    <input type="hidden" name="datum" value="<?= htmlspecialchars($datum); ?>">
+                    <label for="anzahlPersonen">Anzahl Personen:</label>
+                    <input type="number" id="anzahlPersonen" name="anzahlPersonen" value="<?= $anzahlPersonen; ?>" min="1">
+                    <button type="submit">Aktualisieren</button>
+                </form>
+
             </section>
 
             <!-- Während des Kochens -->

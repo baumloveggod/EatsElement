@@ -912,6 +912,54 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 ?>
 
 
+Path: ./http/Controllers\PlanRecipe.php
+Content:
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once '../Utils/SessionManager.php';
+require_once '../Utils/db_connect.php';
+checkUserAuthentication();
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['rezept_id'], $_POST['datum'])) {
+    $rezeptId = $_POST['rezept_id'];
+    $datum = $_POST['datum'];
+    $userId = $_SESSION['userId'];
+
+    // Überprüfen, ob für diesen Tag bereits ein Essen geplant ist
+    $checkSql = "SELECT id FROM essenplan WHERE user_id = ? AND datum = ?";
+    $checkStmt = $conn->prepare($checkSql);
+    $checkStmt->bind_param("is", $userId, $datum);
+    $checkStmt->execute();
+    $result = $checkStmt->get_result();
+
+    if ($result->num_rows === 0) {
+        // Kein Essen geplant, füge das neue Rezept ein
+        $insertSql = "INSERT INTO essenplan (user_id, datum, rezept_id, anzahl_personen) VALUES (?, ?, ?, ?)";
+        $insertStmt = $conn->prepare($insertSql);
+        // Die Anzahl der Personen könnte dynamisch angepasst werden, hier verwenden wir einen Standardwert
+        $anzahlPersonen = 4;
+        $insertStmt->bind_param("isii", $userId, $datum, $rezeptId, $anzahlPersonen);
+
+        if ($insertStmt->execute()) {
+            //echo "Rezept erfolgreich für $datum geplant.";
+        } else {
+            echo "Fehler beim Planen des Rezepts.";
+        }
+    } else {
+        echo "Für dieses Datum ist bereits ein Essen geplant.";
+    }
+
+    $conn->close();
+    // Leite zurück zur Rezeptdetailseite oder zum Essenplan
+    header("Location: /Views/pages/rezept_detail.php?datum=" . urlencode($datum));
+    exit;
+}
+?>
+
+
 Path: ./http/Controllers\register.php
 Content:
 <?php
@@ -1618,37 +1666,58 @@ $userId = $_SESSION['userId'];
 $startDatum = $_GET['start'] ?? date('Y-m-01'); // Standardmäßig der erste Tag des aktuellen Monats
 $endDatum = $_GET['end'] ?? date('Y-m-t'); // Standardmäßig der letzte Tag des aktuellen Monats
 
+// SQL-Abfrage, um die Daten zu holen
 $sql = "SELECT 
+            e.datum,
             phd.Kategorie,
-            SUM(rz.menge) AS verbrauchte_menge,
-            phd.Taegliche_Menge_g
-        FROM essenplan e 
-        JOIN rezept_zutaten rz ON e.rezept_id = rz.rezept_id
-        JOIN zutaten z ON rz.zutat_id = z.id
-        JOIN Planetary_Health_Diet_Categories phd ON z.phd_kategorie_id = phd.ID
+            SUM(rz.menge) AS tatsaechliche_menge,
+            phd.Taegliche_Menge_g AS empfohlene_menge
+        FROM essenplan e
+        INNER JOIN rezept_zutaten rz ON e.rezept_id = rz.rezept_id
+        INNER JOIN zutaten z ON rz.zutat_id = z.id
+        INNER JOIN Planetary_Health_Diet_Categories phd ON z.phd_kategorie_id = phd.ID
         WHERE e.user_id = ? AND e.datum BETWEEN ? AND ?
-        GROUP BY phd.Kategorie, phd.Taegliche_Menge_g";
+        GROUP BY e.datum, phd.Kategorie
+        ORDER BY e.datum, phd.Kategorie;";
 
-
-// Führen Sie die SQL-Abfrage aus
 $stmt = $conn->prepare($sql);
-if (!$stmt) {
-    // Handle error here, for example:
-    echo "Error preparing statement: " . $conn->error;
-    exit;
-}
 $stmt->bind_param("iss", $userId, $startDatum, $endDatum);
-if (!$stmt->execute()) {
-    // Handle error here
-    echo "Error executing statement: " . $stmt->error;
-    exit;
-}
+$stmt->execute();
 $result = $stmt->get_result();
 
+// Initialisieren eines Arrays für jede Kategorie mit tatsächlicher und empfohlener Menge
 $konsumDaten = [];
+
 while ($row = $result->fetch_assoc()) {
-    $konsumDaten[] = $row;
+    $kategorie = $row['Kategorie'];
+    $tatsaechlicheMenge = $row['tatsaechliche_menge'];
+    $empfohleneMenge = $row['empfohlene_menge'];
+
+    // Berechnung des Verhältnisses für jede Kategorie
+    if (!isset($konsumDaten[$kategorie])) {
+        $konsumDaten[$kategorie] = [
+            'tatsaechlich' => 0,
+            'empfohlen' => $empfohleneMenge,
+            'verhaeltnis' => 0 // Initialwert
+        ];
+    }
+
+    $konsumDaten[$kategorie]['tatsaechlich'] += $tatsaechlicheMenge;
 }
+
+// Berechnung des Verhältnisses der tatsächlichen zur empfohlenen Menge in Prozent
+foreach ($konsumDaten as $kategorie => $daten) {
+    $konsumDaten[$kategorie]['verhaeltnis'] = ($daten['tatsaechlich'] / $daten['empfohlen']) * 100;
+}
+
+// Vorbereitung der Daten für den Chart
+$chartLabels = array_keys($konsumDaten);
+$chartData = array_column($konsumDaten, 'verhaeltnis');
+
+// Nachdem $chartLabels und $chartData definiert wurden
+var_dump($chartLabels);
+var_dump($chartData);
+    
 ?>
 
 
@@ -1661,35 +1730,45 @@ while ($row = $result->fetch_assoc()) {
 </head>
 <body>
     <h1>Mein Planetary Health Diet Konsum</h1>
-    <canvas id="phdChart" width="400" height="400"></canvas>
+    <canvas id="phdChart" width="800" height="400"></canvas>
 
     <script>
+        const chartLabels = <?= json_encode($chartLabels) ?>; // Annahme: Dies sind die Daten
+        const chartData = <?= json_encode($chartData) ?>; // Annahme: Dies sind die Prozentwerte
+
         const ctx = document.getElementById('phdChart').getContext('2d');
         const phdChart = new Chart(ctx, {
-            type: 'bar', // oder ein anderer Chart-Typ je nach Vorliebe
+            type: 'line', // Änderung zu 'line' für ein Liniendiagramm
             data: {
-                labels: <?= json_encode(array_column($konsumDaten, 'Kategorie')) ?>,
+                labels: chartLabels, // Zeitachse
                 datasets: [{
-                    label: 'Verbrauchte Menge',
-                    data: <?= json_encode(array_column($konsumDaten, 'verbrauchte_menge')) ?>,
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Empfohlene tägliche Menge',
-                    data: <?= json_encode(array_column($konsumDaten, 'Taegliche_Menge_g')) ?>,
-                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                    borderColor: 'rgba(255, 99, 132, 1)',
-                    borderWidth: 1
+                    label: 'Prozentualer Verbrauch im Verhältnis zur Empfehlung',
+                    data: chartData, // Prozentwerte
+                    fill: false,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    tension: 0.1 // Macht die Linie ein wenig glatter
                 }]
             },
             options: {
                 scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'day',
+                            tooltipFormat: 'DD.MM.YYYY'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Datum'
+                        }
+                    },
                     y: {
-                        beginAtZero: true
+                        beginAtZero: true,
+                        suggestedMax: 200 // Passt das Y-Achsen-Maximum an
                     }
-                }
+                },
+                responsive: true,
+                maintainAspectRatio: false
             }
         });
     </script>
@@ -2342,12 +2421,82 @@ if ($result->num_rows > 0) {
     <main>
         <?php if ($rezept): ?>
             <h2><?= htmlspecialchars($rezept['titel']); ?></h2>
+            <!-- Vor dem Kochen -->
             <section>
                 <h3>Vor dem Kochen</h3>
-                <p><?= htmlspecialchars($rezept['beschreibung']); ?></p>
-                <!-- Weitere Inhalte wie Zutatenliste und Personenanzahl aktualisieren -->
+                <?php
+                    $sqlAnzahlPersonen = "SELECT anzahl_personen FROM essenplan WHERE user_id = $userId AND datum = '$datum'";
+                    $resultAnzahlPersonen = $conn->query($sqlAnzahlPersonen);
+                    $rowAnzahlPersonen = $resultAnzahlPersonen->fetch_assoc();
+                    $anzahlPersonen = $rowAnzahlPersonen['anzahl_personen'];
+
+                    // Prepare the SQL statement with placeholders
+                    $sqlZutaten = "SELECT zn.name, rz.menge, e.name AS einheit, 
+                    IF(vs.id IS NOT NULL, 'Im Vorrat', 'Einkaufen') AS status 
+                    FROM rezept_zutaten rz 
+                    LEFT JOIN einheiten e ON rz.einheit_id = e.id 
+                    JOIN zutaten_namen zn ON rz.zutat_id = zn.zutat_id 
+                    LEFT JOIN vorratsschrank vs ON zn.zutat_id = vs.zutat_id AND vs.user_id = ? 
+                    WHERE rz.rezept_id = ?";
+
+                    // Prepare the statement
+                    $stmt = $conn->prepare($sqlZutaten);
+
+                    // Bind parameters to the prepared statement
+                    $stmt->bind_param("ii", $userId, $rezept['rezept_id']); // "ii" means both parameters are integers
+
+                    // Execute the prepared statement
+                    $stmt->execute();
+
+                    // Get the result of the query
+                    $resultZutaten = $stmt->get_result();
+
+                    // Check if there are results
+                    if ($resultZutaten->num_rows > 0) {
+                    echo "<p>Zutatenliste und Verfügbarkeit:</p>";
+                    echo "<ul>";
+                    while ($zutat = $resultZutaten->fetch_assoc()) {
+                    // Correctly concatenate and escape output to prevent XSS
+                    echo "<li>" . htmlspecialchars($zutat['name']) . " - " . htmlspecialchars($zutat['menge']) . " " . htmlspecialchars($zutat['einheit']) . " (" . htmlspecialchars($zutat['status']) . ")</li>";
+                    }
+                    echo "</ul>";
+                    } else {
+                    echo "Keine Zutaten gefunden.";
+                    }
+
+                    // Close the statement
+                    $stmt->close();
+                ?>
+                <form action="updatePersonenanzahl.php" method="post">
+                    <input type="hidden" name="datum" value="<?= htmlspecialchars($datum); ?>">
+                    <label for="anzahlPersonen">Anzahl Personen:</label>
+                    <input type="number" id="anzahlPersonen" name="anzahlPersonen" value="<?= $anzahlPersonen; ?>" min="1">
+                    <button type="submit">Aktualisieren</button>
+                </form>
+
             </section>
-            <!-- Weitere Abschnitte für "Während des Kochens" und "Nach dem Essen" -->
+
+            <!-- Während des Kochens -->
+            <section>
+                <h3>Während des Kochens</h3>
+                <p>... Kochanweisungen und Details ...</p>
+            </section>
+
+            <!-- Nach dem Essen -->
+            <section>
+                <h3>Nach dem Essen</h3>
+                <p>Reflektion und Planung:</p>
+                <ul>
+                    <li><a href="#">Wie hat es geschmeckt?(noch nicht implementiert)</a></li>
+                    <li><a href="#">Noch Hunger?(noch nicht implementiert)</a></li>
+                    <li><a href="#">Gibt es Reste?(noch nicht implementiert)</a>
+                        <ul>
+                            <li><a href="#">Für morgen aufheben(noch nicht implementiert)</a></li>
+                            <li><a href="#">Dem Nachbarn geben(noch nicht implementiert)</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
         <?php else: ?>
             <h2>Kein Rezept für das gewählte Datum gefunden</h2>
             <?php if (!empty($zufallsRezepte)): ?>
@@ -2355,6 +2504,11 @@ if ($result->num_rows > 0) {
                 <ul>
                     <?php foreach ($zufallsRezepte as $rezeptZufall): ?>
                         <li><a href='rezept_detail.php?rezeptId=<?= $rezeptZufall['id'] ?>'><?= htmlspecialchars($rezeptZufall['titel']) ?></a></li>
+                        <form action="/Controllers/PlanRecipe.php" method="post">
+                            <input type="hidden" name="rezept_id" value="<?= $rezeptZufall['id'] ?>">
+                            <input type="hidden" name="datum" value="<?= $datum ?>">
+                            <button type="submit"> asuwahl</button>
+                        </form>
                     <?php endforeach; ?>
                 </ul>
             <?php endif; ?>

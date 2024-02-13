@@ -13,37 +13,58 @@ $userId = $_SESSION['userId'];
 $startDatum = $_GET['start'] ?? date('Y-m-01'); // Standardmäßig der erste Tag des aktuellen Monats
 $endDatum = $_GET['end'] ?? date('Y-m-t'); // Standardmäßig der letzte Tag des aktuellen Monats
 
+// SQL-Abfrage, um die Daten zu holen
 $sql = "SELECT 
+            e.datum,
             phd.Kategorie,
-            SUM(rz.menge) AS verbrauchte_menge,
-            phd.Taegliche_Menge_g
-        FROM essenplan e 
-        JOIN rezept_zutaten rz ON e.rezept_id = rz.rezept_id
-        JOIN zutaten z ON rz.zutat_id = z.id
-        JOIN Planetary_Health_Diet_Categories phd ON z.phd_kategorie_id = phd.ID
+            SUM(rz.menge) AS tatsaechliche_menge,
+            phd.Taegliche_Menge_g AS empfohlene_menge
+        FROM essenplan e
+        INNER JOIN rezept_zutaten rz ON e.rezept_id = rz.rezept_id
+        INNER JOIN zutaten z ON rz.zutat_id = z.id
+        INNER JOIN Planetary_Health_Diet_Categories phd ON z.phd_kategorie_id = phd.ID
         WHERE e.user_id = ? AND e.datum BETWEEN ? AND ?
-        GROUP BY phd.Kategorie, phd.Taegliche_Menge_g";
+        GROUP BY e.datum, phd.Kategorie
+        ORDER BY e.datum, phd.Kategorie;";
 
-
-// Führen Sie die SQL-Abfrage aus
 $stmt = $conn->prepare($sql);
-if (!$stmt) {
-    // Handle error here, for example:
-    echo "Error preparing statement: " . $conn->error;
-    exit;
-}
 $stmt->bind_param("iss", $userId, $startDatum, $endDatum);
-if (!$stmt->execute()) {
-    // Handle error here
-    echo "Error executing statement: " . $stmt->error;
-    exit;
-}
+$stmt->execute();
 $result = $stmt->get_result();
 
+// Initialisieren eines Arrays für jede Kategorie mit tatsächlicher und empfohlener Menge
 $konsumDaten = [];
+
 while ($row = $result->fetch_assoc()) {
-    $konsumDaten[] = $row;
+    $kategorie = $row['Kategorie'];
+    $tatsaechlicheMenge = $row['tatsaechliche_menge'];
+    $empfohleneMenge = $row['empfohlene_menge'];
+
+    // Berechnung des Verhältnisses für jede Kategorie
+    if (!isset($konsumDaten[$kategorie])) {
+        $konsumDaten[$kategorie] = [
+            'tatsaechlich' => 0,
+            'empfohlen' => $empfohleneMenge,
+            'verhaeltnis' => 0 // Initialwert
+        ];
+    }
+
+    $konsumDaten[$kategorie]['tatsaechlich'] += $tatsaechlicheMenge;
 }
+
+// Berechnung des Verhältnisses der tatsächlichen zur empfohlenen Menge in Prozent
+foreach ($konsumDaten as $kategorie => $daten) {
+    $konsumDaten[$kategorie]['verhaeltnis'] = ($daten['tatsaechlich'] / $daten['empfohlen']) * 100;
+}
+
+// Vorbereitung der Daten für den Chart
+$chartLabels = array_keys($konsumDaten);
+$chartData = array_column($konsumDaten, 'verhaeltnis');
+
+// Nachdem $chartLabels und $chartData definiert wurden
+var_dump($chartLabels);
+var_dump($chartData);
+    
 ?>
 
 
@@ -56,35 +77,45 @@ while ($row = $result->fetch_assoc()) {
 </head>
 <body>
     <h1>Mein Planetary Health Diet Konsum</h1>
-    <canvas id="phdChart" width="400" height="400"></canvas>
+    <canvas id="phdChart" width="800" height="400"></canvas>
 
     <script>
+        const chartLabels = <?= json_encode($chartLabels) ?>; // Annahme: Dies sind die Daten
+        const chartData = <?= json_encode($chartData) ?>; // Annahme: Dies sind die Prozentwerte
+
         const ctx = document.getElementById('phdChart').getContext('2d');
         const phdChart = new Chart(ctx, {
-            type: 'bar', // oder ein anderer Chart-Typ je nach Vorliebe
+            type: 'line', // Änderung zu 'line' für ein Liniendiagramm
             data: {
-                labels: <?= json_encode(array_column($konsumDaten, 'Kategorie')) ?>,
+                labels: chartLabels, // Zeitachse
                 datasets: [{
-                    label: 'Verbrauchte Menge',
-                    data: <?= json_encode(array_column($konsumDaten, 'verbrauchte_menge')) ?>,
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Empfohlene tägliche Menge',
-                    data: <?= json_encode(array_column($konsumDaten, 'Taegliche_Menge_g')) ?>,
-                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                    borderColor: 'rgba(255, 99, 132, 1)',
-                    borderWidth: 1
+                    label: 'Prozentualer Verbrauch im Verhältnis zur Empfehlung',
+                    data: chartData, // Prozentwerte
+                    fill: false,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    tension: 0.1 // Macht die Linie ein wenig glatter
                 }]
             },
             options: {
                 scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'day',
+                            tooltipFormat: 'DD.MM.YYYY'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Datum'
+                        }
+                    },
                     y: {
-                        beginAtZero: true
+                        beginAtZero: true,
+                        suggestedMax: 200 // Passt das Y-Achsen-Maximum an
                     }
-                }
+                },
+                responsive: true,
+                maintainAspectRatio: false
             }
         });
     </script>

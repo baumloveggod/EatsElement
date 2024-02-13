@@ -8,22 +8,26 @@ require_once '../../Utils/db_connect.php';
 checkUserAuthentication();
 
 $userId = $_SESSION['userId'];
-
 $datum = $_GET['datum'] ?? date("Y-m-d");
+$rezept = null;
+$zufallsRezepte = [];
 
+// Versuche, ein Rezept für das gewählte Datum zu finden
+$sql = "SELECT r.titel, r.beschreibung, e.rezept_id FROM essenplan e JOIN rezepte r ON e.rezept_id = r.id WHERE e.user_id = ? AND e.datum = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("is", $userId, $datum);
+$stmt->execute();
+$result = $stmt->get_result();
 
-$sql = "SELECT r.titel, r.beschreibung, e.rezept_id
-        FROM essenplan e
-        JOIN rezepte r ON e.rezept_id = r.id
-        WHERE e.user_id = $userId AND e.datum = '$datum'";
-
-$result = $conn->query($sql);
-
-if ($result->num_rows === 0) {
-    echo "Kein Rezept für das gewählte Datum gefunden.";
-} else {
+if ($result->num_rows > 0) {
     $rezept = $result->fetch_assoc();
-    $rezeptId = $rezept['rezept_id'];
+} else {
+    // Kein Rezept gefunden, hole drei zufällige Rezepte
+    $zufallsRezepteSql = "SELECT id, titel FROM rezepte ORDER BY RAND() LIMIT 3";
+    $resultZufallsRezepte = $conn->query($zufallsRezepteSql);
+    while ($rezeptZufall = $resultZufallsRezepte->fetch_assoc()) {
+        $zufallsRezepte[] = $rezeptZufall;
+    }
 }
 ?>
 
@@ -38,92 +42,27 @@ if ($result->num_rows === 0) {
         <?php include '../templates/navigation.php'; ?>
     </header>
     <main>
-        <?php if (isset($rezept)): ?>
+        <?php if ($rezept): ?>
             <h2><?= htmlspecialchars($rezept['titel']); ?></h2>
-
-            <!-- Vor dem Kochen -->
             <section>
                 <h3>Vor dem Kochen</h3>
-                <?php
-                    $sqlAnzahlPersonen = "SELECT anzahl_personen FROM essenplan WHERE user_id = $userId AND datum = '$datum'";
-                    $resultAnzahlPersonen = $conn->query($sqlAnzahlPersonen);
-                    $rowAnzahlPersonen = $resultAnzahlPersonen->fetch_assoc();
-                    $anzahlPersonen = $rowAnzahlPersonen['anzahl_personen'];
-
-                    // Prepare the SQL statement with placeholders
-                    $sqlZutaten = "SELECT zn.name, rz.menge, e.name AS einheit, 
-                    IF(vs.id IS NOT NULL, 'Im Vorrat', 'Einkaufen') AS status 
-                    FROM rezept_zutaten rz 
-                    LEFT JOIN einheiten e ON rz.einheit_id = e.id 
-                    JOIN zutaten_namen zn ON rz.zutat_id = zn.zutat_id 
-                    LEFT JOIN vorratsschrank vs ON zn.zutat_id = vs.zutat_id AND vs.user_id = ? 
-                    WHERE rz.rezept_id = ?";
-
-                    // Prepare the statement
-                    $stmt = $conn->prepare($sqlZutaten);
-
-                    // Bind parameters to the prepared statement
-                    $stmt->bind_param("ii", $userId, $rezeptId); // "ii" means both parameters are integers
-
-                    // Execute the prepared statement
-                    $stmt->execute();
-
-                    // Get the result of the query
-                    $resultZutaten = $stmt->get_result();
-
-                    // Check if there are results
-                    if ($resultZutaten->num_rows > 0) {
-                    echo "<p>Zutatenliste und Verfügbarkeit:</p>";
-                    echo "<ul>";
-                    while ($zutat = $resultZutaten->fetch_assoc()) {
-                    // Correctly concatenate and escape output to prevent XSS
-                    echo "<li>" . htmlspecialchars($zutat['name']) . " - " . htmlspecialchars($zutat['menge']) . " " . htmlspecialchars($zutat['einheit']) . " (" . htmlspecialchars($zutat['status']) . ")</li>";
-                    }
-                    echo "</ul>";
-                    } else {
-                    echo "Keine Zutaten gefunden.";
-                    }
-
-                    // Close the statement
-                    $stmt->close();
-                ?>
-                <form action="updatePersonenanzahl.php" method="post">
-                    <input type="hidden" name="datum" value="<?= htmlspecialchars($datum); ?>">
-                    <label for="anzahlPersonen">Anzahl Personen:</label>
-                    <input type="number" id="anzahlPersonen" name="anzahlPersonen" value="<?= $anzahlPersonen; ?>" min="1">
-                    <button type="submit">Aktualisieren</button>
-                </form>
-
+                <p><?= htmlspecialchars($rezept['beschreibung']); ?></p>
+                <!-- Weitere Inhalte wie Zutatenliste und Personenanzahl aktualisieren -->
             </section>
-
-            <!-- Während des Kochens -->
-            <section>
-                <h3>Während des Kochens</h3>
-                <p>... Kochanweisungen und Details ...</p>
-            </section>
-
-            <!-- Nach dem Essen -->
-            <section>
-                <h3>Nach dem Essen</h3>
-                <p>Reflektion und Planung:</p>
+            <!-- Weitere Abschnitte für "Während des Kochens" und "Nach dem Essen" -->
+        <?php else: ?>
+            <h2>Kein Rezept für das gewählte Datum gefunden</h2>
+            <?php if (!empty($zufallsRezepte)): ?>
+                <h3>Vielleicht interessieren Sie sich für:</h3>
                 <ul>
-                    <li><a href="#">Wie hat es geschmeckt?</a></li>
-                    <li><a href="#">Noch Hunger?</a></li>
-                    <li><a href="#">Gibt es Reste?</a>
-                        <ul>
-                            <li><a href="#">Für morgen aufheben</a></li>
-                            <li><a href="#">Dem Nachbarn geben</a></li>
-                        </ul>
-                    </li>
+                    <?php foreach ($zufallsRezepte as $rezeptZufall): ?>
+                        <li><a href='rezept_detail.php?rezeptId=<?= $rezeptZufall['id'] ?>'><?= htmlspecialchars($rezeptZufall['titel']) ?></a></li>
+                    <?php endforeach; ?>
                 </ul>
-            </section>
-
-            <?php else: ?>
-            <p>Kein Rezept für das gewählte Datum gefunden.</p>
-            <form method="post" action="zufalligesGerichtPlanen.php">
-                <input type="hidden" name="datum" value="<?= htmlspecialchars($datum); ?>">
-                <button type="submit">Zufälliges Gericht planen</button>
-            </form>
+            <?php endif; ?>
+            <div>
+                <a href='rezeptsuche.php'>Rezept suchen</a> | <a href='rezept_hinzufuegen.php'>Rezept hinzufügen</a>
+            </div>
         <?php endif; ?>
     </main>
     <footer>

@@ -53,7 +53,7 @@ CREATE TABLE rezepte (
 CREATE TABLE rezept_zutaten (
     rezept_id INT,
     zutat_id INT,
-    menge DECIMAL(10, 2) NOT NULL,
+    menge DECIMAL(10, 2),
     einheit_id INT NOT NULL,
     FOREIGN KEY (einheit_id) REFERENCES einheiten(id),
     PRIMARY KEY (rezept_id, zutat_id),

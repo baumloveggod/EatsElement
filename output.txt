@@ -562,7 +562,7 @@ if ($row[0] == 0) {
     $stmtRezept = $conn->prepare("INSERT INTO rezepte (titel, beschreibung, zubereitungszeit) VALUES (?, ?, ?)");
     $stmtCheckZutat = $conn->prepare("SELECT zutat_id FROM zutaten_namen WHERE name = ?");
     $stmtZutaten = $conn->prepare("INSERT INTO rezept_zutaten (rezept_id, zutat_id, menge, einheit_id) VALUES (?, ?, ?, ?)");
-    
+    $stmtCheckExisting = $conn->prepare("SELECT COUNT(*) FROM rezept_zutaten WHERE rezept_id = ? AND zutat_id = ?");
     
     foreach ($beispielRezepte as $rezept) {
         $stmtRezept->bind_param("ssi", $rezept['titel'], $rezept['beschreibung'], $rezept['zubereitungszeit']);
@@ -570,46 +570,84 @@ if ($row[0] == 0) {
         $rezeptId = $stmtRezept->insert_id;
     
         foreach ($rezept['zutaten'] as $zutat) {
-            // Debug statement
-            echo "Debug: Ingredient Name - " . $zutat['name'] . "<br>";
             $stmtCheckZutat->bind_param("s", $zutat['name']);
             $stmtCheckZutat->execute();
             $result = $stmtCheckZutat->get_result();
             if ($result->num_rows > 0) {
-                // Zutat exists, get its id
                 $row = $result->fetch_assoc();
                 $zutatId = $row['zutat_id'];
+                
+                echo $zutat['menge'] . "  : ";
+                $eingabe = $zutat['menge'];
+                // Überprüfen, ob die Eingabe nur aus Zahlen besteht
+                if (is_numeric($eingabe)) {
+                    $quantity  = $eingabe;
+                    $einheitName  = "";
+                } elseif (is_string($eingabe)) { // Überprüfen, ob die Eingabe nur aus Buchstaben besteht
+                    // Hier könnte zusätzlich geprüft werden, ob es sich tatsächlich nur um Wörter handelt,
+                    // z.B. durch einen regulären Ausdruck, der sicherstellt, dass keine Zahlen enthalten sind.
+                    if (preg_match('/^[a-zA-ZäöüÄÖÜß\s]+$/', $eingabe)) {
+                        $quantity  = -1;
+                        $einheitName  = $eingabe;
+                    } else {
+                        // Falls die Eingabe sowohl Buchstaben als auch Zahlen enthält
+                        echo "Die Eingabe enthält sowohl Buchstaben als auch Zahlen.\n";
+                        preg_match('/^(\d+)\s*(.*)$/', $zutat['menge'], $matches);
+                        $quantity = (int)$matches[1];
+                        $einheitName = trim($matches[2]);// Oder eine Fehlerbehandlung nach Bedarf
+                    }
+                } else {
+                    // Falls die Eingabe weder reine Zahlen noch reine Wörter enthält
+                    echo "Ungültige Eingabe.\n";
+                    $quantity  = -1;
+                    $einheitName  = ""; // Oder eine Fehlerbehandlung nach Bedarf
+                }
+                
+                echo $quantity . " + " . $einheitName. "</br>";
+                // SQL-Abfrage, um die einheit_id zu ermitteln
+                $stmtEinheit = $conn->prepare("SELECT id FROM einheiten WHERE name = ?");
+                $stmtEinheit->bind_param("s", $einheitName);
+                $stmtEinheit->execute();
+                $resultEinheit = $stmtEinheit->get_result();
+
+                if ($resultEinheit->num_rows > 0) {
+                    // Einheit existiert, benutze existierende einheit_id
+                    $rowEinheit = $resultEinheit->fetch_assoc();
+                    $einheitId = $rowEinheit['id'];
+                } else {
+                    // Optional: Einheit existiert nicht, füge sie ein und benutze neue einheit_id
+                    // Dies hängt von deiner Anforderung ab, ob du neue Einheiten automatisch hinzufügen möchtest
+                    $stmtEinheitInsert = $conn->prepare("INSERT INTO einheiten (name, umrechnungsfaktor_zu_basis) VALUES (?, ?)");
+                    $umrechnungsfaktorZuBasis = 1; // Standardwert oder berechne basierend auf Einheit
+                    $stmtEinheitInsert->bind_param("sd", $einheitName, $umrechnungsfaktorZuBasis);
+                    $stmtEinheitInsert->execute();
+                    $einheitId = $stmtEinheitInsert->insert_id;
+                }
+                $stmtCheckExisting->bind_param("ii", $rezeptId, $zutatId);
+                $stmtCheckExisting->execute();
+                $result = $stmtCheckExisting->get_result(); // Correct variable for fetching result
+                $row = $result->fetch_array(); // Fetching the row directly as an array
+                if ($row[0] == 0) { // Assuming COUNT(*) returns 0 if not exists
+                    $stmtZutaten->bind_param("iiii", $rezeptId, $zutatId, $quantity, $einheitId);
+                    $stmtZutaten->execute();
+                }
             }
-            // Extract quantity and unit from 'menge'
-        preg_match('/^(\d+)\s*(.*)$/', $zutat['menge'], $matches);
-        $quantity = (int)$matches[1];
-        $unit = trim($matches[2]);
-
-        // Check if the unit exists in 'einheiten', insert if not
-        $stmtCheckEinheit = $conn->prepare("SELECT id FROM einheiten WHERE name = ?");
-        $stmtCheckEinheit->bind_param("s", $unit);
-        $stmtCheckEinheit->execute();
-        $resultEinheit = $stmtCheckEinheit->get_result();
-        if ($resultEinheit->num_rows === 0) {
-            $stmtInsertEinheit = $conn->prepare("INSERT INTO einheiten (name) VALUES (?)");
-            $stmtInsertEinheit->bind_param("s", $unit);
-            $stmtInsertEinheit->execute();
-            $einheitId = $conn->insert_id;
-        } else {
-            $rowEinheit = $resultEinheit->fetch_assoc();
-            $einheitId = $rowEinheit['id'];
+            // It's good practice to free each result set as soon as you're done with it
+            if(isset($result) && $result instanceof mysqli_result) {
+                $result->free();
+                unset($result); // Entfernen Sie die Referenz, um doppelte Freigaben zu verhindern
+            }
+            
         }
-
-        // Insert into rezept_zutaten with the correct zutatId, quantity, and einheit_id
-        // Note: You must adjust the database schema or the statement if you haven't a column for quantity or if the einheit_id is handled differently
-        $stmtZutaten->bind_param("iiis", $rezeptId, $zutatId, $quantity, $einheitId);
-        $stmtZutaten->execute();
+        
     }
-}
 } else {
     echo "Es sind bereits Rezepte in der Datenbank vorhanden.";
 }
 
+$stmtRezept->close();   
+$stmtCheckZutat->close();
+$stmtZutaten->close();
 $conn->close();
 ?>
 
@@ -2049,22 +2087,26 @@ require_once '../../Utils/db_connect.php';
 checkUserAuthentication();
 
 $userId = $_SESSION['userId'];
-
 $datum = $_GET['datum'] ?? date("Y-m-d");
+$rezept = null;
+$zufallsRezepte = [];
 
+// Versuche, ein Rezept für das gewählte Datum zu finden
+$sql = "SELECT r.titel, r.beschreibung, e.rezept_id FROM essenplan e JOIN rezepte r ON e.rezept_id = r.id WHERE e.user_id = ? AND e.datum = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("is", $userId, $datum);
+$stmt->execute();
+$result = $stmt->get_result();
 
-$sql = "SELECT r.titel, r.beschreibung, e.rezept_id
-        FROM essenplan e
-        JOIN rezepte r ON e.rezept_id = r.id
-        WHERE e.user_id = $userId AND e.datum = '$datum'";
-
-$result = $conn->query($sql);
-
-if ($result->num_rows === 0) {
-    echo "Kein Rezept für das gewählte Datum gefunden.";
-} else {
+if ($result->num_rows > 0) {
     $rezept = $result->fetch_assoc();
-    $rezeptId = $rezept['rezept_id'];
+} else {
+    // Kein Rezept gefunden, hole drei zufällige Rezepte
+    $zufallsRezepteSql = "SELECT id, titel FROM rezepte ORDER BY RAND() LIMIT 3";
+    $resultZufallsRezepte = $conn->query($zufallsRezepteSql);
+    while ($rezeptZufall = $resultZufallsRezepte->fetch_assoc()) {
+        $zufallsRezepte[] = $rezeptZufall;
+    }
 }
 ?>
 
@@ -2079,92 +2121,27 @@ if ($result->num_rows === 0) {
         <?php include '../templates/navigation.php'; ?>
     </header>
     <main>
-        <?php if (isset($rezept)): ?>
+        <?php if ($rezept): ?>
             <h2><?= htmlspecialchars($rezept['titel']); ?></h2>
-
-            <!-- Vor dem Kochen -->
             <section>
                 <h3>Vor dem Kochen</h3>
-                <?php
-                    $sqlAnzahlPersonen = "SELECT anzahl_personen FROM essenplan WHERE user_id = $userId AND datum = '$datum'";
-                    $resultAnzahlPersonen = $conn->query($sqlAnzahlPersonen);
-                    $rowAnzahlPersonen = $resultAnzahlPersonen->fetch_assoc();
-                    $anzahlPersonen = $rowAnzahlPersonen['anzahl_personen'];
-
-                    // Prepare the SQL statement with placeholders
-                    $sqlZutaten = "SELECT zn.name, rz.menge, e.name AS einheit, 
-                    IF(vs.id IS NOT NULL, 'Im Vorrat', 'Einkaufen') AS status 
-                    FROM rezept_zutaten rz 
-                    LEFT JOIN einheiten e ON rz.einheit_id = e.id 
-                    JOIN zutaten_namen zn ON rz.zutat_id = zn.zutat_id 
-                    LEFT JOIN vorratsschrank vs ON zn.zutat_id = vs.zutat_id AND vs.user_id = ? 
-                    WHERE rz.rezept_id = ?";
-
-                    // Prepare the statement
-                    $stmt = $conn->prepare($sqlZutaten);
-
-                    // Bind parameters to the prepared statement
-                    $stmt->bind_param("ii", $userId, $rezeptId); // "ii" means both parameters are integers
-
-                    // Execute the prepared statement
-                    $stmt->execute();
-
-                    // Get the result of the query
-                    $resultZutaten = $stmt->get_result();
-
-                    // Check if there are results
-                    if ($resultZutaten->num_rows > 0) {
-                    echo "<p>Zutatenliste und Verfügbarkeit:</p>";
-                    echo "<ul>";
-                    while ($zutat = $resultZutaten->fetch_assoc()) {
-                    // Correctly concatenate and escape output to prevent XSS
-                    echo "<li>" . htmlspecialchars($zutat['name']) . " - " . htmlspecialchars($zutat['menge']) . " " . htmlspecialchars($zutat['einheit']) . " (" . htmlspecialchars($zutat['status']) . ")</li>";
-                    }
-                    echo "</ul>";
-                    } else {
-                    echo "Keine Zutaten gefunden.";
-                    }
-
-                    // Close the statement
-                    $stmt->close();
-                ?>
-                <form action="updatePersonenanzahl.php" method="post">
-                    <input type="hidden" name="datum" value="<?= htmlspecialchars($datum); ?>">
-                    <label for="anzahlPersonen">Anzahl Personen:</label>
-                    <input type="number" id="anzahlPersonen" name="anzahlPersonen" value="<?= $anzahlPersonen; ?>" min="1">
-                    <button type="submit">Aktualisieren</button>
-                </form>
-
+                <p><?= htmlspecialchars($rezept['beschreibung']); ?></p>
+                <!-- Weitere Inhalte wie Zutatenliste und Personenanzahl aktualisieren -->
             </section>
-
-            <!-- Während des Kochens -->
-            <section>
-                <h3>Während des Kochens</h3>
-                <p>... Kochanweisungen und Details ...</p>
-            </section>
-
-            <!-- Nach dem Essen -->
-            <section>
-                <h3>Nach dem Essen</h3>
-                <p>Reflektion und Planung:</p>
+            <!-- Weitere Abschnitte für "Während des Kochens" und "Nach dem Essen" -->
+        <?php else: ?>
+            <h2>Kein Rezept für das gewählte Datum gefunden</h2>
+            <?php if (!empty($zufallsRezepte)): ?>
+                <h3>Vielleicht interessieren Sie sich für:</h3>
                 <ul>
-                    <li><a href="#">Wie hat es geschmeckt?</a></li>
-                    <li><a href="#">Noch Hunger?</a></li>
-                    <li><a href="#">Gibt es Reste?</a>
-                        <ul>
-                            <li><a href="#">Für morgen aufheben</a></li>
-                            <li><a href="#">Dem Nachbarn geben</a></li>
-                        </ul>
-                    </li>
+                    <?php foreach ($zufallsRezepte as $rezeptZufall): ?>
+                        <li><a href='rezept_detail.php?rezeptId=<?= $rezeptZufall['id'] ?>'><?= htmlspecialchars($rezeptZufall['titel']) ?></a></li>
+                    <?php endforeach; ?>
                 </ul>
-            </section>
-
-            <?php else: ?>
-            <p>Kein Rezept für das gewählte Datum gefunden.</p>
-            <form method="post" action="zufalligesGerichtPlanen.php">
-                <input type="hidden" name="datum" value="<?= htmlspecialchars($datum); ?>">
-                <button type="submit">Zufälliges Gericht planen</button>
-            </form>
+            <?php endif; ?>
+            <div>
+                <a href='rezeptsuche.php'>Rezept suchen</a> | <a href='rezept_hinzufuegen.php'>Rezept hinzufügen</a>
+            </div>
         <?php endif; ?>
     </main>
     <footer>
@@ -2373,62 +2350,6 @@ while ($row = $result->fetch_assoc()) {
 </body>
 </html>
 
-Path: ./http/Views\pages\zufalligesGerichtPlanen.php
-Content:
-<?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-require_once '../../Utils/SessionManager.php';
-require_once '../../Utils/db_connect.php';
-checkUserAuthentication();
-
-$userId = $_SESSION['userId'];
-
-$datum = $_POST['datum'] ?? date("Y-m-d");
-
-// Wähle ein zufälliges Rezept
-$rezeptSql = "SELECT id FROM rezepte ORDER BY RAND() LIMIT 1";
-$rezeptResult = $conn->query($rezeptSql);
-if ($rezeptRow = $rezeptResult->fetch_assoc()) {
-    $zufallsRezeptId = $rezeptRow['id'];
-
-    // Füge das ausgewählte Rezept zum ausgewählten Datum in den Essensplan ein
-    $insertSql = "INSERT INTO essenplan (user_id, datum, rezept_id, anzahl_personen) VALUES (?, ?, ?, ?)";
-    $insertStmt = $conn->prepare($insertSql);
-    $anzahlPersonen = 1; // Setze eine Standardanzahl von Personen
-    if (!$insertStmt->bind_param("isii", $userId, $datum, $zufallsRezeptId, $anzahlPersonen)) {
-        echo "Bind Param Error";
-    } else {
-        if (!$insertStmt->execute()) {
-            echo "Execute Error";
-        } else {
-            // Hole die Zutaten für das ausgewählte Rezept
-            $zutatenSql = "SELECT zutat_id, menge FROM rezept_zutaten WHERE rezept_id = ?";
-            $zutatenStmt = $conn->prepare($zutatenSql);
-            $zutatenStmt->bind_param("i", $zufallsRezeptId);
-            $zutatenStmt->execute();
-            $zutatenResult = $zutatenStmt->get_result();
-
-            while ($zutat = $zutatenResult->fetch_assoc()) {
-                // Füge jede Zutat zur Einkaufsliste hinzu
-                $einkaufslisteSql = "INSERT INTO einkaufsliste (user_id, zutat_id, menge, verbrauchsdatum) VALUES (?, ?, ?, ?)";
-                $einkaufslisteStmt = $conn->prepare($einkaufslisteSql);
-                $einkaufslisteStmt->bind_param("iiss", $userId, $zutat['zutat_id'], $zutat['menge'], $datum);
-                $einkaufslisteStmt->execute();
-            }
-            header("Location: rezept_detail.php?datum=" . urlencode($datum));
-            exit; // Ensure script execution ends after redirection
-        }
-    }
-    $insertStmt->close();
-} else {
-    echo "Keine Rezepte zur Planung verfügbar.";
-}
-$conn->close();
-
-
 Path: ./http/Views\templates\footer.php
 Content:
 
@@ -2537,7 +2458,7 @@ CREATE TABLE rezepte (
 CREATE TABLE rezept_zutaten (
     rezept_id INT,
     zutat_id INT,
-    menge DECIMAL(10, 2) NOT NULL,
+    menge DECIMAL(10, 2),
     einheit_id INT NOT NULL,
     FOREIGN KEY (einheit_id) REFERENCES einheiten(id),
     PRIMARY KEY (rezept_id, zutat_id),

@@ -342,7 +342,7 @@ if ($row[0] == 0) {
     $stmtRezept = $conn->prepare("INSERT INTO rezepte (titel, beschreibung, zubereitungszeit) VALUES (?, ?, ?)");
     $stmtCheckZutat = $conn->prepare("SELECT zutat_id FROM zutaten_namen WHERE name = ?");
     $stmtZutaten = $conn->prepare("INSERT INTO rezept_zutaten (rezept_id, zutat_id, menge, einheit_id) VALUES (?, ?, ?, ?)");
-    
+    $stmtCheckExisting = $conn->prepare("SELECT COUNT(*) FROM rezept_zutaten WHERE rezept_id = ? AND zutat_id = ?");
     
     foreach ($beispielRezepte as $rezept) {
         $stmtRezept->bind_param("ssi", $rezept['titel'], $rezept['beschreibung'], $rezept['zubereitungszeit']);
@@ -350,45 +350,83 @@ if ($row[0] == 0) {
         $rezeptId = $stmtRezept->insert_id;
     
         foreach ($rezept['zutaten'] as $zutat) {
-            // Debug statement
-            echo "Debug: Ingredient Name - " . $zutat['name'] . "<br>";
             $stmtCheckZutat->bind_param("s", $zutat['name']);
             $stmtCheckZutat->execute();
             $result = $stmtCheckZutat->get_result();
             if ($result->num_rows > 0) {
-                // Zutat exists, get its id
                 $row = $result->fetch_assoc();
                 $zutatId = $row['zutat_id'];
+                
+                echo $zutat['menge'] . "  : ";
+                $eingabe = $zutat['menge'];
+                // Überprüfen, ob die Eingabe nur aus Zahlen besteht
+                if (is_numeric($eingabe)) {
+                    $quantity  = $eingabe;
+                    $einheitName  = "";
+                } elseif (is_string($eingabe)) { // Überprüfen, ob die Eingabe nur aus Buchstaben besteht
+                    // Hier könnte zusätzlich geprüft werden, ob es sich tatsächlich nur um Wörter handelt,
+                    // z.B. durch einen regulären Ausdruck, der sicherstellt, dass keine Zahlen enthalten sind.
+                    if (preg_match('/^[a-zA-ZäöüÄÖÜß\s]+$/', $eingabe)) {
+                        $quantity  = -1;
+                        $einheitName  = $eingabe;
+                    } else {
+                        // Falls die Eingabe sowohl Buchstaben als auch Zahlen enthält
+                        echo "Die Eingabe enthält sowohl Buchstaben als auch Zahlen.\n";
+                        preg_match('/^(\d+)\s*(.*)$/', $zutat['menge'], $matches);
+                        $quantity = (int)$matches[1];
+                        $einheitName = trim($matches[2]);// Oder eine Fehlerbehandlung nach Bedarf
+                    }
+                } else {
+                    // Falls die Eingabe weder reine Zahlen noch reine Wörter enthält
+                    echo "Ungültige Eingabe.\n";
+                    $quantity  = -1;
+                    $einheitName  = ""; // Oder eine Fehlerbehandlung nach Bedarf
+                }
+                
+                echo $quantity . " + " . $einheitName. "</br>";
+                // SQL-Abfrage, um die einheit_id zu ermitteln
+                $stmtEinheit = $conn->prepare("SELECT id FROM einheiten WHERE name = ?");
+                $stmtEinheit->bind_param("s", $einheitName);
+                $stmtEinheit->execute();
+                $resultEinheit = $stmtEinheit->get_result();
+
+                if ($resultEinheit->num_rows > 0) {
+                    // Einheit existiert, benutze existierende einheit_id
+                    $rowEinheit = $resultEinheit->fetch_assoc();
+                    $einheitId = $rowEinheit['id'];
+                } else {
+                    // Optional: Einheit existiert nicht, füge sie ein und benutze neue einheit_id
+                    // Dies hängt von deiner Anforderung ab, ob du neue Einheiten automatisch hinzufügen möchtest
+                    $stmtEinheitInsert = $conn->prepare("INSERT INTO einheiten (name, umrechnungsfaktor_zu_basis) VALUES (?, ?)");
+                    $umrechnungsfaktorZuBasis = 1; // Standardwert oder berechne basierend auf Einheit
+                    $stmtEinheitInsert->bind_param("sd", $einheitName, $umrechnungsfaktorZuBasis);
+                    $stmtEinheitInsert->execute();
+                    $einheitId = $stmtEinheitInsert->insert_id;
+                }
+                $stmtCheckExisting->bind_param("ii", $rezeptId, $zutatId);
+                $stmtCheckExisting->execute();
+                $result = $stmtCheckExisting->get_result(); // Correct variable for fetching result
+                $row = $result->fetch_array(); // Fetching the row directly as an array
+                if ($row[0] == 0) { // Assuming COUNT(*) returns 0 if not exists
+                    $stmtZutaten->bind_param("iiii", $rezeptId, $zutatId, $quantity, $einheitId);
+                    $stmtZutaten->execute();
+                }
             }
-            // Extract quantity and unit from 'menge'
-        preg_match('/^(\d+)\s*(.*)$/', $zutat['menge'], $matches);
-        $quantity = (int)$matches[1];
-        $unit = trim($matches[2]);
-
-        // Check if the unit exists in 'einheiten', insert if not
-        $stmtCheckEinheit = $conn->prepare("SELECT id FROM einheiten WHERE name = ?");
-        $stmtCheckEinheit->bind_param("s", $unit);
-        $stmtCheckEinheit->execute();
-        $resultEinheit = $stmtCheckEinheit->get_result();
-        if ($resultEinheit->num_rows === 0) {
-            $stmtInsertEinheit = $conn->prepare("INSERT INTO einheiten (name) VALUES (?)");
-            $stmtInsertEinheit->bind_param("s", $unit);
-            $stmtInsertEinheit->execute();
-            $einheitId = $conn->insert_id;
-        } else {
-            $rowEinheit = $resultEinheit->fetch_assoc();
-            $einheitId = $rowEinheit['id'];
+            // It's good practice to free each result set as soon as you're done with it
+            if(isset($result) && $result instanceof mysqli_result) {
+                $result->free();
+                unset($result); // Entfernen Sie die Referenz, um doppelte Freigaben zu verhindern
+            }
+            
         }
-
-        // Insert into rezept_zutaten with the correct zutatId, quantity, and einheit_id
-        // Note: You must adjust the database schema or the statement if you haven't a column for quantity or if the einheit_id is handled differently
-        $stmtZutaten->bind_param("iiis", $rezeptId, $zutatId, $quantity, $einheitId);
-        $stmtZutaten->execute();
+        
     }
-}
 } else {
     echo "Es sind bereits Rezepte in der Datenbank vorhanden.";
 }
 
+$stmtRezept->close();   
+$stmtCheckZutat->close();
+$stmtZutaten->close();
 $conn->close();
 ?>

@@ -19,14 +19,15 @@
         $stmt->bind_param("s", $zutatenName);
         $stmt->execute();
         $result = $stmt->get_result();
-        if ($result->num_rows === 0) {
+        if ($result->num_rows === 0) {  
             // Zutat existiert nicht, also füge sie ein
-            $stmt = $conn->prepare("INSERT INTO zutaten (beschreibung) VALUES ('Neue Zutat')");
+            $stmt = $conn->prepare("INSERT INTO zutaten (kategorie_id) VALUES (1)");
             $stmt->execute();
             $zutatId = $conn->insert_id;
             
             // Füge den Namen in zutaten_namen ein
-            $stmt = $conn->prepare("INSERT INTO zutaten_namen (name, zutatId) VALUES (?, ?)");
+
+            $stmt = $conn->prepare("INSERT INTO zutaten_namen (name, zutat_id) VALUES (?, ?)");
             $stmt->bind_param("si", $zutatenName, $zutatId);
             $stmt->execute();
         } else {

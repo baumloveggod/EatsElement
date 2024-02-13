@@ -13,6 +13,7 @@ $row = $result->fetch_row();
 if ($row[0] == 0) {
     // Schritt 2: Füge Kategorien hinzu, falls noch nicht vorhanden (Optional, falls nicht bereits manuell hinzugefügt)
     $kategorienSql = "INSERT INTO kategorien (name, sortierreihenfolge) VALUES
+    ('unbekannte zutat', 11),
     ('Obst & Gemüse', 1),
     ('Bäckerei', 2),
     ('Fleisch & Fisch', 3),

@@ -29,195 +29,140 @@ if ($row[0] == 0) {
 
     // Verbindung zur Datenbank herstellen
 
-    $zutatenListe = [[
-        'name' => 'Äpfel',
-        'kategorie' => 'Obst & Gemüse',
-        'haltbarkeit' => 30,
-        'naehrstoffe' => [
-            'kalorien' => 52,
-            'proteine' => 0.26,
-            'fette' => 0.17,
-            'kohlenhydrate' => 13.81,
-            'ballaststoffe' => 2.4,
-            'zucker' => 10.39
-        ]
-    ],
-    [
-        'name' => 'Vollkornbrot',
-        'kategorie' => 'Bäckerei',
-        'haltbarkeit' => 7,
-        'naehrstoffe' => [
+    $zutatenListe = [
+        [
+            'name' => 'Äpfel',
+            'kategorie' => 'Obst & Gemüse',
+            'haltbarkeit' => 30,
+            'phd_kategorie' => 4, // Obst
+            'naehrstoffe' => [
+                'kalorien' => 52,
+                'proteine' => 0.26,
+                'fette' => 0.17,
+                'kohlenhydrate' => 13.81,
+                'ballaststoffe' => 2.4,
+                'zucker' => 10.39
+            ]
+        ],
+        ['name' => 'Brokkoli', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 15, 'phd_kategorie' => 3], // Gemüse
+        ['name' => 'Karotten', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30, 'phd_kategorie' => 3], // Gemüse
+        ['name' => 'Römersalat', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 7, 'phd_kategorie' => 3], // Gemüse
+        ['name' => 'Croutons', 'kategorie' => 'Bäckerei', 'haltbarkeit' => 60, 'phd_kategorie' => 1], // Getreide (Vollkorn), Annahme basierend auf dem primären Getreideprodukt
+        ['name' => 'Caesar-Dressing', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 90, 'phd_kategorie' => 11], // Pflanzliche Öle, typischerweise basierend auf der Ölbasis im Dressing
+        ['name' => 'Linsen', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365, 'phd_kategorie' => 2], // Hülsenfrüchte
+        ['name' => 'Zwiebel', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30, 'phd_kategorie' => 3], // Gemüse
+        ['name' => 'Sellerie', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 21, 'phd_kategorie' => 3], // Gemüse
+        ['name' => 'Gemüsebrühe', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365, 'phd_kategorie' => 3], // Gemüse, Annahme basierend auf dem primären Inhalt
+        ['name' => 'Tofu', 'kategorie' => 'Gesundheit & Schönheit', 'haltbarkeit' => 60, 'phd_kategorie' => 2], // Hülsenfrüchte, Tofu wird aus Sojabohnen hergestellt
+        ['name' => 'Tomatensoße', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365, 'phd_kategorie' => 3], // Gemüse
+        ['name' => 'Knoblauch', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 60, 'phd_kategorie' => 3], // Gemüse
+        ['name' => 'Pasta', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365, 'phd_kategorie' => 1], // Getreide (Vollkorn), Annahme basierend auf Getreidebasis
+        ['name' => 'Zucchini', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30, 'phd_kategorie' => 3], // Gemüse
+        ['name' => 'Aubergine', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30, 'phd_kategorie' => 3], // Gemüse
+        ['name' => 'Paprika', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30, 'phd_kategorie' => 3], // Gemüse
+        ['name' => 'Thymian', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 180, 'phd_kategorie' => 3], // Gemüse, Kräuter fallen oft unter diese Kategorie
+        ['name' => 'Mehl', 'kategorie' => 'Bäckerei', 'haltbarkeit' => 365, 'phd_kategorie' => 1], // Getreide (Vollkorn), Annahme basierend auf dem primären Getreideprodukt
+        ['name' => 'Milch', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 10, 'phd_kategorie' => 9], // Milchprodukte
+        ['name' => 'Butter', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 30, 'phd_kategorie' => 9], // Milchprodukte
+        ['name' => 'Salz', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 1095, 'phd_kategorie' => null], // Salz passt nicht direkt in eine PHD-Kategorie
+        // Zuvor begonnene Zutaten mit ergänzten PHD-Kategorien
+        ['name' => 'Vollkornbrot', 'kategorie' => 'Bäckerei', 'haltbarkeit' => 7, 'phd_kategorie' => 1,'naehrstoffe' => [
             'kalorien' => 247,
             'proteine' => 13,
             'fette' => 3.4,
             'kohlenhydrate' => 41,
             'ballaststoffe' => 7,
             'zucker' => 6
-        ]
-    ],
-    [
-        'name' => 'Hühnchenbrust',
-        'kategorie' => 'Fleisch & Fisch',
-        'haltbarkeit' => 10,
-        'naehrstoffe' => [
+        ]], // Getreide (Vollkorn)
+        ['name' => 'Hühnchenbrust', 'kategorie' => 'Fleisch & Fisch', 'haltbarkeit' => 10, 'phd_kategorie' => 7,'naehrstoffe' => [
             'kalorien' => 165,
             'proteine' => 31,
             'fette' => 3.6,
             'kohlenhydrate' => 0,
             'ballaststoffe' => 0,
             'zucker' => 0
-        ]
-    ],
-    [
-        'name' => 'Joghurt',
-        'kategorie' => 'Milchprodukte & Eier',
-        'haltbarkeit' => 15,
-        'naehrstoffe' => [
+        ]], // Geflügel
+        ['name' => 'Joghurt', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 15, 'phd_kategorie' => 9,'naehrstoffe' => [
             'kalorien' => 59,
             'proteine' => 10,
             'fette' => 0.4,
             'kohlenhydrate' => 3.6,
             'ballaststoffe' => 0,
             'zucker' => 3.6
-        ]
-    ],
-    [
-        'name' => 'Tikka Masala Paste',
-        'kategorie' => 'Konserven & Trockenwaren',
-        'haltbarkeit' => 180,
-        'naehrstoffe' => [
+        ]], // Milchprodukte
+        ['name' => 'Tikka Masala Paste', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 180, 'phd_kategorie' => 11,'naehrstoffe' => [
             'kalorien' => 150,
             'proteine' => 2,
             'fette' => 8,
             'kohlenhydrate' => 18,
             'ballaststoffe' => 2,
             'zucker' => 12
-        ]
-    ],[
-        'name' => 'Tomaten',
-        'kategorie' => 'Obst & Gemüse',
-        'haltbarkeit' => 10,
-        'naehrstoffe' => [
+        ]], // Pflanzliche Öle, angenommen aufgrund der Ölbasis in der Paste
+        ['name' => 'Tomaten', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 10, 'phd_kategorie' => 3,'naehrstoffe' => [
             'kalorien' => 18,
             'proteine' => 0.88,
             'fette' => 0.2,
             'kohlenhydrate' => 3.89,
             'ballaststoffe' => 1.2,
             'zucker' => 2.63
-        ]
-    ],
-    [
-        'name' => 'Sahne',
-        'kategorie' => 'Milchprodukte & Eier',
-        'haltbarkeit' => 10,
-        'naehrstoffe' => [
+        ]], // Gemüse
+        ['name' => 'Sahne', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 10, 'phd_kategorie' => 9,'naehrstoffe' => [
             'kalorien' => 342,
             'proteine' => 2.9,
             'fette' => 36,
             'kohlenhydrate' => 2.7,
             'ballaststoffe' => 0,
             'zucker' => 2.7
-        ]
-    ],
-    [
-        'name' => 'Ei',
-        'kategorie' => 'Milchprodukte & Eier',
-        'haltbarkeit' => 21,
-        'naehrstoffe' => [
+        ]], // Milchprodukte
+        ['name' => 'Ei', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 21, 'phd_kategorie' => 10,'naehrstoffe' => [
             'kalorien' => 155,
             'proteine' => 13,
             'fette' => 11,
             'kohlenhydrate' => 1.1,
             'ballaststoffe' => 0,
             'zucker' => 1.1
-        ]
-    ],
-    [
-        'name' => 'Speck',
-        'kategorie' => 'Fleisch & Fisch',
-        'haltbarkeit' => 14,
-        'naehrstoffe' => [
+        ]], // Eier
+        ['name' => 'Speck', 'kategorie' => 'Fleisch & Fisch', 'haltbarkeit' => 14, 'phd_kategorie' => 6,'naehrstoffe' => [
             'kalorien' => 541,
             'proteine' => 37,
             'fette' => 42,
             'kohlenhydrate' => 1.4,
             'ballaststoffe' => 0,
             'zucker' => 0
-        ]
-    ],
-    [
-        'name' => 'Spaghetti',
-        'kategorie' => 'Konserven & Trockenwaren',
-        'haltbarkeit' => 365,
-        'naehrstoffe' => [
+        ]], // Fleisch (Rot und verarbeitet)
+        ['name' => 'Spaghetti', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365, 'phd_kategorie' => 1,'naehrstoffe' => [
             'kalorien' => 158,
             'proteine' => 5.8,
             'fette' => 0.9,
             'kohlenhydrate' => 31,
             'ballaststoffe' => 1.8,
             'zucker' => 0.8
-        ]
-    ],
-    [
-        'name' => 'Parmesan',
-        'kategorie' => 'Milchprodukte & Eier',
-        'haltbarkeit' => 60,
-        'naehrstoffe' => [
+        ]], // Getreide (Vollkorn)
+        ['name' => 'Parmesan', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 60, 'phd_kategorie' => 9,'naehrstoffe' => [
             'kalorien' => 431,
             'proteine' => 38,
             'fette' => 29,
             'kohlenhydrate' => 4.1,
             'ballaststoffe' => 0,
             'zucker' => 0.9
-        ]
-    ],
-    [
-        'name' => 'Kokosmilch',
-        'kategorie' => 'Konserven & Trockenwaren',
-        'haltbarkeit' => 180,
-        'naehrstoffe' => [
+        ]], // Milchprodukte
+        ['name' => 'Kokosmilch', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 180, 'phd_kategorie' => 11,'naehrstoffe' => [
             'kalorien' => 230,
             'proteine' => 2.3,
             'fette' => 24,
             'kohlenhydrate' => 6,
             'ballaststoffe' => 2.2,
             'zucker' => 3.3
-        ]
-    ],
-    [
-        'name' => 'Currypaste',
-        'kategorie' => 'Konserven & Trockenwaren',
-        'haltbarkeit' => 180,
-        'naehrstoffe' => [
+        ]], // Pflanzliche Öle, angenommen aufgrund der Fettbasis
+        ['name' => 'Currypaste', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 180, 'phd_kategorie' => 11,'naehrstoffe' => [
             'kalorien' => 325,
             'proteine' => 3.8,
             'fette' => 17,
             'kohlenhydrate' => 40,
             'ballaststoffe' => 9.8,
             'zucker' => 29
-        ]
-    ],
-        ['name' => 'Brokkoli', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 15],
-        ['name' => 'Karotten', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30],
-        ['name' => 'Römersalat', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 7],
-        ['name' => 'Croutons', 'kategorie' => 'Bäckerei', 'haltbarkeit' => 60],
-        ['name' => 'Caesar-Dressing', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 90],
-        ['name' => 'Linsen', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365],
-        ['name' => 'Zwiebel', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30],
-        ['name' => 'Sellerie', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 21],
-        ['name' => 'Gemüsebrühe', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365],
-        ['name' => 'Tofu', 'kategorie' => 'Gesundheit & Schönheit', 'haltbarkeit' => 60], // Tofu könnte auch unter "Kühlgut" fallen, je nach Datenbankdesign
-        ['name' => 'Tomatensoße', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365],
-        ['name' => 'Knoblauch', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 60],
-        ['name' => 'Pasta', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365],
-        ['name' => 'Zucchini', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30],
-        ['name' => 'Aubergine', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30],
-        ['name' => 'Paprika', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30],
-        ['name' => 'Thymian', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 180],
-        ['name' => 'Mehl', 'kategorie' => 'Bäckerei', 'haltbarkeit' => 365],
-        ['name' => 'Milch', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 10],
-        ['name' => 'Butter', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 30],
-        ['name' => 'Salz', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 1095] // Salz ist praktisch unbegrenzt haltbar, aber hier als 3 Jahre angegeben
+        ]] // Pflanzliche Öle, angenommen aufgrund der Ölbasis in der Paste
+        // Beachten Sie, dass einige Zutaten möglicherweise keiner spezifischen PHD-Kategorie zugeordnet werden können, wie z.B. Salz.
     ];
     
     
@@ -230,10 +175,10 @@ if ($row[0] == 0) {
         if ($row = $result->fetch_assoc()) {
             $kategorie_id = $row['id'];
 
-            $insertStmtZutaten = $conn->prepare("INSERT INTO zutaten (kategorie_id, uebliche_haltbarkeit) VALUES (?, ?)");
-            $insertStmtZutaten->bind_param("ii", $kategorie_id, $zutat['haltbarkeit']);
+            $insertStmtZutaten = $conn->prepare("INSERT INTO zutaten (kategorie_id, uebliche_haltbarkeit, phd_kategorie_id) VALUES (?, ?, ?)");
+            $insertStmtZutaten->bind_param("iii", $kategorie_id, $zutat['haltbarkeit'], $zutat['phd_kategorie']);
             $insertStmtZutaten->execute();
-            $zutatId = $conn->insert_id; // Holt die ID der gerade eingefügten Zutat
+            $zutatId = $conn->insert_id;// Holt die ID der gerade eingefügten Zutat
 
             $insertStmtNamen = $conn->prepare("INSERT INTO zutaten_namen (name, zutat_id) VALUES (?, ?)");
             $insertStmtNamen->bind_param("si", $zutat['name'], $zutatId);

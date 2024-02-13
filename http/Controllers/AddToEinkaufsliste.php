@@ -4,7 +4,7 @@
     error_reporting(E_ALL);
     require_once __DIR__ . '/../Utils/db_connect.php';
     require_once __DIR__ . '/../Utils/SessionManager.php';
-checkAccess();
+    checkUserAuthentication();
 
     if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (empty($_POST['zutatenName']) || empty($_POST['menge'])) {
@@ -12,7 +12,7 @@ checkAccess();
         }
         $zutatenName = $_POST['zutatenName'];
         $menge = $_POST['menge'];
-        $userId = $_SESSION['id']; // Stellen Sie sicher, dass die Session gestartet wurde
+        $userId = $_SESSION['userId']; // Stellen Sie sicher, dass die Session gestartet wurde
 
         // Überprüfen, ob die Zutat bereits existiert
         $stmt = $conn->prepare("SELECT id FROM zutaten_namen WHERE name = ?");

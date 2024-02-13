@@ -1670,13 +1670,13 @@ checkUserAuthentication();
 $userId = $_SESSION['userId'];
 
 $heute = date("Y-m-d");
-
 $sql = "SELECT e.id, zn.name, e.menge, e.verbrauchsdatum, k.name AS kategorie, k.id AS kategorie_id
         FROM einkaufsliste e
         JOIN zutaten z ON e.zutat_id = z.id
-        JOIN zutaten_namen zn ON z.id = zn.zutat_id -- Adjusted join here
+        JOIN zutaten_namen zn ON z.id = zn.zutat_id
         JOIN kategorien k ON z.kategorie_id = k.id
-        WHERE e.user_id = ? AND DATE_ADD(CURDATE(), INTERVAL z.uebliche_haltbarkeit DAY) >= e.verbrauchsdatum
+        WHERE e.user_id = ? 
+        AND (e.verbrauchsdatum IS NULL OR DATE_ADD(CURDATE(), INTERVAL z.uebliche_haltbarkeit DAY) >= e.verbrauchsdatum)
         ORDER BY k.id ASC, e.verbrauchsdatum ASC";
 
 

@@ -14,12 +14,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
     $sollEnthalten = $_GET['sollEnthalten'] ?? '';
 
     // Basis SQL-Query
-    $sql = "SELECT * FROM rezepte WHERE 1 = 1";
+    // Basis-SQL-Query mit initialer Punktebewertung
+    $sqlBase = "SELECT r.*, (0";
+    $sqlEnd = ") AS relevanz FROM rezepte r WHERE 1=1";
+    $params = []; // Initialisiere das Parameter-Array für Prepared Statements
+
     
     // Dynamische Ergänzung der SQL-Query basierend auf Suchkriterien
     if ($saisonalitaet) {
-        // Logik zur Berücksichtigung der Saisonalität (benötigt spezifische Implementierung)
+        $sqlBase .= " + CASE WHEN EXISTS (
+                      SELECT 1 FROM zutaten_saisonalitaet zs
+                      JOIN rezept_zutaten rz ON zs.zutat_id = rz.zutat_id
+                      WHERE rz.rezept_id = r.id
+                      AND CURRENT_DATE BETWEEN zs.saison_start AND zs.saison_ende
+                    ) THEN 1 ELSE 0 END";
     }
+    
 
     if ($unverplanteLebensmittel) {
         // Logik zur Berücksichtigung unverplanter Lebensmittel (benötigt spezifische Implementierung)
@@ -34,15 +44,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
     }
 
     if (!empty($suchbegriff)) {
-        $sql .= " AND (titel LIKE ? OR beschreibung LIKE ?)";
-        $params[] = "%$suchbegriff%";
-        $params[] = "%$suchbegriff%";
     }
 
     if (!empty($sollEnthalten)) {
         // Logik zur Berücksichtigung spezifischer Zutaten (benötigt spezifische Implementierung)
     }
 
+
+    $sql = $sqlBase . $sqlEnd . " ORDER BY relevanz DESC";
     // SQL-Query vorbereiten und ausführen
     $stmt = $conn->prepare($sql);
     // Hier müssten die Parameter entsprechend der tatsächlichen Anzahl und Typen gebunden werden
@@ -70,22 +79,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
     <main>
         <h2>Rezeptsuche</h2>
         <form action="rezeptsuche.php" method="get">
-            <label for="saisonalitaet">Berücksichtige Saisonalität:</label>
+            <label for="saisonalitaet">Berücksichtige Saisonalität (Not implemntet jet):</label>
             <input type="checkbox" id="saisonalitaet" name="saisonalitaet"><br>
 
-            <label for="unverplanteLebensmittel">Berücksichtige unverplante Lebensmittel:</label>
+            <label for="unverplanteLebensmittel">Berücksichtige unverplante Lebensmittel(Not implemntet jet):</label>
             <input type="checkbox" id="unverplanteLebensmittel" name="unverplanteLebensmittel"><br>
 
-            <label for="allergien">Berücksichtige Allergien:</label>
+            <label for="allergien">Berücksichtige Allergien(Not implemntet jet):</label>
             <input type="text" id="allergien" name="allergien" placeholder="z.B. Nüsse, Gluten"><br>
 
-            <label for="planetaryHealthDiet">Berücksichtige Planetary Health Diet:</label>
+            <label for="planetaryHealthDiet">Berücksichtige Planetary Health Diet(Not implemntet jet):</label>
             <input type="checkbox" id="planetaryHealthDiet" name="planetaryHealthDiet"><br>
 
             <label for="suchbegriff">Suchbegriff:</label>
             <input type="text" id="suchbegriff" name="suchbegriff" placeholder="Suchbegriff eingeben"><br>
 
-            <label for="sollEnthalten">Soll enthalten:</label>
+            <label for="sollEnthalten">Soll enthalten(Not implemntet jet):</label>
             <input type="text" id="sollEnthalten" name="sollEnthalten" placeholder="Zutat"><br>
 
             <button type="submit">Suchen</button>

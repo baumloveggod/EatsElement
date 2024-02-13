@@ -32,8 +32,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
     
 
     if ($unverplanteLebensmittel) {
-        // Logik zur Berücksichtigung unverplanter Lebensmittel (benötigt spezifische Implementierung)
+        // Schritt 1: Ermittle alle Lebensmittel im Vorratsschrank des Benutzers, die noch nicht in einem geplanten Essen verwendet werden.
+        $vorratsQuery = "SELECT vs.zutat_id FROM vorratsschrank vs
+                         WHERE vs.user_id = ?
+                         AND vs.zutat_id NOT IN (
+                             SELECT rz.zutat_id FROM essenplan e
+                             JOIN rezept_zutaten rz ON e.rezept_id = rz.rezept_id
+                             WHERE e.user_id = ? AND e.datum BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+                         )";
+        $vorratsStmt = $conn->prepare($vorratsQuery);
+        $vorratsStmt->bind_param("ii", $userId, $userId);
+        $vorratsStmt->execute();
+        $vorratsResult = $vorratsStmt->get_result();
+        
+        $unverplanteZutaten = [];
+        while ($row = $vorratsResult->fetch_assoc()) {
+            $unverplanteZutaten[] = $row['zutat_id'];
+        }
+    
+        // Schritt 2: Priorisiere Rezepte, die diese unverplanten Lebensmittel verwenden.
+        // Dies könnte z.B. durch eine Erhöhung der Relevanz in der Suchabfrage erfolgen.
+        if (!empty($unverplanteZutaten)) {
+            foreach ($unverplanteZutaten as $zutatId) {
+                // Erhöhe die Relevanz für Rezepte, die die unverplanten Zutaten enthalten
+                $sql .= " + CASE WHEN EXISTS (
+                            SELECT 1 FROM rezept_zutaten rz 
+                            WHERE rz.rezept_id = r.id AND rz.zutat_id = ?
+                          ) THEN 1 ELSE 0 END";
+                $params[] = $zutatId; // Füge die Zutat-ID den Parametern für das Prepared Statement hinzu
+            }
+        }
     }
+    
 
     if (!empty($allergien)) {
         // Logik zur Berücksichtigung von Allergien (benötigt spezifische Implementierung)
@@ -79,10 +109,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
     <main>
         <h2>Rezeptsuche</h2>
         <form action="rezeptsuche.php" method="get">
-            <label for="saisonalitaet">Berücksichtige Saisonalität (Not implemntet jet):</label>
+            <label for="saisonalitaet">Berücksichtige Saisonalität (noch keine Saisonalität tabelle):</label>
             <input type="checkbox" id="saisonalitaet" name="saisonalitaet"><br>
 
-            <label for="unverplanteLebensmittel">Berücksichtige unverplante Lebensmittel(Not implemntet jet):</label>
+            <label for="unverplanteLebensmittel">Berücksichtige unverplante Lebensmittel(working):</label>
             <input type="checkbox" id="unverplanteLebensmittel" name="unverplanteLebensmittel"><br>
 
             <label for="allergien">Berücksichtige Allergien(Not implemntet jet):</label>
@@ -91,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
             <label for="planetaryHealthDiet">Berücksichtige Planetary Health Diet(Not implemntet jet):</label>
             <input type="checkbox" id="planetaryHealthDiet" name="planetaryHealthDiet"><br>
 
-            <label for="suchbegriff">Suchbegriff:</label>
+            <label for="suchbegriff">Suchbegriff(mehr schelcht asl recht, aber es läuft):</label>
             <input type="text" id="suchbegriff" name="suchbegriff" placeholder="Suchbegriff eingeben"><br>
 
             <label for="sollEnthalten">Soll enthalten(Not implemntet jet):</label>

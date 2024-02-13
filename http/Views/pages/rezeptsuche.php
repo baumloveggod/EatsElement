@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
             <label for="saisonalitaet">Berücksichtige Saisonalität (noch keine Saisonalität tabelle):</label>
             <input type="checkbox" id="saisonalitaet" name="saisonalitaet"><br>
 
-            <label for="unverplanteLebensmittel">Berücksichtige unverplante Lebensmittel(working):</label>
+            <label for="unverplanteLebensmittel">Berücksichtige unverplante Lebensmittel(not working):</label>
             <input type="checkbox" id="unverplanteLebensmittel" name="unverplanteLebensmittel"><br>
 
             <label for="allergien">Berücksichtige Allergien(Not implemntet jet):</label>
@@ -139,6 +139,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
                 <li>
                     <h3><?= htmlspecialchars($rezept['titel']) ?></h3>
                     <p><?= htmlspecialchars($rezept['beschreibung']) ?></p>
+                    <p>Relevanz: <?= htmlspecialchars($rezept['relevanz']) ?></p>
+
                     <!-- Weitere Details zum Rezept -->
                 </li>
             <?php endforeach; ?>

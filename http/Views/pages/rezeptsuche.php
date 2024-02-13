@@ -1,7 +1,13 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 require_once '../../Utils/SessionManager.php';
 require_once '../../Utils/db_connect.php';
 checkUserAuthentication();
+
+$userId = $_SESSION['userId'];
 
 // Verarbeitung der Suchanfrage
 if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
@@ -15,14 +21,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
 
     // Basis SQL-Query
     // Basis-SQL-Query mit initialer Punktebewertung
+    
     $sqlBase = "SELECT r.*, (0";
+    $sql_addons = "";
     $sqlEnd = ") AS relevanz FROM rezepte r WHERE 1=1";
     $params = []; // Initialisiere das Parameter-Array für Prepared Statements
 
     
     // Dynamische Ergänzung der SQL-Query basierend auf Suchkriterien
     if ($saisonalitaet) {
-        $sqlBase .= " + CASE WHEN EXISTS (
+        $sql_addons .= " + CASE WHEN EXISTS (
                       SELECT 1 FROM zutaten_saisonalitaet zs
                       JOIN rezept_zutaten rz ON zs.zutat_id = rz.zutat_id
                       WHERE rz.rezept_id = r.id
@@ -32,6 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
     
 
     if ($unverplanteLebensmittel) {
+        echo "debug: 1"; // Debug-Statement 1
         // Schritt 1: Ermittle alle Lebensmittel im Vorratsschrank des Benutzers, die noch nicht in einem geplanten Essen verwendet werden.
         $vorratsQuery = "SELECT vs.zutat_id FROM vorratsschrank vs
                          WHERE vs.user_id = ?
@@ -42,20 +51,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
                          )";
         $vorratsStmt = $conn->prepare($vorratsQuery);
         $vorratsStmt->bind_param("ii", $userId, $userId);
+        
         $vorratsStmt->execute();
         $vorratsResult = $vorratsStmt->get_result();
-        
         $unverplanteZutaten = [];
         while ($row = $vorratsResult->fetch_assoc()) {
             $unverplanteZutaten[] = $row['zutat_id'];
         }
+        // Debug-Statement 2: Ausgabe der unverplanten Zutaten
+        echo "debug: Unverplante Zutaten: ";
+        print_r($unverplanteZutaten);
     
         // Schritt 2: Priorisiere Rezepte, die diese unverplanten Lebensmittel verwenden.
         // Dies könnte z.B. durch eine Erhöhung der Relevanz in der Suchabfrage erfolgen.
         if (!empty($unverplanteZutaten)) {
             foreach ($unverplanteZutaten as $zutatId) {
+                // Debug-Statement 3: Ausgabe der verarbeiteten Zutat-ID
+                echo "debug: Verarbeite Zutat-ID: $zutatId";
+                
                 // Erhöhe die Relevanz für Rezepte, die die unverplanten Zutaten enthalten
-                $sql .= " + CASE WHEN EXISTS (
+                $sql_addons .= " + CASE WHEN EXISTS (
                             SELECT 1 FROM rezept_zutaten rz 
                             WHERE rz.rezept_id = r.id AND rz.zutat_id = ?
                           ) THEN 1 ELSE 0 END";
@@ -63,6 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
             }
         }
     }
+    
     
 
     if (!empty($allergien)) {
@@ -81,7 +97,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
     }
 
 
-    $sql = $sqlBase . $sqlEnd . " ORDER BY relevanz DESC";
+    $sql = $sqlBase . $sql_addons .  $sqlEnd . " ORDER BY relevanz DESC";
+    echo $sql;
     // SQL-Query vorbereiten und ausführen
     $stmt = $conn->prepare($sql);
     // Hier müssten die Parameter entsprechend der tatsächlichen Anzahl und Typen gebunden werden
@@ -112,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
             <label for="saisonalitaet">Berücksichtige Saisonalität (noch keine Saisonalität tabelle):</label>
             <input type="checkbox" id="saisonalitaet" name="saisonalitaet"><br>
 
-            <label for="unverplanteLebensmittel">Berücksichtige unverplante Lebensmittel(not working):</label>
+            <label for="unverplanteLebensmittel">Berücksichtige unverplante Lebensmittel(working):</label>
             <input type="checkbox" id="unverplanteLebensmittel" name="unverplanteLebensmittel"><br>
 
             <label for="allergien">Berücksichtige Allergien(Not implemntet jet):</label>

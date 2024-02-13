@@ -141,3 +141,23 @@ CREATE TABLE zutaten_saisonalitaet (
     FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
 );
 
+CREATE TABLE Planetary_Health_Diet_Categories (
+    ID INT PRIMARY KEY,
+    Kategorie VARCHAR(255),
+    Taegliche_Menge_g INT,
+    Beispiele TEXT
+);
+INSERT INTO Planetary_Health_Diet_Categories (ID, Kategorie, Taegliche_Menge_g, Beispiele) VALUES
+(1, 'Getreide (Vollkorn)', 232, 'Vollkornprodukte, unverarbeitete Mais-, Weizen-, Reis- oder Haferprodukte'),
+(2, 'Hülsenfrüchte', 50, 'Linsen, Bohnen, Erbsen, Kichererbsen'),
+(3, 'Gemüse', 300, 'Ein Mix aus verschiedenen Gemüsesorten'),
+(4, 'Obst', 200, 'Äpfel, Bananen, Orangen, Beeren'),
+(5, 'Nüsse und Samen', 50, ''),
+(6, 'Fleisch (Rot und verarbeitet)', 14, 'Begrenzen auf rotes und verarbeitetes Fleisch'),
+(7, 'Geflügel', 29, ''),
+(8, 'Fisch', 28, ''),
+(9, 'Milchprodukte', 250, 'Milch, Joghurt, Käse'),
+(10, 'Eier', 13, 'Entspricht etwa 1,5 Eiern pro Woche'),
+(11, 'Pflanzliche Öle', 40, 'Olivenöl, Rapsöl, Sonnenblumenöl'),
+(12, 'Zucker', 31, ''),
+(13, 'Stärkehaltiges Gemüse', 50, 'Kartoffeln, Süßkartoffeln');

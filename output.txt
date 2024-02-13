@@ -1649,10 +1649,6 @@ function deleteRecipe($recipeId, $conn) {
 </html>
 
 
-Path: ./http/Views\pages\analyse.php
-Content:
-
-
 Path: ./http/Views\pages\einkaufsliste.php
 Content:
 <?php 
@@ -2164,8 +2160,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
     }
 
     if ($planetaryHealthDiet) {
-        // Logik zur Berücksichtigung der Planetary Health Diet (benötigt spezifische Implementierung)
+        // SQL-Teil, der den durchschnittlichen Verbrauch pro PHD-Kategorie berechnet
+        $sqlDurchschnittsVerbrauch = "(SELECT phdc.ID, IFNULL(SUM(rz.menge) / 30, 0) AS DurchschnittsMenge
+                                       FROM Planetary_Health_Diet_Categories phdc
+                                       LEFT JOIN rezept_zutaten rz ON phdc.ID = rz.phd_kategorie_id
+                                       LEFT JOIN essenplan ep ON rz.rezept_id = ep.rezept_id
+                                       WHERE ep.user_id = ? AND ep.datum BETWEEN DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND CURDATE()
+                                       GROUP BY phdc.ID)";
+    
+        // Unterabfrage, die die Relevanz basierend auf der Abweichung zum PHD anpasst
+        $sql_addons .= " + (SELECT SUM(CASE WHEN dv.DurchschnittsMenge > phdc.Taegliche_Menge_g THEN -1
+                                            WHEN dv.DurchschnittsMenge < phdc.Taegliche_Menge_g THEN 1
+                                            ELSE 0 END) AS PHD_RelevanzAnpassung
+                         FROM Planetary_Health_Diet_Categories phdc
+                         LEFT JOIN ($sqlDurchschnittsVerbrauch) dv ON phdc.ID = dv.ID
+                         WHERE phdc.ID = rz.phd_kategorie_id)";
+    
+        // Binden Sie den $userId zweimal, da er in zwei Teilen der Abfrage verwendet wird
+        $params[] = $userId; // Für den durchschnittlichen Verbrauch
     }
+    
+    // Denken Sie daran, die Parameter entsprechend zu binden, wenn Sie prepared statements verwenden
+    
 
     if (!empty($suchbegriff)) {
     }

@@ -256,4 +256,27 @@ function berechnePhdDifferenz($userId, $conn) {
 
     return $differenzen;
 }
+
+
+<form action="rezeptsuche.php" method="get">
+            <label for="saisonalitaet">Berücksichtige Saisonalität (noch keine Saisonalität tabelle):</label>
+            <input type="checkbox" id="saisonalitaet" name="saisonalitaet"><br>
+
+            <label for="unverplanteLebensmittel">Berücksichtige unverplante Lebensmittel(working):</label>
+            <input type="checkbox" id="unverplanteLebensmittel" name="unverplanteLebensmittel"><br>
+
+            <label for="allergien">Berücksichtige Allergien(Not implemntet jet):</label>
+            <input type="text" id="allergien" name="allergien" placeholder="z.B. Nüsse, Gluten"><br>
+
+            <label for="planetaryHealthDiet">Berücksichtige Planetary Health Diet(Not implemntet jet):</label>
+            <input type="checkbox" id="planetaryHealthDiet" name="planetaryHealthDiet"><br>
+
+            <label for="suchbegriff">Suchbegriff(mehr schelcht asl recht, aber es läuft):</label>
+            <input type="text" id="suchbegriff" name="suchbegriff" placeholder="Suchbegriff eingeben"><br>
+
+            <label for="sollEnthalten">Soll enthalten(Not implemntet jet):</label>
+            <input type="text" id="sollEnthalten" name="sollEnthalten" placeholder="Zutat"><br>
+
+            <button type="submit">Suchen</button>
+        </form>
 ?>

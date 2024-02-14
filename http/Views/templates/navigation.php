@@ -3,6 +3,8 @@
 require_once '../../Utils/db_connect.php';
 require_once '../../Utils/SessionManager.php';
 
+global $conn;
+
 $einkaufsoption = ''; // Initialisiere die Variable
 
 // Überprüfe, ob der Benutzer eingeloggt ist, und hole die Einkaufsoption

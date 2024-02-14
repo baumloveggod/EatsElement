@@ -183,7 +183,7 @@ function executeSearch($sqlQuery, $userId) {
     }
     return $recipes;
 }
-function displayRecipes($recipes) {
+function displayRecipes($rezepte) {
 ?>
     <!DOCTYPE html>
 <html lang="de">
@@ -198,25 +198,26 @@ function displayRecipes($recipes) {
         <h2>Rezeptsuche</h2>
         <form action="rezeptsuche.php" method="get">
             <label for="saisonalitaet">Berücksichtige Saisonalität (noch keine Saisonalität tabelle):</label>
-            <input type="checkbox" id="saisonalitaet" name="saisonalitaet"><br>
+            <input type="checkbox" id="saisonalitaet" name="saisonalitaet" <?php echo (isset($_GET['saisonalitaet']) ? 'checked' : ''); ?>><br>
 
             <label for="unverplanteLebensmittel">Berücksichtige unverplante Lebensmittel(working):</label>
-            <input type="checkbox" id="unverplanteLebensmittel" name="unverplanteLebensmittel"><br>
+            <input type="checkbox" id="unverplanteLebensmittel" name="unverplanteLebensmittel" <?php echo (isset($_GET['unverplanteLebensmittel']) ? 'checked' : ''); ?>><br>
 
             <label for="allergien">Berücksichtige Allergien(Not implemntet jet):</label>
-            <input type="text" id="allergien" name="allergien" placeholder="z.B. Nüsse, Gluten"><br>
+            <input type="text" id="allergien" name="allergien" placeholder="z.B. Nüsse, Gluten" value="<?php echo htmlspecialchars($_GET['allergien'] ?? ''); ?>"><br>
 
             <label for="planetaryHealthDiet">Berücksichtige Planetary Health Diet(Not implemntet jet):</label>
-            <input type="checkbox" id="planetaryHealthDiet" name="planetaryHealthDiet"><br>
+            <input type="checkbox" id="planetaryHealthDiet" name="planetaryHealthDiet" <?php echo (isset($_GET['planetaryHealthDiet']) ? 'checked' : ''); ?>><br>
 
             <label for="suchbegriff">Suchbegriff(mehr schelcht asl recht, aber es läuft):</label>
-            <input type="text" id="suchbegriff" name="suchbegriff" placeholder="Suchbegriff eingeben"><br>
+            <input type="text" id="suchbegriff" name="suchbegriff" placeholder="Suchbegriff eingeben" value="<?php echo htmlspecialchars($_GET['suchbegriff'] ?? ''); ?>"><br>
 
             <label for="sollEnthalten">Soll enthalten(Not implemntet jet):</label>
-            <input type="text" id="sollEnthalten" name="sollEnthalten" placeholder="Zutat"><br>
+            <input type="text" id="sollEnthalten" name="sollEnthalten" placeholder="Zutat" value="<?php echo htmlspecialchars($_GET['sollEnthalten'] ?? ''); ?>"><br>
 
             <button type="submit">Suchen</button>
         </form>
+
     </main>
     <main>
     <h2>Suchergebnisse</h2>

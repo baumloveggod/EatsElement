@@ -8,14 +8,14 @@ $einkaufsoption = ''; // Initialisiere die Variable
 // Überprüfe, ob der Benutzer eingeloggt ist, und hole die Einkaufsoption
 
 $userId = $_SESSION['userId'];
-    $sql = "SELECT einkaufsoption FROM users WHERE id = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $userId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($row = $result->fetch_assoc()) {
-        $einkaufsoption = $row['einkaufsoption'];
-    }
+$sql = "SELECT einkaufsoption FROM users WHERE id = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($row = $result->fetch_assoc()) {
+    $einkaufsoption = $row['einkaufsoption'];
+}
 ?>
 
 <nav>

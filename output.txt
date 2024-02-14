@@ -2083,37 +2083,43 @@ checkUserAuthentication();
 
 $userId = $_SESSION['userId'];
 
-// Verarbeitung der Suchanfrage
-if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
-    // Initialisiere Variablen für Suchkriterien
-    $saisonalitaet = isset($_GET['saisonalitaet']) ? true : false;
-    $unverplanteLebensmittel = isset($_GET['unverplanteLebensmittel']) ? true : false;
-    $allergien = $_GET['allergien'] ?? '';
-    $planetaryHealthDiet = isset($_GET['planetaryHealthDiet']) ? true : false;
-    $suchbegriff = $_GET['suchbegriff'] ?? '';
-    $sollEnthalten = $_GET['sollEnthalten'] ?? '';
+if ($_SERVER['REQUEST_METHOD'] == 'GET') {
+    $searchCriteria = prepareSearchCriteria($_GET);
+    $sqlQuery = buildSqlQuery($searchCriteria, $userId);
+    $recipes = executeSearch($sqlQuery, $userId);
+    displayRecipes($recipes);
+} else{
+    displaySearchForm();
+}
+function prepareSearchCriteria($getData) {
+    return [
+        'saisonalitaet' => isset($getData['saisonalitaet']),
+        'unverplanteLebensmittel' => isset($getData['unverplanteLebensmittel']),
+        'allergien' => $getData['allergien'] ?? '',
+        'planetaryHealthDiet' => isset($getData['planetaryHealthDiet']),
+        'suchbegriff' => $getData['suchbegriff'] ?? '',
+        'sollEnthalten' => $getData['sollEnthalten'] ?? '',
+    ];
+}
 
-    // Basis SQL-Query
-    // Basis-SQL-Query mit initialer Punktebewertung
-    
+function buildSqlQuery($criteria, $userId) {
+    global $conn;
     $sqlBase = "SELECT r.*, (0";
-    $sql_addons = "";
     $sqlEnd = ") AS relevanz FROM rezepte r WHERE 1=1";
-    $params = []; // Initialisiere das Parameter-Array für Prepared Statements
+    $params = [];
 
-    
-    // Dynamische Ergänzung der SQL-Query basierend auf Suchkriterien
-    if ($saisonalitaet) {
-        $sql_addons .= " + CASE WHEN EXISTS (
-                      SELECT 1 FROM zutaten_saisonalitaet zs
-                      JOIN rezept_zutaten rz ON zs.zutat_id = rz.zutat_id
-                      WHERE rz.rezept_id = r.id
-                      AND CURRENT_DATE BETWEEN zs.saison_start AND zs.saison_ende
-                    ) THEN 1 ELSE 0 END";
+    // Example for one criterion, repeat similar structure for others
+    $sql_saisonalitaet = "";
+    if ($criteria['saisonalitaet']) {
+        $sql_saisonalitaet .= " + CASE WHEN EXISTS (
+            SELECT 1 FROM zutaten_saisonalitaet zs
+            JOIN rezept_zutaten rz ON zs.zutat_id = rz.zutat_id
+            WHERE rz.rezept_id = r.id
+            AND CURRENT_DATE BETWEEN zs.saison_start AND zs.saison_ende
+          ) THEN 1 ELSE 0 END";
     }
-    
-
-    if ($unverplanteLebensmittel) {
+    $sql_unverplanteLebensmittel = "";
+    if ($criteria['unverplanteLebensmittel']) {
         echo "debug: 1"; // Debug-Statement 1
         // Schritt 1: Ermittle alle Lebensmittel im Vorratsschrank des Benutzers, die noch nicht in einem geplanten Essen verwendet werden.
         $vorratsQuery = "SELECT vs.zutat_id FROM vorratsschrank vs
@@ -2144,7 +2150,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
                 echo "debug: Verarbeite Zutat-ID: $zutatId";
                 
                 // Erhöhe die Relevanz für Rezepte, die die unverplanten Zutaten enthalten
-                $sql_addons .= " + CASE WHEN EXISTS (
+                $sql_unverplanteLebensmittel .= " + CASE WHEN EXISTS (
                             SELECT 1 FROM rezept_zutaten rz 
                             WHERE rz.rezept_id = r.id AND rz.zutat_id = ?
                           ) THEN 1 ELSE 0 END";
@@ -2152,63 +2158,108 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
             }
         }
     }
-    
-    
+    $sql_phdPriorisierung = "";
+    if ($criteria['planetaryHealthDiet']){
+        // Pseudo-Code, um die Logik darzustellen
+        $phdDifferenz = berechnePhdDifferenz($userId); // Funktion, die Differenzen für jede Kategorie berechnet
 
-    if (!empty($allergien)) {
-        // Logik zur Berücksichtigung von Allergien (benötigt spezifische Implementierung)
-    }
-
-    if ($planetaryHealthDiet) {
-        // SQL-Teil, der den durchschnittlichen Verbrauch pro PHD-Kategorie berechnet
-        $sqlDurchschnittsVerbrauch = "(SELECT phdc.ID, IFNULL(SUM(rz.menge) / 30, 0) AS DurchschnittsMenge
-                                       FROM Planetary_Health_Diet_Categories phdc
-                                       LEFT JOIN rezept_zutaten rz ON phdc.ID = rz.phd_kategorie_id
-                                       LEFT JOIN essenplan ep ON rz.rezept_id = ep.rezept_id
-                                       WHERE ep.user_id = ? AND ep.datum BETWEEN DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND CURDATE()
-                                       GROUP BY phdc.ID)";
-    
-        // Unterabfrage, die die Relevanz basierend auf der Abweichung zum PHD anpasst
-        $sql_addons .= " + (SELECT SUM(CASE WHEN dv.DurchschnittsMenge > phdc.Taegliche_Menge_g THEN -1
-                                            WHEN dv.DurchschnittsMenge < phdc.Taegliche_Menge_g THEN 1
-                                            ELSE 0 END) AS PHD_RelevanzAnpassung
-                         FROM Planetary_Health_Diet_Categories phdc
-                         LEFT JOIN ($sqlDurchschnittsVerbrauch) dv ON phdc.ID = dv.ID
-                         WHERE phdc.ID = rz.phd_kategorie_id)";
-    
-        // Binden Sie den $userId zweimal, da er in zwei Teilen der Abfrage verwendet wird
-        $params[] = $userId; // Für den durchschnittlichen Verbrauch
-    }
-    
-    // Denken Sie daran, die Parameter entsprechend zu binden, wenn Sie prepared statements verwenden
-    
-
-    if (!empty($suchbegriff)) {
+        foreach ($phdDifferenz as $kategorieId => $differenz) {
+            if ($differenz < 0) { // Zu wenig konsumiert
+                $sql_phdPriorisierung .= " + CASE WHEN EXISTS (
+                    SELECT 1 FROM rezept_zutaten rz
+                    JOIN zutaten z ON rz.zutat_id = z.id
+                    WHERE rz.rezept_id = r.id AND z.phd_kategorie_id = $kategorieId
+                ) THEN ".abs($differenz)." ELSE 0 END";
+            }
+        }
+    }         
+    /*if (!empty($suchbegriff)) {
     }
 
     if (!empty($sollEnthalten)) {
         // Logik zur Berücksichtigung spezifischer Zutaten (benötigt spezifische Implementierung)
-    }
+    }*/
+    $sql = $sqlBase . $sql_saisonalitaet . $sql_unverplanteLebensmittel . $sql_phdPriorisierung . $sqlEnd . " ORDER BY relevanz DESC";
+    return ['query' => $sql, 'params' => $params];
+}
+function berechnePhdDifferenz($userId) {
+    global $conn;
+     // Ermittle die Anzahl der Tage in den letzten 30 Tagen, an denen der Benutzer Essen konsumiert hat
+    $sqlTageMitKonsum = "SELECT COUNT(DISTINCT datum) AS tage_mit_konsum
+                         FROM essenplan
+                         WHERE user_id = ? AND datum BETWEEN DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND CURDATE()";
+    $stmtTageMitKonsum = $conn->prepare($sqlTageMitKonsum);
+    $stmtTageMitKonsum->bind_param("i", $userId);
+    $stmtTageMitKonsum->execute();
+    $resultTageMitKonsum = $stmtTageMitKonsum->get_result();
+    $rowTageMitKonsum = $resultTageMitKonsum->fetch_assoc();
+    $tageMitKonsum = $rowTageMitKonsum['tage_mit_konsum'];
 
+    // Berechne die Anzahl der Tage ohne Konsum
+    $tageOhneKonsum = 30 - $tageMitKonsum;
+    // SQL-Abfrage, um die Gesamtaufnahme pro PHD-Kategorie in den letzten 30 Tagen zu ermitteln
+    $sql = "SELECT z.phd_kategorie_id, SUM(rz.menge) AS gesamt_menge
+            FROM essenplan e
+            JOIN rezept_zutaten rz ON e.rezept_id = rz.rezept_id
+            JOIN zutaten z ON rz.zutat_id = z.id
+            WHERE e.user_id = ? AND e.datum BETWEEN DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND CURDATE()
+            GROUP BY z.phd_kategorie_id";
 
-    $sql = $sqlBase . $sql_addons .  $sqlEnd . " ORDER BY relevanz DESC";
-    echo $sql;
-    // SQL-Query vorbereiten und ausführen
     $stmt = $conn->prepare($sql);
-    // Hier müssten die Parameter entsprechend der tatsächlichen Anzahl und Typen gebunden werden
-    $stmt->execute($params);
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
     $result = $stmt->get_result();
 
-    $rezepte = [];
+    $tatsaechlicheAufnahme = [];
     while ($row = $result->fetch_assoc()) {
-        $rezepte[] = $row;
+        $tatsaechlicheAufnahme[$row['phd_kategorie_id']] = $row['gesamt_menge'];
     }
+
+    // Hole die idealen Mengen für jede PHD-Kategorie
+    $idealeMengen = getIdealePhdMengen(); // Diese Funktion müsste die idealen Mengen aus der Datenbank oder einem Array zurückgeben
+
+    $differenzen = [];
+    foreach ($idealeMengen as $kategorieId => $idealeMenge) {
+        $tatsaechlich = $tatsaechlicheAufnahme[$kategorieId] ?? 0;
+        // Berücksichtige die ideale Menge für Tage ohne Konsum
+        $tatsaechlich += $tageOhneKonsum * $idealeMenge;
+        $differenz = $tatsaechlich - ($idealeMenge * 30); // Umwandlung der Tagesmenge in eine 30-Tage-Menge
+        $differenzen[$kategorieId] = $differenz;
+    }
+
+    return $differenzen;
 }
+function getIdealePhdMengen() {
+    global $conn;
+    $sql = "SELECT ID, Taegliche_Menge_g FROM Planetary_Health_Diet_Categories";
+    $result = $conn->query($sql);
+
+    $idealeMengen = [];
+    while ($row = $result->fetch_assoc()) {
+        $idealeMengen[$row['ID']] = $row['Taegliche_Menge_g'];
+    }
+
+    return $idealeMengen;
+}
+function executeSearch($sqlQuery, $userId) {
+    global $conn;
+    $stmt = $conn->prepare($sqlQuery['query']);
+    // Assuming all parameters are integers, adjust as necessary
+    if (!empty($sqlQuery['params'])) {
+        $types = str_repeat("i", count($sqlQuery['params']));
+        $stmt->bind_param($types, ...$sqlQuery['params']);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $recipes = [];
+    while ($row = $result->fetch_assoc()) {
+        $recipes[] = $row;
+    }
+    return $recipes;
+}
+function displayRecipes($recipes) {
 ?>
-
-
-
-<!DOCTYPE html>
+    <!DOCTYPE html>
 <html lang="de">
 <head>
     <?php include '../templates/header.php'; ?>
@@ -2264,7 +2315,50 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
     <?php include '../templates/footer.php'; ?>
 </body>
 </html>
+<?php
+}
+function displaySearchForm() {
+?>
+    <!DOCTYPE html>
+    <html lang="de">
+    <head>
+        <?php include '../templates/header.php'; ?>
+        <title>Rezeptsuche</title>
+    </head>
+    <body>
+        <?php include '../templates/navigation.php'; ?>
 
+        <main>
+            <h2>Rezeptsuche</h2>
+            <form action="rezeptsuche.php" method="get">
+            <label for="saisonalitaet">Berücksichtige Saisonalität (noch keine Saisonalität tabelle):</label>
+            <input type="checkbox" id="saisonalitaet" name="saisonalitaet"><br>
+
+            <label for="unverplanteLebensmittel">Berücksichtige unverplante Lebensmittel(working):</label>
+            <input type="checkbox" id="unverplanteLebensmittel" name="unverplanteLebensmittel"><br>
+
+            <label for="allergien">Berücksichtige Allergien(Not implemntet jet):</label>
+            <input type="text" id="allergien" name="allergien" placeholder="z.B. Nüsse, Gluten"><br>
+
+            <label for="planetaryHealthDiet">Berücksichtige Planetary Health Diet(Not implemntet jet):</label>
+            <input type="checkbox" id="planetaryHealthDiet" name="planetaryHealthDiet"><br>
+
+            <label for="suchbegriff">Suchbegriff(mehr schelcht asl recht, aber es läuft):</label>
+            <input type="text" id="suchbegriff" name="suchbegriff" placeholder="Suchbegriff eingeben"><br>
+
+            <label for="sollEnthalten">Soll enthalten(Not implemntet jet):</label>
+            <input type="text" id="sollEnthalten" name="sollEnthalten" placeholder="Zutat"><br>
+
+            <button type="submit">Suchen</button>
+        </form>
+        </main>
+
+        <?php include '../templates/footer.php'; ?>
+    </body>
+    </html>
+<?php
+}
+?>
 
 Path: ./http/Views\pages\rezept_detail.php
 Content:
@@ -2638,14 +2732,14 @@ $einkaufsoption = ''; // Initialisiere die Variable
 // Überprüfe, ob der Benutzer eingeloggt ist, und hole die Einkaufsoption
 
 $userId = $_SESSION['userId'];
-    $sql = "SELECT einkaufsoption FROM users WHERE id = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $userId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($row = $result->fetch_assoc()) {
-        $einkaufsoption = $row['einkaufsoption'];
-    }
+$sql = "SELECT einkaufsoption FROM users WHERE id = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($row = $result->fetch_assoc()) {
+    $einkaufsoption = $row['einkaufsoption'];
+}
 ?>
 
 <nav>

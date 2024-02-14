@@ -100,3 +100,160 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     exit;
 }
 ?>
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once '../../Utils/SessionManager.php';
+require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
+
+$userId = $_SESSION['userId'];
+
+if ($_SERVER['REQUEST_METHOD'] == 'GET' && !empty($_GET)) {
+    $searchCriteria = prepareSearchCriteria($_GET);
+    $sqlQuery = buildSqlQuery($searchCriteria, $userId);
+    $recipes = executeSearch($sqlQuery, $userId);
+    displayRecipes($recipes);
+}
+
+function prepareSearchCriteria($getData) {
+    return [
+        'saisonalitaet' => isset($getData['saisonalitaet']),
+        'unverplanteLebensmittel' => isset($getData['unverplanteLebensmittel']),
+        'allergien' => $getData['allergien'] ?? '',
+        'planetaryHealthDiet' => isset($getData['planetaryHealthDiet']),
+        'suchbegriff' => $getData['suchbegriff'] ?? '',
+        'sollEnthalten' => $getData['sollEnthalten'] ?? '',
+    ];
+}
+
+function buildSqlQuery($criteria, $userId) {
+    $sqlBase = "SELECT r.*, (0";
+    $sqlAddons = "";
+    $sqlEnd = ") AS relevanz FROM rezepte r WHERE 1=1";
+    $params = [];
+
+    // Example for one criterion, repeat similar structure for others
+    if ($criteria['saisonalitaet']) {
+        $sqlAddons .= " + CASE WHEN EXISTS (...) THEN 1 ELSE 0 END";
+    }
+
+    // Continue building $sqlAddons based on other criteria...
+
+    $sql = $sqlBase . $sqlAddons . $sqlEnd . " ORDER BY relevanz DESC";
+    return ['query' => $sql, 'params' => $params];
+}
+
+function executeSearch($sqlQuery, $userId) {
+    global $conn; // Assuming $conn is your database connection variable
+    $stmt = $conn->prepare($sqlQuery['query']);
+    // Assuming all parameters are integers, adjust as necessary
+    if (!empty($sqlQuery['params'])) {
+        $types = str_repeat("i", count($sqlQuery['params']));
+        $stmt->bind_param($types, ...$sqlQuery['params']);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $recipes = [];
+    while ($row = $result->fetch_assoc()) {
+        $recipes[] = $row;
+    }
+    return $recipes;
+}
+
+function displayRecipes($recipes) {
+?>
+    <!DOCTYPE html>
+<html lang="de">
+<head>
+    <?php include '../templates/header.php'; ?>
+    <title>Rezeptsuche</title>
+</head>
+<body>
+    <?php include '../templates/navigation.php'; ?>
+
+    <main>
+        <h2>Rezeptsuche</h2>
+        <form action="rezeptsuche.php" method="get">
+            <label for="saisonalitaet">Berücksichtige Saisonalität (noch keine Saisonalität tabelle):</label>
+            <input type="checkbox" id="saisonalitaet" name="saisonalitaet"><br>
+
+            <label for="unverplanteLebensmittel">Berücksichtige unverplante Lebensmittel(working):</label>
+            <input type="checkbox" id="unverplanteLebensmittel" name="unverplanteLebensmittel"><br>
+
+            <label for="allergien">Berücksichtige Allergien(Not implemntet jet):</label>
+            <input type="text" id="allergien" name="allergien" placeholder="z.B. Nüsse, Gluten"><br>
+
+            <label for="planetaryHealthDiet">Berücksichtige Planetary Health Diet(Not implemntet jet):</label>
+            <input type="checkbox" id="planetaryHealthDiet" name="planetaryHealthDiet"><br>
+
+            <label for="suchbegriff">Suchbegriff(mehr schelcht asl recht, aber es läuft):</label>
+            <input type="text" id="suchbegriff" name="suchbegriff" placeholder="Suchbegriff eingeben"><br>
+
+            <label for="sollEnthalten">Soll enthalten(Not implemntet jet):</label>
+            <input type="text" id="sollEnthalten" name="sollEnthalten" placeholder="Zutat"><br>
+
+            <button type="submit">Suchen</button>
+        </form>
+    </main>
+    <main>
+    <h2>Suchergebnisse</h2>
+    <?php if (!empty($rezepte)): ?>
+        
+        <ul>
+            <?php foreach ($rezepte as $rezept): ?>
+                <li>
+                    <h3><?= htmlspecialchars($rezept['titel']) ?></h3>
+                    <p><?= htmlspecialchars($rezept['beschreibung']) ?></p>
+                    <p>Relevanz: <?= htmlspecialchars($rezept['relevanz']) ?></p>
+
+                    <!-- Weitere Details zum Rezept -->
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    <?php else: ?>
+        <p>Keine Rezepte gefunden.</p>
+    <?php endif; ?>
+</main>
+
+    <?php include '../templates/footer.php'; ?>
+</body>
+</html>
+<?php
+}
+
+function berechnePhdDifferenz($userId, $conn) {
+    // Ermittle die Anzahl der Tage in den letzten 30 Tagen, an denen der Benutzer Essen konsumiert hat
+    $sqlTageMitKonsum = "SELECT COUNT(DISTINCT datum) AS tage_mit_konsum
+                         FROM essenplan
+                         WHERE user_id = ? AND datum BETWEEN DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND CURDATE()";
+    $stmtTageMitKonsum = $conn->prepare($sqlTageMitKonsum);
+    $stmtTageMitKonsum->bind_param("i", $userId);
+    $stmtTageMitKonsum->execute();
+    $resultTageMitKonsum = $stmtTageMitKonsum->get_result();
+    $rowTageMitKonsum = $resultTageMitKonsum->fetch_assoc();
+    $tageMitKonsum = $rowTageMitKonsum['tage_mit_konsum'];
+
+    // Berechne die Anzahl der Tage ohne Konsum
+    $tageOhneKonsum = 30 - $tageMitKonsum;
+
+    // Führe die restliche Logik aus, um die tatsächliche Aufnahme zu ermitteln
+    // (Der restliche Teil der Funktion bleibt gleich wie im vorherigen Beispiel)
+
+    // Hole die idealen Mengen für jede PHD-Kategorie
+    $idealeMengen = getIdealePhdMengen($conn);
+
+    $differenzen = [];
+    foreach ($idealeMengen as $kategorieId => $idealeMenge) {
+        $tatsaechlich = $tatsaechlicheAufnahme[$kategorieId] ?? 0;
+        // Berücksichtige die ideale Menge für Tage ohne Konsum
+        $tatsaechlich += $tageOhneKonsum * $idealeMenge;
+        $differenz = $tatsaechlich - (30 * $idealeMenge); // Umwandlung der Tagesmenge in eine 30-Tage-Menge
+        $differenzen[$kategorieId] = $differenz;
+    }
+
+    return $differenzen;
+}
+?>

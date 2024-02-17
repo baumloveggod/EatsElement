@@ -30,31 +30,38 @@ function prepareSearchCriteria($getData) {
 
 function buildSqlQuery($criteria, $userId) {
     global $conn;
-    $sqlBase = "SELECT r.*, (0";
-    $sqlEnd = ") AS relevanz FROM rezepte r WHERE 1=1";
+    $sqlBase = "SELECT r.*,";
+    $sqlRelevanzFelder = ", (0"; // Start der gesamtrelevanz Berechnung
+    $sqlEnd = " FROM rezepte r WHERE 1=1";
     $params = [];
 
-    // Example for one criterion, repeat similar structure for others
+    // Saisonalitätskriterium
     $sql_saisonalitaet = "";
     if ($criteria['saisonalitaet']) {
-        $sql_saisonalitaet .= " + CASE WHEN EXISTS (
+        $sqlRelevanzFelder .= " + CASE WHEN EXISTS (
             SELECT 1 FROM zutaten_saisonalitaet zs
             JOIN rezept_zutaten rz ON zs.zutat_id = rz.zutat_id
             WHERE rz.rezept_id = r.id
             AND CURRENT_DATE BETWEEN zs.saison_start AND zs.saison_ende
           ) THEN 1 ELSE 0 END";
+        $sql_saisonalitaet = ", CASE WHEN EXISTS (
+            SELECT 1 FROM zutaten_saisonalitaet zs
+            JOIN rezept_zutaten rz ON zs.zutat_id = rz.zutat_id
+            WHERE rz.rezept_id = r.id
+            AND CURRENT_DATE BETWEEN zs.saison_start AND zs.saison_ende
+          ) THEN 1 ELSE 0 END AS relevanz_saisonalitaet";
     }
     $sql_unverplanteLebensmittel = "";
     if ($criteria['unverplanteLebensmittel']) {
         echo "debug: 1"; // Debug-Statement 1
         // Schritt 1: Ermittle alle Lebensmittel im Vorratsschrank des Benutzers, die noch nicht in einem geplanten Essen verwendet werden.
         $vorratsQuery = "SELECT vs.zutat_id FROM vorratsschrank vs
-                         WHERE vs.user_id = ?
-                         AND vs.zutat_id NOT IN (
-                             SELECT rz.zutat_id FROM essenplan e
-                             JOIN rezept_zutaten rz ON e.rezept_id = rz.rezept_id
-                             WHERE e.user_id = ? AND e.datum BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
-                         )";
+                        WHERE vs.user_id = ?
+                        AND vs.zutat_id NOT IN (
+                            SELECT rz.zutat_id FROM essenplan e
+                            JOIN rezept_zutaten rz ON e.rezept_id = rz.rezept_id
+                            WHERE e.user_id = ? AND e.datum BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+                        )";
         $vorratsStmt = $conn->prepare($vorratsQuery);
         $vorratsStmt->bind_param("ii", $userId, $userId);
         
@@ -64,26 +71,23 @@ function buildSqlQuery($criteria, $userId) {
         while ($row = $vorratsResult->fetch_assoc()) {
             $unverplanteZutaten[] = $row['zutat_id'];
         }
-        // Debug-Statement 2: Ausgabe der unverplanten Zutaten
-        echo "debug: Unverplante Zutaten: ";
+        echo "debug: Unverplante Zutaten: "; // Debug-Statement 2
         print_r($unverplanteZutaten);
-    
-        // Schritt 2: Priorisiere Rezepte, die diese unverplanten Lebensmittel verwenden.
-        // Dies könnte z.B. durch eine Erhöhung der Relevanz in der Suchabfrage erfolgen.
+
         if (!empty($unverplanteZutaten)) {
+            $placeholders = implode(',', array_fill(0, count($unverplanteZutaten), '?')); // Erstellt eine kommagetrennte Liste von Platzhaltern
+            // Bereite das dynamische SQL-Teil vor
+            $sql_unverplanteLebensmittel = " + CASE WHEN r.id IN (
+                        SELECT DISTINCT rz.rezept_id FROM rezept_zutaten rz
+                        WHERE rz.zutat_id IN ($placeholders)
+                    ) THEN 1 ELSE 0 END";
+            // Füge die IDs der unverplanten Zutaten den Parametern für das Prepared Statement hinzu
             foreach ($unverplanteZutaten as $zutatId) {
-                // Debug-Statement 3: Ausgabe der verarbeiteten Zutat-ID
-                echo "debug: Verarbeite Zutat-ID: $zutatId";
-                
-                // Erhöhe die Relevanz für Rezepte, die die unverplanten Zutaten enthalten
-                $sql_unverplanteLebensmittel .= " + CASE WHEN EXISTS (
-                            SELECT 1 FROM rezept_zutaten rz 
-                            WHERE rz.rezept_id = r.id AND rz.zutat_id = ?
-                          ) THEN 1 ELSE 0 END";
-                $params[] = $zutatId; // Füge die Zutat-ID den Parametern für das Prepared Statement hinzu
+                $params[] = $zutatId;
             }
         }
     }
+
     $sql_phdPriorisierung = "";
     if ($criteria['planetaryHealthDiet']){
         // Pseudo-Code, um die Logik darzustellen
@@ -105,7 +109,12 @@ function buildSqlQuery($criteria, $userId) {
     if (!empty($sollEnthalten)) {
         // Logik zur Berücksichtigung spezifischer Zutaten (benötigt spezifische Implementierung)
     }*/
-    $sql = $sqlBase . $sql_saisonalitaet . $sql_unverplanteLebensmittel . $sql_phdPriorisierung . $sqlEnd . " ORDER BY relevanz DESC";
+    $sqlRelevanzFelder .= ") AS gesamtrelevanz"; // Ende der gesamtrelevanz Berechnung
+
+    // Zusammenbau des finalen SQL-Queries
+    $sql = $sqlBase . $sql_saisonalitaet . $sql_unverplanteLebensmittel . $sqlRelevanzFelder . $sqlEnd . " ORDER BY gesamtrelevanz DESC";
+    echo $sql; // Debug: Print the final SQL query
+
     return ['query' => $sql, 'params' => $params];
 }
 function berechnePhdDifferenz($userId) {
@@ -167,13 +176,15 @@ function getIdealePhdMengen() {
 
     return $idealeMengen;
 }
-function executeSearch($sqlQuery, $userId) {
+function executeSearch($sqlQueryDetails, $userId) {
     global $conn;
-    $stmt = $conn->prepare($sqlQuery['query']);
+    $stmt = $conn->prepare($sqlQueryDetails['query']);
     // Assuming all parameters are integers, adjust as necessary
-    if (!empty($sqlQuery['params'])) {
-        $types = str_repeat("i", count($sqlQuery['params']));
-        $stmt->bind_param($types, ...$sqlQuery['params']);
+    if (!empty($sqlQueryDetails['params'])) {
+        echo $sqlQueryDetails['query']; // To see the final query
+        print_r($sqlQueryDetails['params']); // To verify parameters
+        $types = str_repeat("i", count($sqlQueryDetails['params']));
+        $stmt->bind_param($types, ...$sqlQueryDetails['params']);
     }
     $stmt->execute();
     $result = $stmt->get_result();
@@ -220,26 +231,25 @@ function displayRecipes($rezepte) {
 
     </main>
     <main>
-    <h2>Suchergebnisse</h2>
-    <?php if (!empty($rezepte)): ?>
-        
-        <ul>
-            <?php foreach ($rezepte as $rezept): ?>
-                <li>
-                    <h3><?= htmlspecialchars($rezept['titel']) ?></h3>
-                    <p><?= htmlspecialchars($rezept['beschreibung']) ?></p>
-                    <p>Relevanz: <?= htmlspecialchars($rezept['relevanz']) ?></p>
-
-                    <!-- Weitere Details zum Rezept -->
-                </li>
-            <?php endforeach; ?>
-        </ul>
-    <?php else: ?>
-        <p>Keine Rezepte gefunden.</p>
-    <?php endif; ?>
-</main>
-
-    <?php include '../templates/footer.php'; ?>
+        <h2>Suchergebnisse</h2>
+        <?php if (!empty($rezepte)): ?>
+            <ul>
+                <?php foreach ($rezepte as $rezept): ?>
+                    <li>
+                        <h3><?= htmlspecialchars($rezept['titel']) ?></h3>
+                        <p><?= htmlspecialchars($rezept['beschreibung']) ?></p>
+                        <p>Relevanz: <?= htmlspecialchars($rezept['gesamtrelevanz']) ?></p>
+                        <ul>
+                            <li>Saisonalität: <?= isset($rezept['relevanz_saisonalitaet']) ? htmlspecialchars($rezept['relevanz_saisonalitaet']) : '0' ?></li>
+                            <!-- Weitere Relevanzkriterien hier anzeigen -->
+                        </ul>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php else: ?>
+            <p>Keine Rezepte gefunden.</p>
+        <?php endif; ?>
+    </main>
 </body>
 </html>
 <?php

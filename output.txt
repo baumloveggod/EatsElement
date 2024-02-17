@@ -235,7 +235,7 @@ if ($row[0] == 0) {
     $kategorienSql = "INSERT INTO kategorien (name, sortierreihenfolge) VALUES
     ('unbekannte zutat', 11),
     ('Obst & Gemüse', 1),
-    ('Bäckerei', 2),
+    ('Backwaren', 2),
     ('Fleisch & Fisch', 3),
     ('Milchprodukte & Eier', 4),
     ('Tiefkühlkost', 5),
@@ -267,7 +267,7 @@ if ($row[0] == 0) {
         ['name' => 'Brokkoli', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 15, 'phd_kategorie' => 3], // Gemüse
         ['name' => 'Karotten', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30, 'phd_kategorie' => 3], // Gemüse
         ['name' => 'Römersalat', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 7, 'phd_kategorie' => 3], // Gemüse
-        ['name' => 'Croutons', 'kategorie' => 'Bäckerei', 'haltbarkeit' => 60, 'phd_kategorie' => 1], // Getreide (Vollkorn), Annahme basierend auf dem primären Getreideprodukt
+        ['name' => 'Croutons', 'kategorie' => 'Backwaren', 'haltbarkeit' => 60, 'phd_kategorie' => 1], // Getreide (Vollkorn), Annahme basierend auf dem primären Getreideprodukt
         ['name' => 'Caesar-Dressing', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 90, 'phd_kategorie' => 11], // Pflanzliche Öle, typischerweise basierend auf der Ölbasis im Dressing
         ['name' => 'Linsen', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365, 'phd_kategorie' => 2], // Hülsenfrüchte
         ['name' => 'Zwiebel', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30, 'phd_kategorie' => 3], // Gemüse
@@ -281,12 +281,12 @@ if ($row[0] == 0) {
         ['name' => 'Aubergine', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30, 'phd_kategorie' => 3], // Gemüse
         ['name' => 'Paprika', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30, 'phd_kategorie' => 3], // Gemüse
         ['name' => 'Thymian', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 180, 'phd_kategorie' => 3], // Gemüse, Kräuter fallen oft unter diese Kategorie
-        ['name' => 'Mehl', 'kategorie' => 'Bäckerei', 'haltbarkeit' => 365, 'phd_kategorie' => 1], // Getreide (Vollkorn), Annahme basierend auf dem primären Getreideprodukt
+        ['name' => 'Mehl', 'kategorie' => 'Backwaren', 'haltbarkeit' => 365, 'phd_kategorie' => 1], // Getreide (Vollkorn), Annahme basierend auf dem primären Getreideprodukt
         ['name' => 'Milch', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 10, 'phd_kategorie' => 9], // Milchprodukte
         ['name' => 'Butter', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 30, 'phd_kategorie' => 9], // Milchprodukte
         ['name' => 'Salz', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 1095, 'phd_kategorie' => null], // Salz passt nicht direkt in eine PHD-Kategorie
         // Zuvor begonnene Zutaten mit ergänzten PHD-Kategorien
-        ['name' => 'Vollkornbrot', 'kategorie' => 'Bäckerei', 'haltbarkeit' => 7, 'phd_kategorie' => 1,'naehrstoffe' => [
+        ['name' => 'Vollkornbrot', 'kategorie' => 'Backwaren', 'haltbarkeit' => 7, 'phd_kategorie' => 1,'naehrstoffe' => [
             'kalorien' => 247,
             'proteine' => 13,
             'fette' => 3.4,
@@ -919,8 +919,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require_once '../Utils/SessionManager.php';
 require_once '../Utils/db_connect.php';
+require_once '../Utils/SessionManager.php';
 checkUserAuthentication();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['rezept_id'], $_POST['datum'])) {
@@ -928,33 +928,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['rezept_id'], $_POST['d
     $datum = $_POST['datum'];
     $userId = $_SESSION['userId'];
 
-    // Überprüfen, ob für diesen Tag bereits ein Essen geplant ist
-    $checkSql = "SELECT id FROM essenplan WHERE user_id = ? AND datum = ?";
-    $checkStmt = $conn->prepare($checkSql);
-    $checkStmt->bind_param("is", $userId, $datum);
-    $checkStmt->execute();
-    $result = $checkStmt->get_result();
+    // Hole die Zutaten des Rezepts
+    $sqlZutaten = "SELECT zutat_id, menge FROM rezept_zutaten WHERE rezept_id = ?";
+    $stmtZutaten = $conn->prepare($sqlZutaten);
+    $stmtZutaten->bind_param("i", $rezeptId);
+    $stmtZutaten->execute();
+    $resultZutaten = $stmtZutaten->get_result();
 
-    if ($result->num_rows === 0) {
-        // Kein Essen geplant, füge das neue Rezept ein
-        $insertSql = "INSERT INTO essenplan (user_id, datum, rezept_id, anzahl_personen) VALUES (?, ?, ?, ?)";
-        $insertStmt = $conn->prepare($insertSql);
-        // Die Anzahl der Personen könnte dynamisch angepasst werden, hier verwenden wir einen Standardwert
-        $anzahlPersonen = 4;
-        $insertStmt->bind_param("isii", $userId, $datum, $rezeptId, $anzahlPersonen);
+    while ($zutat = $resultZutaten->fetch_assoc()) {
+        // Überprüfe, ob die Zutat bereits im Vorratsschrank ist und ob sie für andere Mahlzeiten geplant ist
+        $sqlVorrat = "SELECT id FROM vorratsschrank WHERE zutat_id = ? AND user_id = ?";
+        $stmtVorrat = $conn->prepare($sqlVorrat);
+        $stmtVorrat->bind_param("ii", $zutat['zutat_id'], $userId);
+        $stmtVorrat->execute();
+        $resultVorrat = $stmtVorrat->get_result();
 
-        if ($insertStmt->execute()) {
-            //echo "Rezept erfolgreich für $datum geplant.";
-        } else {
-            echo "Fehler beim Planen des Rezepts.";
+        if ($resultVorrat->num_rows == 0) {
+            // Zutat ist nicht im Vorratsschrank, also füge sie zur Einkaufsliste hinzu
+            $sqlEinkaufsliste = "INSERT INTO einkaufsliste (user_id, zutat_id, menge) VALUES (?, ?, ?)";
+            $stmtEinkaufsliste = $conn->prepare($sqlEinkaufsliste);
+            $stmtEinkaufsliste->bind_param("iii", $userId, $zutat['zutat_id'], $zutat['menge']);
+            $stmtEinkaufsliste->execute();
         }
-    } else {
-        echo "Für dieses Datum ist bereits ein Essen geplant.";
     }
 
-    $conn->close();
-    // Leite zurück zur Rezeptdetailseite oder zum Essenplan
-    header("Location: /Views/pages/rezept_detail.php?datum=" . urlencode($datum));
+    // Weiterleitung oder Bestätigung
+    header("Location: /Views/pages/einkaufsliste.php");
     exit;
 }
 ?>
@@ -1668,9 +1667,8 @@ $sql = "SELECT e.id, zn.name, e.menge, e.verbrauchsdatum, k.name AS kategorie, k
         JOIN zutaten z ON e.zutat_id = z.id
         JOIN zutaten_namen zn ON z.id = zn.zutat_id
         JOIN kategorien k ON z.kategorie_id = k.id
-        WHERE e.user_id = ? 
-        AND (e.verbrauchsdatum IS NULL OR DATE_ADD(CURDATE(), INTERVAL z.uebliche_haltbarkeit DAY) >= e.verbrauchsdatum)
-        ORDER BY k.id ASC, e.verbrauchsdatum ASC";
+        WHERE e.user_id = ? AND (e.verbrauchsdatum IS NULL OR e.verbrauchsdatum <= DATE_ADD(CURDATE(), INTERVAL z.uebliche_haltbarkeit DAY))
+        ORDER BY e.verbrauchsdatum ASC, k.id ASC;";
 
 
 $stmt = $conn->prepare($sql);
@@ -2104,31 +2102,38 @@ function prepareSearchCriteria($getData) {
 
 function buildSqlQuery($criteria, $userId) {
     global $conn;
-    $sqlBase = "SELECT r.*, (0";
-    $sqlEnd = ") AS relevanz FROM rezepte r WHERE 1=1";
+    $sqlBase = "SELECT r.*,";
+    $sqlRelevanzFelder = ", (0"; // Start der gesamtrelevanz Berechnung
+    $sqlEnd = " FROM rezepte r WHERE 1=1";
     $params = [];
 
-    // Example for one criterion, repeat similar structure for others
+    // Saisonalitätskriterium
     $sql_saisonalitaet = "";
     if ($criteria['saisonalitaet']) {
-        $sql_saisonalitaet .= " + CASE WHEN EXISTS (
+        $sqlRelevanzFelder .= " + CASE WHEN EXISTS (
             SELECT 1 FROM zutaten_saisonalitaet zs
             JOIN rezept_zutaten rz ON zs.zutat_id = rz.zutat_id
             WHERE rz.rezept_id = r.id
             AND CURRENT_DATE BETWEEN zs.saison_start AND zs.saison_ende
           ) THEN 1 ELSE 0 END";
+        $sql_saisonalitaet = ", CASE WHEN EXISTS (
+            SELECT 1 FROM zutaten_saisonalitaet zs
+            JOIN rezept_zutaten rz ON zs.zutat_id = rz.zutat_id
+            WHERE rz.rezept_id = r.id
+            AND CURRENT_DATE BETWEEN zs.saison_start AND zs.saison_ende
+          ) THEN 1 ELSE 0 END AS relevanz_saisonalitaet";
     }
     $sql_unverplanteLebensmittel = "";
     if ($criteria['unverplanteLebensmittel']) {
         echo "debug: 1"; // Debug-Statement 1
         // Schritt 1: Ermittle alle Lebensmittel im Vorratsschrank des Benutzers, die noch nicht in einem geplanten Essen verwendet werden.
         $vorratsQuery = "SELECT vs.zutat_id FROM vorratsschrank vs
-                         WHERE vs.user_id = ?
-                         AND vs.zutat_id NOT IN (
-                             SELECT rz.zutat_id FROM essenplan e
-                             JOIN rezept_zutaten rz ON e.rezept_id = rz.rezept_id
-                             WHERE e.user_id = ? AND e.datum BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
-                         )";
+                        WHERE vs.user_id = ?
+                        AND vs.zutat_id NOT IN (
+                            SELECT rz.zutat_id FROM essenplan e
+                            JOIN rezept_zutaten rz ON e.rezept_id = rz.rezept_id
+                            WHERE e.user_id = ? AND e.datum BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+                        )";
         $vorratsStmt = $conn->prepare($vorratsQuery);
         $vorratsStmt->bind_param("ii", $userId, $userId);
         
@@ -2138,26 +2143,23 @@ function buildSqlQuery($criteria, $userId) {
         while ($row = $vorratsResult->fetch_assoc()) {
             $unverplanteZutaten[] = $row['zutat_id'];
         }
-        // Debug-Statement 2: Ausgabe der unverplanten Zutaten
-        echo "debug: Unverplante Zutaten: ";
+        echo "debug: Unverplante Zutaten: "; // Debug-Statement 2
         print_r($unverplanteZutaten);
-    
-        // Schritt 2: Priorisiere Rezepte, die diese unverplanten Lebensmittel verwenden.
-        // Dies könnte z.B. durch eine Erhöhung der Relevanz in der Suchabfrage erfolgen.
+
         if (!empty($unverplanteZutaten)) {
+            $placeholders = implode(',', array_fill(0, count($unverplanteZutaten), '?')); // Erstellt eine kommagetrennte Liste von Platzhaltern
+            // Bereite das dynamische SQL-Teil vor
+            $sql_unverplanteLebensmittel = " + CASE WHEN r.id IN (
+                        SELECT DISTINCT rz.rezept_id FROM rezept_zutaten rz
+                        WHERE rz.zutat_id IN ($placeholders)
+                    ) THEN 1 ELSE 0 END";
+            // Füge die IDs der unverplanten Zutaten den Parametern für das Prepared Statement hinzu
             foreach ($unverplanteZutaten as $zutatId) {
-                // Debug-Statement 3: Ausgabe der verarbeiteten Zutat-ID
-                echo "debug: Verarbeite Zutat-ID: $zutatId";
-                
-                // Erhöhe die Relevanz für Rezepte, die die unverplanten Zutaten enthalten
-                $sql_unverplanteLebensmittel .= " + CASE WHEN EXISTS (
-                            SELECT 1 FROM rezept_zutaten rz 
-                            WHERE rz.rezept_id = r.id AND rz.zutat_id = ?
-                          ) THEN 1 ELSE 0 END";
-                $params[] = $zutatId; // Füge die Zutat-ID den Parametern für das Prepared Statement hinzu
+                $params[] = $zutatId;
             }
         }
     }
+
     $sql_phdPriorisierung = "";
     if ($criteria['planetaryHealthDiet']){
         // Pseudo-Code, um die Logik darzustellen
@@ -2179,7 +2181,12 @@ function buildSqlQuery($criteria, $userId) {
     if (!empty($sollEnthalten)) {
         // Logik zur Berücksichtigung spezifischer Zutaten (benötigt spezifische Implementierung)
     }*/
-    $sql = $sqlBase . $sql_saisonalitaet . $sql_unverplanteLebensmittel . $sql_phdPriorisierung . $sqlEnd . " ORDER BY relevanz DESC";
+    $sqlRelevanzFelder .= ") AS gesamtrelevanz"; // Ende der gesamtrelevanz Berechnung
+
+    // Zusammenbau des finalen SQL-Queries
+    $sql = $sqlBase . $sql_saisonalitaet . $sql_unverplanteLebensmittel . $sqlRelevanzFelder . $sqlEnd . " ORDER BY gesamtrelevanz DESC";
+    echo $sql; // Debug: Print the final SQL query
+
     return ['query' => $sql, 'params' => $params];
 }
 function berechnePhdDifferenz($userId) {
@@ -2241,13 +2248,15 @@ function getIdealePhdMengen() {
 
     return $idealeMengen;
 }
-function executeSearch($sqlQuery, $userId) {
+function executeSearch($sqlQueryDetails, $userId) {
     global $conn;
-    $stmt = $conn->prepare($sqlQuery['query']);
+    $stmt = $conn->prepare($sqlQueryDetails['query']);
     // Assuming all parameters are integers, adjust as necessary
-    if (!empty($sqlQuery['params'])) {
-        $types = str_repeat("i", count($sqlQuery['params']));
-        $stmt->bind_param($types, ...$sqlQuery['params']);
+    if (!empty($sqlQueryDetails['params'])) {
+        echo $sqlQueryDetails['query']; // To see the final query
+        print_r($sqlQueryDetails['params']); // To verify parameters
+        $types = str_repeat("i", count($sqlQueryDetails['params']));
+        $stmt->bind_param($types, ...$sqlQueryDetails['params']);
     }
     $stmt->execute();
     $result = $stmt->get_result();
@@ -2294,26 +2303,25 @@ function displayRecipes($rezepte) {
 
     </main>
     <main>
-    <h2>Suchergebnisse</h2>
-    <?php if (!empty($rezepte)): ?>
-        
-        <ul>
-            <?php foreach ($rezepte as $rezept): ?>
-                <li>
-                    <h3><?= htmlspecialchars($rezept['titel']) ?></h3>
-                    <p><?= htmlspecialchars($rezept['beschreibung']) ?></p>
-                    <p>Relevanz: <?= htmlspecialchars($rezept['relevanz']) ?></p>
-
-                    <!-- Weitere Details zum Rezept -->
-                </li>
-            <?php endforeach; ?>
-        </ul>
-    <?php else: ?>
-        <p>Keine Rezepte gefunden.</p>
-    <?php endif; ?>
-</main>
-
-    <?php include '../templates/footer.php'; ?>
+        <h2>Suchergebnisse</h2>
+        <?php if (!empty($rezepte)): ?>
+            <ul>
+                <?php foreach ($rezepte as $rezept): ?>
+                    <li>
+                        <h3><?= htmlspecialchars($rezept['titel']) ?></h3>
+                        <p><?= htmlspecialchars($rezept['beschreibung']) ?></p>
+                        <p>Relevanz: <?= htmlspecialchars($rezept['gesamtrelevanz']) ?></p>
+                        <ul>
+                            <li>Saisonalität: <?= isset($rezept['relevanz_saisonalitaet']) ? htmlspecialchars($rezept['relevanz_saisonalitaet']) : '0' ?></li>
+                            <!-- Weitere Relevanzkriterien hier anzeigen -->
+                        </ul>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php else: ?>
+            <p>Keine Rezepte gefunden.</p>
+        <?php endif; ?>
+    </main>
 </body>
 </html>
 <?php
@@ -2420,12 +2428,17 @@ if ($result->num_rows > 0) {
 
                     // Prepare the SQL statement with placeholders
                     $sqlZutaten = "SELECT zn.name, rz.menge, e.name AS einheit, 
-                    IF(vs.id IS NOT NULL, 'Im Vorrat', 'Einkaufen') AS status 
-                    FROM rezept_zutaten rz 
-                    LEFT JOIN einheiten e ON rz.einheit_id = e.id 
-                    JOIN zutaten_namen zn ON rz.zutat_id = zn.zutat_id 
-                    LEFT JOIN vorratsschrank vs ON zn.zutat_id = vs.zutat_id AND vs.user_id = ? 
-                    WHERE rz.rezept_id = ?";
+                                        CASE 
+                                            WHEN vs.id IS NULL THEN 'Einkaufen'
+                                            WHEN vs.verbrauchsdatum < CURDATE() THEN 'Noch zu früh'
+                                            WHEN vs.verbrauchsdatum >= CURDATE() THEN 'Im Vorratsschrank'
+                                            ELSE 'Nichts'
+                                        END AS status 
+                                    FROM rezept_zutaten rz 
+                                    LEFT JOIN einheiten e ON rz.einheit_id = e.id 
+                                    JOIN zutaten_namen zn ON rz.zutat_id = zn.zutat_id 
+                                    LEFT JOIN vorratsschrank vs ON zn.zutat_id = vs.zutat_id AND vs.user_id = ? 
+                                    WHERE rz.rezept_id = ?";
 
                     // Prepare the statement
                     $stmt = $conn->prepare($sqlZutaten);

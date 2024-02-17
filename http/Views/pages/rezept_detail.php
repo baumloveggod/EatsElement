@@ -55,12 +55,17 @@ if ($result->num_rows > 0) {
 
                     // Prepare the SQL statement with placeholders
                     $sqlZutaten = "SELECT zn.name, rz.menge, e.name AS einheit, 
-                    IF(vs.id IS NOT NULL, 'Im Vorrat', 'Einkaufen') AS status 
-                    FROM rezept_zutaten rz 
-                    LEFT JOIN einheiten e ON rz.einheit_id = e.id 
-                    JOIN zutaten_namen zn ON rz.zutat_id = zn.zutat_id 
-                    LEFT JOIN vorratsschrank vs ON zn.zutat_id = vs.zutat_id AND vs.user_id = ? 
-                    WHERE rz.rezept_id = ?";
+                                        CASE 
+                                            WHEN vs.id IS NULL THEN 'Einkaufen'
+                                            WHEN vs.verbrauchsdatum < CURDATE() THEN 'Noch zu früh'
+                                            WHEN vs.verbrauchsdatum >= CURDATE() THEN 'Im Vorratsschrank'
+                                            ELSE 'Nichts'
+                                        END AS status 
+                                    FROM rezept_zutaten rz 
+                                    LEFT JOIN einheiten e ON rz.einheit_id = e.id 
+                                    JOIN zutaten_namen zn ON rz.zutat_id = zn.zutat_id 
+                                    LEFT JOIN vorratsschrank vs ON zn.zutat_id = vs.zutat_id AND vs.user_id = ? 
+                                    WHERE rz.rezept_id = ?";
 
                     // Prepare the statement
                     $stmt = $conn->prepare($sqlZutaten);

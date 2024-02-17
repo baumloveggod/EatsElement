@@ -15,7 +15,7 @@ if ($row[0] == 0) {
     $kategorienSql = "INSERT INTO kategorien (name, sortierreihenfolge) VALUES
     ('unbekannte zutat', 11),
     ('Obst & Gemüse', 1),
-    ('Bäckerei', 2),
+    ('Backwaren', 2),
     ('Fleisch & Fisch', 3),
     ('Milchprodukte & Eier', 4),
     ('Tiefkühlkost', 5),
@@ -47,7 +47,7 @@ if ($row[0] == 0) {
         ['name' => 'Brokkoli', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 15, 'phd_kategorie' => 3], // Gemüse
         ['name' => 'Karotten', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30, 'phd_kategorie' => 3], // Gemüse
         ['name' => 'Römersalat', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 7, 'phd_kategorie' => 3], // Gemüse
-        ['name' => 'Croutons', 'kategorie' => 'Bäckerei', 'haltbarkeit' => 60, 'phd_kategorie' => 1], // Getreide (Vollkorn), Annahme basierend auf dem primären Getreideprodukt
+        ['name' => 'Croutons', 'kategorie' => 'Backwaren', 'haltbarkeit' => 60, 'phd_kategorie' => 1], // Getreide (Vollkorn), Annahme basierend auf dem primären Getreideprodukt
         ['name' => 'Caesar-Dressing', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 90, 'phd_kategorie' => 11], // Pflanzliche Öle, typischerweise basierend auf der Ölbasis im Dressing
         ['name' => 'Linsen', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365, 'phd_kategorie' => 2], // Hülsenfrüchte
         ['name' => 'Zwiebel', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30, 'phd_kategorie' => 3], // Gemüse
@@ -61,12 +61,12 @@ if ($row[0] == 0) {
         ['name' => 'Aubergine', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30, 'phd_kategorie' => 3], // Gemüse
         ['name' => 'Paprika', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30, 'phd_kategorie' => 3], // Gemüse
         ['name' => 'Thymian', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 180, 'phd_kategorie' => 3], // Gemüse, Kräuter fallen oft unter diese Kategorie
-        ['name' => 'Mehl', 'kategorie' => 'Bäckerei', 'haltbarkeit' => 365, 'phd_kategorie' => 1], // Getreide (Vollkorn), Annahme basierend auf dem primären Getreideprodukt
+        ['name' => 'Mehl', 'kategorie' => 'Backwaren', 'haltbarkeit' => 365, 'phd_kategorie' => 1], // Getreide (Vollkorn), Annahme basierend auf dem primären Getreideprodukt
         ['name' => 'Milch', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 10, 'phd_kategorie' => 9], // Milchprodukte
         ['name' => 'Butter', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 30, 'phd_kategorie' => 9], // Milchprodukte
         ['name' => 'Salz', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 1095, 'phd_kategorie' => null], // Salz passt nicht direkt in eine PHD-Kategorie
         // Zuvor begonnene Zutaten mit ergänzten PHD-Kategorien
-        ['name' => 'Vollkornbrot', 'kategorie' => 'Bäckerei', 'haltbarkeit' => 7, 'phd_kategorie' => 1,'naehrstoffe' => [
+        ['name' => 'Vollkornbrot', 'kategorie' => 'Backwaren', 'haltbarkeit' => 7, 'phd_kategorie' => 1,'naehrstoffe' => [
             'kalorien' => 247,
             'proteine' => 13,
             'fette' => 3.4,

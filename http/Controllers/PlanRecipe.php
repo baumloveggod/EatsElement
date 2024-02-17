@@ -3,8 +3,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require_once '../Utils/SessionManager.php';
 require_once '../Utils/db_connect.php';
+require_once '../Utils/SessionManager.php';
 checkUserAuthentication();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['rezept_id'], $_POST['datum'])) {
@@ -12,33 +12,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['rezept_id'], $_POST['d
     $datum = $_POST['datum'];
     $userId = $_SESSION['userId'];
 
-    // Überprüfen, ob für diesen Tag bereits ein Essen geplant ist
-    $checkSql = "SELECT id FROM essenplan WHERE user_id = ? AND datum = ?";
-    $checkStmt = $conn->prepare($checkSql);
-    $checkStmt->bind_param("is", $userId, $datum);
-    $checkStmt->execute();
-    $result = $checkStmt->get_result();
+    // Hole die Zutaten des Rezepts
+    $sqlZutaten = "SELECT zutat_id, menge FROM rezept_zutaten WHERE rezept_id = ?";
+    $stmtZutaten = $conn->prepare($sqlZutaten);
+    $stmtZutaten->bind_param("i", $rezeptId);
+    $stmtZutaten->execute();
+    $resultZutaten = $stmtZutaten->get_result();
 
-    if ($result->num_rows === 0) {
-        // Kein Essen geplant, füge das neue Rezept ein
-        $insertSql = "INSERT INTO essenplan (user_id, datum, rezept_id, anzahl_personen) VALUES (?, ?, ?, ?)";
-        $insertStmt = $conn->prepare($insertSql);
-        // Die Anzahl der Personen könnte dynamisch angepasst werden, hier verwenden wir einen Standardwert
-        $anzahlPersonen = 4;
-        $insertStmt->bind_param("isii", $userId, $datum, $rezeptId, $anzahlPersonen);
+    while ($zutat = $resultZutaten->fetch_assoc()) {
+        // Überprüfe, ob die Zutat bereits im Vorratsschrank ist und ob sie für andere Mahlzeiten geplant ist
+        $sqlVorrat = "SELECT id FROM vorratsschrank WHERE zutat_id = ? AND user_id = ?";
+        $stmtVorrat = $conn->prepare($sqlVorrat);
+        $stmtVorrat->bind_param("ii", $zutat['zutat_id'], $userId);
+        $stmtVorrat->execute();
+        $resultVorrat = $stmtVorrat->get_result();
 
-        if ($insertStmt->execute()) {
-            //echo "Rezept erfolgreich für $datum geplant.";
-        } else {
-            echo "Fehler beim Planen des Rezepts.";
+        if ($resultVorrat->num_rows == 0) {
+            // Zutat ist nicht im Vorratsschrank, also füge sie zur Einkaufsliste hinzu
+            $sqlEinkaufsliste = "INSERT INTO einkaufsliste (user_id, zutat_id, menge) VALUES (?, ?, ?)";
+            $stmtEinkaufsliste = $conn->prepare($sqlEinkaufsliste);
+            $stmtEinkaufsliste->bind_param("iii", $userId, $zutat['zutat_id'], $zutat['menge']);
+            $stmtEinkaufsliste->execute();
         }
-    } else {
-        echo "Für dieses Datum ist bereits ein Essen geplant.";
     }
 
-    $conn->close();
-    // Leite zurück zur Rezeptdetailseite oder zum Essenplan
-    header("Location: /Views/pages/rezept_detail.php?datum=" . urlencode($datum));
+    // Weiterleitung oder Bestätigung
+    header("Location: /Views/pages/einkaufsliste.php");
     exit;
 }
 ?>

@@ -280,3 +280,122 @@ function berechnePhdDifferenz($userId, $conn) {
             <button type="submit">Suchen</button>
         </form>
 ?>
+
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once '../../Utils/SessionManager.php';
+require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
+
+$userId = $_SESSION['userId'];
+
+if ($_SERVER['REQUEST_METHOD'] == 'GET') {
+    $searchCriteria = prepareSearchCriteria($_GET);
+    $sqlQueryDetails = buildSqlQuery($searchCriteria, $userId);
+    $recipes = executeSearch($sqlQueryDetails, $userId);
+    displayRecipes($recipes);
+} else {
+    displaySearchForm();
+}
+
+function prepareSearchCriteria($getData) {
+    // Ihre vorhandene Funktion
+}
+
+function buildSqlQuery($criteria, $userId) {
+    global $conn;
+    $sqlBase = "SELECT r.*";
+    $sqlRelevanzFelder = ", (0"; // Start der gesamtrelevanz Berechnung
+    $sqlEnd = " FROM rezepte r WHERE 1=1";
+    $params = [];
+
+    // Saisonalitätskriterium
+    $sql_saisonalitaet = "";
+    if ($criteria['saisonalitaet']) {
+        $sqlRelevanzFelder .= " + CASE WHEN EXISTS (
+            SELECT 1 FROM zutaten_saisonalitaet zs
+            JOIN rezept_zutaten rz ON zs.zutat_id = rz.zutat_id
+            WHERE rz.rezept_id = r.id
+            AND CURRENT_DATE BETWEEN zs.saison_start AND zs.saison_ende
+          ) THEN 1 ELSE 0 END";
+        $sql_saisonalitaet = ", CASE WHEN EXISTS (
+            SELECT 1 FROM zutaten_saisonalitaet zs
+            JOIN rezept_zutaten rz ON zs.zutat_id = rz.zutat_id
+            WHERE rz.rezept_id = r.id
+            AND CURRENT_DATE BETWEEN zs.saison_start AND zs.saison_ende
+          ) THEN 1 ELSE 0 END AS relevanz_saisonalitaet";
+    }
+
+    // Implementierung für unverplante Lebensmittel und PHD hier hinzufügen...
+
+    $sqlRelevanzFelder .= ") AS gesamtrelevanz"; // Ende der gesamtrelevanz Berechnung
+
+    // Zusammenbau des finalen SQL-Queries
+    $sql = $sqlBase . $sql_saisonalitaet /* Weitere spezifische Relevanzfelder hier */ . $sqlRelevanzFelder . $sqlEnd . " ORDER BY gesamtrelevanz DESC";
+    return ['query' => $sql, 'params' => $params];
+}
+
+function executeSearch($sqlQueryDetails, $userId) {
+    global $conn;
+    $stmt = $conn->prepare($sqlQueryDetails['query']);
+    if (!empty($sqlQueryDetails['params'])) {
+        $types = str_repeat("i", count($sqlQueryDetails['params']));
+        $stmt->bind_param($types, ...$sqlQueryDetails['params']);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $recipes = [];
+    while ($row = $result->fetch_assoc()) {
+        $recipes[] = $row;
+    }
+    return $recipes;
+}
+
+function displayRecipes($rezepte) {
+    // Ihr modifizierter HTML- und PHP-Code zur Anzeige der Rezepte mit Relevanzaufschlüsselung
+}
+
+function displaySearchForm() {
+    // Ihr vorhandener Code zur Anzeige des Suchformulars
+}
+
+// Funktionen wie berechnePhdDifferenz, getIdealePhdMengen, und alle weiteren benötigten Hilfsfunktionen hier...
+if ($criteria['unverplanteLebensmittel']) {
+    echo "debug: 1"; // Debug-Statement 1
+    
+    // Step 1: Identify all unallocated ingredients in the user's pantry.
+    $vorratsQuery = "SELECT vs.zutat_id FROM vorratsschrank vs
+                     WHERE vs.user_id = ?
+                     AND vs.zutat_id NOT IN (
+                         SELECT rz.zutat_id FROM essenplan e
+                         JOIN rezept_zutaten rz ON e.rezept_id = rz.rezept_id
+                         WHERE e.user_id = ? AND e.datum BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+                     )";
+    $vorratsStmt = $conn->prepare($vorratsQuery);
+    $vorratsStmt->bind_param("ii", $userId, $userId);
+    
+    $vorratsStmt->execute();
+    $vorratsResult = $vorratsStmt->get_result();
+    $unverplanteZutaten = [];
+    while ($row = $vorratsResult->fetch_assoc()) {
+        $unverplanteZutaten[] = $row['zutat_id'];
+    }
+    
+    echo "debug: Unverplante Zutaten: "; // Debug-Statement 2
+    print_r($unverplanteZutaten);
+
+    // Step 2: Prioritize recipes that use these unallocated ingredients.
+    if (!empty($unverplanteZutaten)) {
+        $placeholders = implode(',', array_fill(0, count($unverplanteZutaten), '?')); // Create placeholders
+        $sql_unverplanteLebensmittel = " AND r.id IN (
+                SELECT rz.rezept_id FROM rezept_zutaten rz WHERE rz.zutat_id IN ($placeholders)
+            )";
+        foreach ($unverplanteZutaten as $zutatId) {
+            echo "debug: Verarbeite Zutat-ID: $zutatId"; // Debug-Statement 3
+        }
+        $params = array_merge($params, $unverplanteZutaten); // Merge ingredient IDs into params
+    }
+}

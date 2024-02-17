@@ -15,9 +15,8 @@ $sql = "SELECT e.id, zn.name, e.menge, e.verbrauchsdatum, k.name AS kategorie, k
         JOIN zutaten z ON e.zutat_id = z.id
         JOIN zutaten_namen zn ON z.id = zn.zutat_id
         JOIN kategorien k ON z.kategorie_id = k.id
-        WHERE e.user_id = ? 
-        AND (e.verbrauchsdatum IS NULL OR DATE_ADD(CURDATE(), INTERVAL z.uebliche_haltbarkeit DAY) >= e.verbrauchsdatum)
-        ORDER BY k.id ASC, e.verbrauchsdatum ASC";
+        WHERE e.user_id = ? AND (e.verbrauchsdatum IS NULL OR e.verbrauchsdatum <= DATE_ADD(CURDATE(), INTERVAL z.uebliche_haltbarkeit DAY))
+        ORDER BY e.verbrauchsdatum ASC, k.id ASC;";
 
 
 $stmt = $conn->prepare($sql);

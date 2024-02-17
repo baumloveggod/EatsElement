@@ -399,3 +399,29 @@ if ($criteria['unverplanteLebensmittel']) {
         $params = array_merge($params, $unverplanteZutaten); // Merge ingredient IDs into params
     }
 }
+<?php
+require_once '../Utils/db_connect.php';
+require_once '../Utils/SessionManager.php';
+
+checkUserAuthentication(); // Stellen Sie sicher, dass der Benutzer eingeloggt ist
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['rezept_id'], $_POST['datum'])) {
+    $rezeptId = $_POST['rezept_id'];
+    $datum = $_POST['datum'];
+    $userId = $_SESSION['userId']; // Holen Sie die Benutzer-ID aus der Session
+
+    // Bereiten Sie die SQL-Anweisung vor, um das Rezept zum Essensplan hinzuzufügen
+    $sql = "INSERT INTO essenplan (user_id, datum, rezept_id) VALUES (?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("isi", $userId, $datum, $rezeptId);
+
+    if ($stmt->execute()) {
+        // Erfolg: Weiterleitung zurück zum Rezept-Detail oder einer Erfolgsmeldung
+        header("Location: /Views/pages/rezept_detail.php?datum=" . urlencode($datum));
+        exit();
+    } else {
+        // Fehlerbehandlung
+        echo "Fehler beim Hinzufügen des Rezepts zum Essensplan.";
+    }
+}
+?>

@@ -67,7 +67,7 @@ while ($row = $result->fetch_assoc()) {
                             <?= htmlspecialchars($item['verbrauchsdatum']) ?>
                         </a>
                     <?php else: ?>
-                        <form method="post" action="Controllers/RemoveFromEinkaufsliste.php">
+                        <form method="post" action="/Controllers/RemoveFromEinkaufsliste.php">
                             <input type="hidden" name="id" value="<?= $item['id'] ?>">
                             <button type="submit">Entfernen</button>
                         </form>

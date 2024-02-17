@@ -986,7 +986,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['rezept_id'], $_POST['d
 
             // Falls nach Vorratsprüfung noch Menge benötigt wird, prüfe und aktualisiere die Einkaufsliste
             if ($benotigteMenge > 0 && !$verarbeitet) {
-                $sqlEinkaufsliste = "SELECT id, menge FROM einkaufsliste WHERE zutat_id = ? AND user_id = ?";
+                $sqlEinkaufsliste = "SELECT id, menge FROM einkaufsliste WHERE zutat_id = ? AND user_id = ? AND verbrauchsdatum IS NULL";
                 $stmtEinkaufsliste = $conn->prepare($sqlEinkaufsliste);
                 $stmtEinkaufsliste->bind_param("ii", $zutatId, $userId);
                 $stmtEinkaufsliste->execute();
@@ -995,15 +995,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['rezept_id'], $_POST['d
                 if ($eintrag = $resultEinkaufsliste->fetch_assoc()) {
                     // Eintrag vorhanden, aktualisiere die Menge
                     $aktualisierteMenge = $eintrag['menge'] + $benotigteMenge;
-                    $updateEinkaufslisteSql = "UPDATE einkaufsliste SET menge = ? WHERE id = ?";
+                    $updateEinkaufslisteSql = "UPDATE einkaufsliste SET menge = ?, verbrauchsdatum = ? WHERE id = ?";
                     $updateEinkaufslisteStmt = $conn->prepare($updateEinkaufslisteSql);
-                    $updateEinkaufslisteStmt->bind_param("ii", $aktualisierteMenge, $eintrag['id']);
+                    $updateEinkaufslisteStmt->bind_param("isi", $aktualisierteMenge, $verbrauchsdatum, $eintrag['id']);
                     $updateEinkaufslisteStmt->execute();
                 } else {
                     // Kein Eintrag vorhanden, füge einen neuen Eintrag hinzu
-                    $insertEinkaufslisteSql = "INSERT INTO einkaufsliste (user_id, zutat_id, menge) VALUES (?, ?, ?)";
+                    $insertEinkaufslisteSql = "INSERT INTO einkaufsliste (user_id, zutat_id, menge, verbrauchsdatum) VALUES (?, ?, ?, ?)";
                     $insertEinkaufslisteStmt = $conn->prepare($insertEinkaufslisteSql);
-                    $insertEinkaufslisteStmt->bind_param("iii", $userId, $zutatId, $benotigteMenge);
+                    $insertEinkaufslisteStmt->bind_param("iiis", $userId, $zutatId, $benotigteMenge, $verbrauchsdatum);
                     $insertEinkaufslisteStmt->execute();
                 }
             }

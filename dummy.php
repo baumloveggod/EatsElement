@@ -397,7 +397,7 @@ if ($criteria['unverplanteLebensmittel']) {
             echo "debug: Verarbeite Zutat-ID: $zutatId"; // Debug-Statement 3
         }
         $params = array_merge($params, $unverplanteZutaten); // Merge ingredient IDs into params
-    }
+    }s da
 }
 <?php
 require_once '../Utils/db_connect.php';

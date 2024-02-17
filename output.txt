@@ -3014,8 +3014,18 @@ CREATE TABLE einheiten (
     name VARCHAR(50) NOT NULL,
     umrechnungsfaktor_zu_basis DECIMAL(10, 2) NOT NULL,
     basis_einheit_id INT NULL,
-    FOREIGN KEY (basis_einheit_id) REFERENCES einheiten(id)
+    volumen DECIMAL(10, 2),
+    einkaufseinheit_id INT,
+    kocheinheit_id INT,
+    spezifischer_umrechnungsfaktor DECIMAL(10, 2);
+    FOREIGN KEY (basis_einheit_id) REFERENCES einheiten(id),
+    FOREIGN KEY (einkaufseinheit_id) REFERENCES einheiten(id),
+    FOREIGN KEY (kocheinheit_id) REFERENCES einheiten(id)
 );
+-- Basiseinheiten einfügen
+INSERT INTO einheiten (name, umrechnungsfaktor_zu_basis) VALUES ('Gramm', 1), ('Liter', 1);
+INSERT INTO einheiten (name, umrechnungsfaktor_zu_basis, basis_einheit_id) VALUES ('Kilogramm', 1000, 1), ('Pfund', 453.59, 1), ('Unze', 28.35, 1);
+INSERT INTO einheiten (name, umrechnungsfaktor_zu_basis, basis_einheit_id) VALUES ('Milliliter', 0.001, 2), ('Teelöffel', 0.005, 2), ('Esslöffel', 0.015, 2), ('Tasse', 0.24, 2);
 
 CREATE TABLE zutaten_saisonalitaet (
     id INT AUTO_INCREMENT PRIMARY KEY,

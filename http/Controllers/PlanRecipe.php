@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['rezept_id'], $_POST['d
     $rezeptId = $_POST['rezept_id'];
     $datum = $_POST['datum'];
     $userId = $_SESSION['userId'];
+
     // Bereiten Sie die SQL-Anweisung vor, um das Rezept zum Essensplan hinzuzufügen
     $sql = "INSERT INTO essenplan (user_id, datum, rezept_id) VALUES (?, ?, ?)";
     $stmt = $conn->prepare($sql);
@@ -25,21 +26,74 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['rezept_id'], $_POST['d
         $resultZutaten = $stmtZutaten->get_result();
 
         while ($zutat = $resultZutaten->fetch_assoc()) {
-            // Überprüfe, ob die Zutat bereits im Vorratsschrank ist und ob sie für andere Mahlzeiten geplant ist
-            $sqlVorrat = "SELECT id FROM vorratsschrank WHERE zutat_id = ? AND user_id = ?";
+            $zutatId = $zutat['zutat_id'];
+            $benotigteMenge = $zutat['menge'];
+
+            // Überprüfe den Vorratsschrank
+            $sqlVorrat = "SELECT id, menge, verbrauchsdatum FROM vorratsschrank WHERE zutat_id = ? AND user_id = ? ORDER BY verbrauchsdatum IS NULL, verbrauchsdatum ASC";
             $stmtVorrat = $conn->prepare($sqlVorrat);
-            $stmtVorrat->bind_param("ii", $zutat['zutat_id'], $userId);
+            $stmtVorrat->bind_param("ii", $zutatId, $userId);
             $stmtVorrat->execute();
             $resultVorrat = $stmtVorrat->get_result();
+            $verarbeitet = false;
 
-            if ($resultVorrat->num_rows == 0) {
-                // Zutat ist nicht im Vorratsschrank, also füge sie zur Einkaufsliste hinzu
-                $sqlEinkaufsliste = "INSERT INTO einkaufsliste (user_id, zutat_id, menge) VALUES (?, ?, ?)";
-                $stmtEinkaufsliste = $conn->prepare($sqlEinkaufsliste);
-                $stmtEinkaufsliste->bind_param("iii", $userId, $zutat['zutat_id'], $zutat['menge']);
-                $stmtEinkaufsliste->execute();
+            while ($vorrat = $resultVorrat->fetch_assoc() && !$verarbeitet) {
+                try {
+                $vorratMenge = $vorrat['menge'];
+            } catch (Exception $e) {
+                try {
+                    $vorratMenge = $vorrat['id'];
+                } catch (Exception $e) {
+                    echo "Ein Fehler ist in id aufgetreten: " . $e->getMessage() ;
+                    break; // Beendet die Schleife, wenn ein Fehler auftritt
+                }
+                echo "Ein Fehler ist aufgetreten: " . $e->getMessage() ;
+                break; // Beendet die Schleife, wenn ein Fehler auftritt
             }
+                if ($vorratMenge >= $benotigteMenge) {
+                    // Menge im Vorrat ausreichend, aktualisiere oder setze Verbrauchsdatum
+                    $neueMenge = $vorratMenge - $benotigteMenge;
+                    $updateVorratSql = "UPDATE vorratsschrank SET menge = ?, verbrauchsdatum = COALESCE(verbrauchsdatum, ?) WHERE id = ?";
+                    $updateVorratStmt = $conn->prepare($updateVorratSql);
+                    $updateVorratStmt->bind_param("isi", $neueMenge, $datum, $vorrat['id']);
+                    $updateVorratStmt->execute();
+                    $verarbeitet = true;
+                } else {
+                    // Nicht genug Menge, setze Verbrauchsdatum und verringere die benötigte Menge
+                    $benotigteMenge -= $vorratMenge;
+                    $updateVorratSql = "UPDATE vorratsschrank SET verbrauchsdatum = COALESCE(verbrauchsdatum, ?) WHERE id = ?";
+                    $updateVorratStmt = $conn->prepare($updateVorratSql);
+                    $updateVorratStmt->bind_param("si", $datum, $vorrat['id']);
+                    $updateVorratStmt->execute();
+                }
+            }
+
+            // Falls nach Vorratsprüfung noch Menge benötigt wird, prüfe und aktualisiere die Einkaufsliste
+            if ($benotigteMenge > 0 && !$verarbeitet) {
+                $sqlEinkaufsliste = "SELECT id, menge FROM einkaufsliste WHERE zutat_id = ? AND user_id = ?";
+                $stmtEinkaufsliste = $conn->prepare($sqlEinkaufsliste);
+                $stmtEinkaufsliste->bind_param("ii", $zutatId, $userId);
+                $stmtEinkaufsliste->execute();
+                $resultEinkaufsliste = $stmtEinkaufsliste->get_result();
+
+                if ($eintrag = $resultEinkaufsliste->fetch_assoc()) {
+                    // Eintrag vorhanden, aktualisiere die Menge
+                    $aktualisierteMenge = $eintrag['menge'] + $benotigteMenge;
+                    $updateEinkaufslisteSql = "UPDATE einkaufsliste SET menge = ? WHERE id = ?";
+                    $updateEinkaufslisteStmt = $conn->prepare($updateEinkaufslisteSql);
+                    $updateEinkaufslisteStmt->bind_param("ii", $aktualisierteMenge, $eintrag['id']);
+                    $updateEinkaufslisteStmt->execute();
+                } else {
+                    // Kein Eintrag vorhanden, füge einen neuen Eintrag hinzu
+                    $insertEinkaufslisteSql = "INSERT INTO einkaufsliste (user_id, zutat_id, menge) VALUES (?, ?, ?)";
+                    $insertEinkaufslisteStmt = $conn->prepare($insertEinkaufslisteSql);
+                    $insertEinkaufslisteStmt->bind_param("iii", $userId, $zutatId, $benotigteMenge);
+                    $insertEinkaufslisteStmt->execute();
+                }
+            }
+
         }
+
         // Erfolg: Weiterleitung zurück zum Rezept-Detail oder einer Erfolgsmeldung
         header("Location: /Views/pages/rezept_detail.php?datum=" . urlencode($datum));
         exit();
@@ -49,3 +103,4 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['rezept_id'], $_POST['d
     }
 }
 ?>
+

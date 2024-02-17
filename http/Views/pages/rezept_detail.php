@@ -57,13 +57,14 @@ if ($result->num_rows > 0) {
                     $sqlZutaten = "SELECT zn.name, rz.menge, e.name AS einheit, 
                                         CASE 
                                             WHEN vs.id IS NULL THEN 'Einkaufen'
-                                            WHEN vs.verbrauchsdatum < CURDATE() THEN 'Noch zu früh'
-                                            WHEN vs.verbrauchsdatum >= CURDATE() THEN 'Im Vorratsschrank'
+                                            WHEN DATE_ADD(vs.verbrauchsdatum, INTERVAL z.uebliche_haltbarkeit DAY) < CURDATE() THEN 'Abgelaufen'
+                                            WHEN DATE_ADD(vs.verbrauchsdatum, INTERVAL z.uebliche_haltbarkeit DAY) >= CURDATE() THEN 'Im Vorratsschrank'
                                             ELSE 'Nichts'
                                         END AS status 
                                     FROM rezept_zutaten rz 
                                     LEFT JOIN einheiten e ON rz.einkaufseinheit_id = e.id 
                                     JOIN zutaten_namen zn ON rz.zutat_id = zn.zutat_id 
+                                    LEFT JOIN zutaten z ON zn.zutat_id = z.id
                                     LEFT JOIN vorratsschrank vs ON zn.zutat_id = vs.zutat_id AND vs.user_id = ? 
                                     WHERE rz.rezept_id = ?";
 

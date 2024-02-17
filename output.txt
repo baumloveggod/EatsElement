@@ -2531,13 +2531,14 @@ if ($result->num_rows > 0) {
                     $sqlZutaten = "SELECT zn.name, rz.menge, e.name AS einheit, 
                                         CASE 
                                             WHEN vs.id IS NULL THEN 'Einkaufen'
-                                            WHEN vs.verbrauchsdatum < CURDATE() THEN 'Noch zu früh'
-                                            WHEN vs.verbrauchsdatum >= CURDATE() THEN 'Im Vorratsschrank'
+                                            WHEN DATE_ADD(vs.verbrauchsdatum, INTERVAL z.uebliche_haltbarkeit DAY) < CURDATE() THEN 'Abgelaufen'
+                                            WHEN DATE_ADD(vs.verbrauchsdatum, INTERVAL z.uebliche_haltbarkeit DAY) >= CURDATE() THEN 'Im Vorratsschrank'
                                             ELSE 'Nichts'
                                         END AS status 
                                     FROM rezept_zutaten rz 
                                     LEFT JOIN einheiten e ON rz.einkaufseinheit_id = e.id 
                                     JOIN zutaten_namen zn ON rz.zutat_id = zn.zutat_id 
+                                    LEFT JOIN zutaten z ON zn.zutat_id = z.id
                                     LEFT JOIN vorratsschrank vs ON zn.zutat_id = vs.zutat_id AND vs.user_id = ? 
                                     WHERE rz.rezept_id = ?";
 
@@ -2909,11 +2910,15 @@ CREATE TABLE zutaten (
     id INT AUTO_INCREMENT PRIMARY KEY,
     uebliche_haltbarkeit INT DEFAULT 7 COMMENT 'Haltbarkeit in Tagen',
     kategorie_id INT DEFAULT NULL,
-    rd_einheit_id INT,
     phd_kategorie_id INT,
+    volumen DECIMAL(10, 2),
+    einkaufseinheit_id INT,
+    kocheinheit_id INT,    
+    spezifischer_umrechnungsfaktor DECIMAL(10, 2),
     FOREIGN KEY (phd_kategorie_id) REFERENCES Planetary_Health_Diet_Categories(ID),
-    FOREIGN KEY (standard_einheit_id) REFERENCES einheiten(id),
-    FOREIGN KEY (kategorie_id) REFERENCES kategorien(id)
+    FOREIGN KEY (kategorie_id) REFERENCES kategorien(id),
+    FOREIGN KEY (einkaufseinheit_id) REFERENCES einheiten(id),
+    FOREIGN KEY (kocheinheit_id) REFERENCES einheiten(id)
 );
 
 CREATE TABLE kategorien (
@@ -3014,13 +3019,8 @@ CREATE TABLE einheiten (
     name VARCHAR(50) NOT NULL,
     umrechnungsfaktor_zu_basis DECIMAL(10, 2) NOT NULL,
     basis_einheit_id INT NULL,
-    volumen DECIMAL(10, 2),
-    einkaufseinheit_id INT,
-    kocheinheit_id INT,
-    spezifischer_umrechnungsfaktor DECIMAL(10, 2);
+    hat_spezifischen_umrechnungsfaktor BOOLEAN NOT NULL DEFAULT FALSE,
     FOREIGN KEY (basis_einheit_id) REFERENCES einheiten(id),
-    FOREIGN KEY (einkaufseinheit_id) REFERENCES einheiten(id),
-    FOREIGN KEY (kocheinheit_id) REFERENCES einheiten(id)
 );
 -- Basiseinheiten einfügen
 INSERT INTO einheiten (name, umrechnungsfaktor_zu_basis) VALUES ('Gramm', 1), ('Liter', 1);

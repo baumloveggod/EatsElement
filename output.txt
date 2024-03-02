@@ -1296,36 +1296,6 @@ require_once '../../Utils/SessionManager.php';
 require_once '../../Utils/db_connect.php';
 checkUserAuthentication();
 
-// Add new unit
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['name'], $_POST['umrechnungsfaktor'], $_POST['basisEinheit'])) {
-    $name = $_POST['name'];
-    $umrechnungsfaktor = $_POST['umrechnungsfaktor'];
-    $basisEinheit = $_POST['basisEinheit'];
-    $basisEinheitId = null;
-    $hatSpezifischenUmrechnungsfaktor = false;
-
-    // Determine basisEinheitId and hatSpezifischenUmrechnungsfaktor based on basisEinheit selection
-    if ($basisEinheit == 'Gramm') {
-        $basisEinheitId = 0; // Ensure this ID exists in your database
-    } elseif ($basisEinheit == 'Liter') {
-        $basisEinheitId = 1; // Ensure this ID exists in your database
-    } elseif ($basisEinheit == 'speziell') {
-        $hatSpezifischenUmrechnungsfaktor = true;
-        $basisEinheitId = NULL;
-        $umrechnungsfaktor = NULL;
-    }
-    
-    $insertSql = "INSERT INTO einheiten (name, umrechnungsfaktor_zu_basis, basis_einheit_id, hat_spezifischen_umrechnungsfaktor) VALUES (?, ?, ?, ?)";
-    $stmt = $conn->prepare($insertSql);
-    $stmt->bind_param("sdii", $name, $umrechnungsfaktor, $basisEinheitId, $hatSpezifischenUmrechnungsfaktor);
-    
-    if ($stmt->execute()) {
-        echo "<p>Einheit erfolgreich hinzugefügt!</p>";
-    } else {
-        echo "<p>Fehler beim Hinzufügen der Einheit: " . $stmt->error . "</p>";
-    }
-}
-
 // Berechne die Anzahl der notwendigen Durchläufe für die paginierte Anzeige
 $countSql = "SELECT COUNT(id) AS total FROM einheiten";
 $countResult = $conn->query($countSql);
@@ -1349,23 +1319,8 @@ $loops = ceil($totalUnits / $batchSize); // Berechnung der Anzahl der Durchläufe
         <h2>Einheiten Verwaltung</h2>
         
         <h3>Einheit hinzufügen</h3>
-        <form action="einheiten.php" method="post">
-            <label for="name">Name:</label>
-            <input type="text" id="name" name="name" required><br><br>
-            
-            <label for="umrechnungsfaktor">Umrechnungsfaktor:</label>
-            <input type="number" id="umrechnungsfaktor" name="umrechnungsfaktor" step="0.01" required><br><br>
-            
-            <label for="basisEinheit">Basis Einheit:</label>
-            <select id="basisEinheit" name="basisEinheit" required>
-                <option value="Liter">Liter</option>
-                <option value="Gramm">Gramm</option>
-                <option value="speziell">speziell</option>
-            </select><br><br>
-            
-            <button type="submit">Hinzufügen</button>
-        </form>
-        
+            <?php include '../templates/einheitenFormular.php'; ?>
+
         <h3>Vorhandene Einheiten</h3>
         <table>
             <thead>
@@ -2799,6 +2754,58 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </body>
 </html>
 
+
+Path: ./http/Views\templates\einheitenFormular.php
+Content:
+<?php
+// Dieses Skript stellt ein Formular bereit, um eine neue Einheit hinzuzufügen
+
+// Add new unit
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['name'], $_POST['umrechnungsfaktor'], $_POST['basisEinheit'])) {
+    $name = $_POST['name'];
+    $umrechnungsfaktor = $_POST['umrechnungsfaktor'];
+    $basisEinheit = $_POST['basisEinheit'];
+    $basisEinheitId = null;
+    $hatSpezifischenUmrechnungsfaktor = false;
+
+    // Determine basisEinheitId and hatSpezifischenUmrechnungsfaktor based on basisEinheit selection
+    if ($basisEinheit == 'Gramm') {
+        $basisEinheitId = 0; // Ensure this ID exists in your database
+    } elseif ($basisEinheit == 'Liter') {
+        $basisEinheitId = 1; // Ensure this ID exists in your database
+    } elseif ($basisEinheit == 'speziell') {
+        $hatSpezifischenUmrechnungsfaktor = true;
+        $basisEinheitId = NULL;
+        $umrechnungsfaktor = NULL;
+    }
+    
+    $insertSql = "INSERT INTO einheiten (name, umrechnungsfaktor_zu_basis, basis_einheit_id, hat_spezifischen_umrechnungsfaktor) VALUES (?, ?, ?, ?)";
+    $stmt = $conn->prepare($insertSql);
+    $stmt->bind_param("sdii", $name, $umrechnungsfaktor, $basisEinheitId, $hatSpezifischenUmrechnungsfaktor);
+    
+    if ($stmt->execute()) {
+        echo "<p>Einheit erfolgreich hinzugefügt!</p>";
+    } else {
+        echo "<p>Fehler beim Hinzufügen der Einheit: " . $stmt->error . "</p>";
+    }
+}
+?>
+
+<label for="name">Name:</label>
+    <input type="text" id="name" name="name" required><br><br>
+    
+    <label for="umrechnungsfaktor">Umrechnungsfaktor:</label>
+    <input type="number" id="umrechnungsfaktor" name="umrechnungsfaktor" step="0.01" required><br><br>
+    
+    <label for="basisEinheit">Basis Einheit:</label>
+    <select id="basisEinheit" name="basisEinheit" required>
+        <option value="Liter">Liter</option>
+        <option value="Gramm">Gramm</option>
+        <option value="speziell">speziell</option>
+    </select><br><br>
+    
+    <button type="submit">Hinzufügen</button>
+</form>
 
 Path: ./http/Views\templates\footer.php
 Content:

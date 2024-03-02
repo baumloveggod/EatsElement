@@ -135,7 +135,7 @@ CREATE TABLE einheiten (
     umrechnungsfaktor_zu_basis DECIMAL(10, 2) NOT NULL,
     basis_einheit_id INT NULL,
     hat_spezifischen_umrechnungsfaktor BOOLEAN NOT NULL DEFAULT FALSE,
-    FOREIGN KEY (basis_einheit_id) REFERENCES einheiten(id),
+    FOREIGN KEY (basis_einheit_id) REFERENCES einheiten(id)
 );
 -- Basiseinheiten einfügen
 INSERT INTO einheiten (name, umrechnungsfaktor_zu_basis) VALUES ('Gramm', 1), ('Liter', 1);

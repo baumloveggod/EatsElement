@@ -89,13 +89,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <?php echo generateOptions($conn, 'Planetary_Health_Diet_Categories', 'ID', 'Kategorie'); ?>
         </select><br><br>
         
-        <label for="einheit_id">Einkaufseinheit:</label>
+        <label for="einheit_id">einheit:</label>
         <select id="einheit_id" name="einheit_id" required>
             <?php echo generateOptions($conn, 'einheiten', 'id', 'name'); ?>
         </select><br><br>
-        
-        <label for="umrechnungsfaktor">Spezifischer Umrechnungsfaktor (falls zutreffend):</label>
-        <input type="text" id="umrechnungsfaktor" name="umrechnungsfaktor"><br><br>
         
         <input type="submit" value="Zutat Hinzufügen">
     </form>

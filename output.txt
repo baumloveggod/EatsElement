@@ -2726,13 +2726,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <?php echo generateOptions($conn, 'Planetary_Health_Diet_Categories', 'ID', 'Kategorie'); ?>
         </select><br><br>
         
-        <label for="einheit_id">Einkaufseinheit:</label>
+        <label for="einheit_id">einheit:</label>
         <select id="einheit_id" name="einheit_id" required>
             <?php echo generateOptions($conn, 'einheiten', 'id', 'name'); ?>
         </select><br><br>
-        
-        <label for="umrechnungsfaktor">Spezifischer Umrechnungsfaktor (falls zutreffend):</label>
-        <input type="text" id="umrechnungsfaktor" name="umrechnungsfaktor"><br><br>
         
         <input type="submit" value="Zutat Hinzufügen">
     </form>
@@ -2773,24 +2770,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['name'], $_POST['umrech
     $name = $_POST['name'];
     $umrechnungsfaktor = $_POST['umrechnungsfaktor'];
     $basisEinheit = $_POST['basisEinheit'];
+    $volumen = $_POST['volumen'];
+    
     $basisEinheitId = null;
     $hatSpezifischenUmrechnungsfaktor = false;
 
     // Determine basisEinheitId and hatSpezifischenUmrechnungsfaktor based on basisEinheit selection
     if ($basisEinheit == 'Gramm') {
-        $basisEinheitId = 0; // Ensure this ID exists in your database
-    } elseif ($basisEinheit == 'Liter') {
         $basisEinheitId = 1; // Ensure this ID exists in your database
+    } elseif ($basisEinheit == 'Liter') {
+        $basisEinheitId = 2; // Ensure this ID exists in your database
     } elseif ($basisEinheit == 'speziell') {
         $hatSpezifischenUmrechnungsfaktor = true;
         $basisEinheitId = NULL;
         $umrechnungsfaktor = NULL;
     }
     
-    $insertSql = "INSERT INTO einheiten (name, umrechnungsfaktor_zu_basis, basis_einheit_id, hat_spezifischen_umrechnungsfaktor) VALUES (?, ?, ?, ?)";
+    $insertSql = "INSERT INTO einheiten (name,volumen, umrechnungsfaktor_zu_basis, basis_einheit_id, hat_spezifischen_umrechnungsfaktor) VALUES (?, ?, ?, ?,?)";
     $stmt = $conn->prepare($insertSql);
-    $stmt->bind_param("sdii", $name, $umrechnungsfaktor, $basisEinheitId, $hatSpezifischenUmrechnungsfaktor);
-    
+    $stmt->bind_param("sddii", $name, $volumen, $umrechnungsfaktor, $basisEinheitId, $hatSpezifischenUmrechnungsfaktor);
+
     if ($stmt->execute()) {
         echo "<p>Einheit erfolgreich hinzugefügt!</p>";
     } else {
@@ -2798,12 +2797,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['name'], $_POST['umrech
     }
 }
 ?>
-zeigeEinheitenFormular()
-<label for="name">Name:</label>
+<form action="" method="post">
+    <label for="name">Name:</label>
     <input type="text" id="name" name="name" required><br><br>
     
     <label for="umrechnungsfaktor">Umrechnungsfaktor:</label>
-    <input type="number" id="umrechnungsfaktor" name="umrechnungsfaktor" step="0.01" required><br><br>
+    <input type="number" id="umrechnungsfaktor" name="umrechnungsfaktor" step="0.01" required>
+    bei "spezieler Bassis ist die referenc immer Gramm<br><br>
     
     <label for="basisEinheit">Basis Einheit:</label>
     <select id="basisEinheit" name="basisEinheit" required>
@@ -2812,6 +2812,10 @@ zeigeEinheitenFormular()
         <option value="speziell">speziell</option>
     </select><br><br>
     
+    
+    <label for="volumen">volumen:</label>
+    <input type="number" id="volumen" name="volumen" step="0.01" required>
+    nur wichtig für bassis Liter, da PHD in Gramm mist. <br><br>
     <button type="submit">Hinzufügen</button>
 </form>
 
@@ -3006,6 +3010,7 @@ CREATE TABLE einheiten (
     name VARCHAR(50) NOT NULL,
     umrechnungsfaktor_zu_basis DECIMAL(10, 2) NOT NULL,
     basis_einheit_id INT NULL,
+    volumen DECIMAL(10, 2),
     hat_spezifischen_umrechnungsfaktor BOOLEAN NOT NULL DEFAULT FALSE,
     FOREIGN KEY (basis_einheit_id) REFERENCES einheiten(id)
 );

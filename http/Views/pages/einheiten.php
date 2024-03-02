@@ -30,7 +30,9 @@ $loops = ceil($totalUnits / $batchSize); // Berechnung der Anzahl der Durchläuf
         <h2>Einheiten Verwaltung</h2>
         
         <h3>Einheit hinzufügen</h3>
-            <?php include '../templates/einheitenFormular.php'; ?>
+            <?php 
+                include '../templates/einheitenFormular.php'; 
+            ?>
 
         <h3>Vorhandene Einheiten</h3>
         <table>

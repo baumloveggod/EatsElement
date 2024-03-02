@@ -1,5 +1,11 @@
 <?php
-// Dieses Skript stellt ein Formular bereit, um eine neue Einheit hinzuzufügen
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once '../../Utils/SessionManager.php';
+require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
 
 // Add new unit
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['name'], $_POST['umrechnungsfaktor'], $_POST['basisEinheit'])) {
@@ -31,7 +37,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['name'], $_POST['umrech
     }
 }
 ?>
-
+zeigeEinheitenFormular()
 <label for="name">Name:</label>
     <input type="text" id="name" name="name" required><br><br>
     

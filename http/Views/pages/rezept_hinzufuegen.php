@@ -8,258 +8,184 @@ require_once '../../Utils/db_connect.php';
 checkUserAuthentication();
 
 $userId = $_SESSION['userId'];
+$datum = $_GET['datum'] ?? date("Y-m-d");
+$rezept = null;
+$zufallsRezepte = [];
 
-$einheiten = [];
-$kategorien = [];
-$phdKategorien = [];
+// Versuche, ein Rezept für das gewählte Datum zu finden
+$sql = "SELECT r.titel, r.beschreibung, e.rezept_id FROM essenplan e JOIN rezepte r ON e.rezept_id = r.id WHERE e.user_id = ? AND e.datum = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("is", $userId, $datum);
+$stmt->execute();
+$result = $stmt->get_result();
 
-$conn->begin_transaction();
-try {
-    // Load units
-    $sqlEinheiten = "SELECT id, name FROM einheiten";
-    $resultEinheiten = $conn->query($sqlEinheiten);
-    while ($row = $resultEinheiten->fetch_assoc()) {
-        $einheiten[$row['id']] = $row['name'];
+if ($result->num_rows > 0) {
+    $rezept = $result->fetch_assoc();
+} else {
+    // Kein Rezept gefunden, lege ein leeres Rezept an
+    $leeresRezeptSql = "INSERT INTO rezepte (titel, beschreibung) VALUES ('Neues Rezept', '')";
+    if ($conn->query($leeresRezeptSql) === TRUE) {
+        $neueRezeptId = $conn->insert_id;
+        
+        // Füge das leere Rezept in den Essenplan ein
+        $essenplanSql = "INSERT INTO essenplan (user_id, rezept_id, datum) VALUES (?, ?, ?)";
+        $stmt = $conn->prepare($essenplanSql);
+        $stmt->bind_param("iis", $userId, $neueRezeptId, $datum);
+        $stmt->execute();
+        
+        // Setze $rezept auf das neue, leere Rezept
+        $rezept = ['titel' => 'Neues Rezept', 'beschreibung' => '', 'rezept_id' => $neueRezeptId];
+    } else {
+        echo "Fehler: " . $conn->error;
     }
+}
 
-    // Load categories
-    $sqlKategorien = "SELECT id, name FROM kategorien ORDER BY sortierreihenfolge";
-    $resultKategorien = $conn->query($sqlKategorien);
-    while ($row = $resultKategorien->fetch_assoc()) {
-        $kategorien[$row['id']] = $row['name'];
-    }
-
-    // Load Planetary Health Diet Categories
-    $sqlPhdKategorien = "SELECT ID, Kategorie FROM Planetary_Health_Diet_Categories";
-    $resultPhdKategorien = $conn->query($sqlPhdKategorien);
-    while ($row = $resultPhdKategorien->fetch_assoc()) {
-        $phdKategorien[$row['ID']] = $row['Kategorie'];
-    }
-
-    $conn->commit();
-} catch (Exception $e) {
-    $conn->rollback();
-    echo "Fehler beim Laden der Daten: " . $e->getMessage();
+// Update des Titels
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['titel'], $_POST['rezeptId'])) {
+    $neuerTitel = trim($_POST['titel']);
+    $rezeptId = $_POST['rezeptId'];
+    $updateSql = "UPDATE rezepte SET titel = ? WHERE id = ?";
+    $updateStmt = $conn->prepare($updateSql);
+    $updateStmt->bind_param("si", $neuerTitel, $rezeptId);
+    $updateStmt->execute();
+    // Umleitung, um die Seite zu aktualisieren und den neuen Titel anzuzeigen
+    header("Location: ".$_SERVER['PHP_SELF']."?datum=".$datum);
     exit;
 }
 
-
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['titel'], $_POST['beschreibung'])) {
-    $titel = $_POST['titel'];
-    $beschreibung = $_POST['beschreibung'];
-    $zutaten = isset($_POST['zutaten']) ? $_POST['zutaten'] : [];
-
-    $conn->begin_transaction();
-    try {
-        $sqlRezept = "INSERT INTO rezepte (titel, beschreibung) VALUES (?, ?)";
-        $stmtRezept = $conn->prepare($sqlRezept);
-        if (!$stmtRezept->bind_param("ss", $titel, $beschreibung) || !$stmtRezept->execute()) {
-            throw new Exception('Fehler beim Speichern des Rezepts.');
-        }
-        $rezeptId = $stmtRezept->insert_id;
-        $stmtRezept->close();
-
-        foreach ($zutaten as $zutat) {
-            if (isset($zutat['einheit_name'], $zutat['zutat_id'], $zutat['menge']) &&
-                !empty($zutat['einheit_name']) && !empty($zutat['zutat_id']) && !empty($zutat['menge'])) {
-                $einheitName = $zutat['einheit_name'];
-                $einheitId = null;
-                if (!empty($einheitName)) {
-                    $sqlFindEinheit = "SELECT id FROM einheiten WHERE name = ?";
-                    $stmtFindEinheit = $conn->prepare($sqlFindEinheit);
-                    $stmtFindEinheit->bind_param("s", $einheitName);
-                    $stmtFindEinheit->execute();
-                    $resultFindEinheit = $stmtFindEinheit->get_result();
-                    if ($resultFindEinheit->num_rows > 0) {
-                        $einheitId = $resultFindEinheit->fetch_assoc()['id'];
-                    } else {
-                        $sqlAddEinheit = "INSERT INTO einheiten (name, umrechnungsfaktor_zu_basis) VALUES (?, 1)";
-                        $stmtAddEinheit = $conn->prepare($sqlAddEinheit);
-                        $stmtAddEinheit->bind_param("s", $einheitName);
-                        $stmtAddEinheit->execute();
-                        $einheitId = $stmtAddEinheit->insert_id;
-                    }
-                }
-
-                $zutatId = $zutat['zutat_id'];
-                $menge = $zutat['menge'];
-                $sqlZutat = "INSERT INTO rezept_zutaten (rezept_id, zutat_id, menge, einheit_id) VALUES (?, ?, ?, ?)";
-                $stmtZutat = $conn->prepare($sqlZutat);
-                if (!$stmtZutat->bind_param("iidi", $rezeptId, $zutatId, $menge, $einheitId) || !$stmtZutat->execute()) {
-                    throw new Exception('Fehler beim Speichern der Zutaten.');
-                }
-                $stmtZutat->close();
-            } else {
-                // Handle missing or incomplete zutaten information
-                throw new Exception('Unvollständige Zutateninformation.');
-            }
-        }
-
-        $conn->commit();
-        header("Location: rezept_detail.php?rezeptId=" . $rezeptId);
-        exit;
-    } catch (Exception $e) {
-        $conn->rollback();
-        echo "Fehler: " . $e->getMessage();
-    }
-}
 ?>
 
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <title>Rezept hinzufügen</title>
+    <?php include '../templates/header.php'; ?>
+    <title>Rezept Details</title>
     <script>
-        // Function to dynamically add ingredient fields
-        function addZutat() {
-            let container = document.getElementById('zutatenContainer');
-            let div = document.createElement('div');
-            let index = container.childElementCount; // Use the number of current children as the index
-            div.setAttribute('data-index', index);
-            div.className = 'zutat';
-            div.innerHTML = `
-                <label>Zutat:</label>
-                <input type="text" name="zutaten[${index}][name]" required oninput="searchIngredient(this.value, ${index})">
-                <label>Menge:</label>
-                <input type="number" step="any" name="zutaten[${index}][menge]" required>
-                <label>Einheit (neu oder existierend):</label>
-                <input type="text" name="zutaten[${index}][einheit_name]" required>
-                <button type="button" onclick="removeZutat(this)">Entfernen</button>
-            `;
-            container.appendChild(div);
+        // JavaScript-Funktion zum Bearbeiten des Titels
+        function bearbeiteTitel(element) {
+            var aktuellerText = element.innerHTML;
+            element.innerHTML = '<input type="text" onblur="speichereTitel(this)" value="' + aktuellerText + '">';
+            element.firstChild.focus();
         }
 
+        function speichereTitel(inputElement) {
+            var neuerTitel = inputElement.value;
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.style.display = 'none';
 
-        // Function to remove ingredient fields
-        function removeZutat(button) {
-            button.parentElement.remove();
+            var titelInput = document.createElement('input');
+            titelInput.type = 'hidden';
+            titelInput.name = 'titel';
+            titelInput.value = neuerTitel;
+
+            var rezeptIdInput = document.createElement('input');
+            rezeptIdInput.type = 'hidden';
+            rezeptIdInput.name = 'rezeptId';
+            rezeptIdInput.value = '<?= $rezept ? $rezept['rezept_id'] : ''; ?>';
+
+            form.appendChild(titelInput);
+            form.appendChild(rezeptIdInput);
+
+            document.body.appendChild(form);
+            form.submit();
         }
-
-        // Placeholder for AJAX call to search for an ingredient
-        function searchIngredient(value, index) {
-            // Assuming you have an endpoint like "search_ingredient.php" that expects a query parameter "name"
-            fetch(`search_ingredient.php?name=${encodeURIComponent(value)}`)
-            .then(response => response.json())
-            .then(data => {
-                // Assuming the response includes a flag indicating if more details are needed and any relevant data
-                if (data.needsMoreDetails) {
-                    // Dynamically add or modify input fields for this ingredient
-                    // For example, adding a select field for the unit if it's not determined
-                    let container = document.querySelector(`#zutatenContainer .zutat[data-index="${index}"]`);
-                    if (!container.querySelector('.additionalDetails')) { // Avoid adding multiple times
-                        let select = document.createElement('select');
-                        select.name = `zutaten[${index}][einheit_id]`;
-                        select.innerHTML = '<option value="">Wähle Einheit...</option>';
-                        data.units.forEach(unit => {
-                            select.innerHTML += `<option value="${unit.id}">${unit.name}</option>`;
-                        });
-                        select.className = 'additionalDetails';
-                        container.appendChild(select);
-                    }
-                }
-            })
-            .catch(error => console.error('Error:', error));
-        }
-
     </script>
 </head>
 <body>
-    <header></header>
+    <header>
+        <?php include '../templates/navigation.php'; ?>
+    </header>
     <main>
-        <h2>Rezept hinzufügen</h2>
-        <form action="rezept_hinzufuegen.php" method="post">
-            <div>
-                <label for="titel">Titel:</label>
-                <input type="text" id="titel" name="titel" required>
-            </div>
-            <div>
-                <label for="beschreibung">Beschreibung:</label>
-                <textarea id="beschreibung" name="beschreibung" required></textarea>
-            </div>
-            <div id="zutatenContainer"></div>
-            <button type="button" onclick="addZutat()">Zutat hinzufügen</button>
-            <button type="submit">Rezept speichern</button>
-        </form>
+        <?php if ($rezept): ?>
+            <h2><?= htmlspecialchars($rezept['titel']); ?></h2>
+            <!-- Vor dem Kochen -->
+            <section>   
+                <h3>Vor dem Kochen</h3>
+                <?php
+                    $sqlAnzahlPersonen = "SELECT anzahl_personen FROM essenplan WHERE user_id = $userId AND datum = '$datum'";
+                    $resultAnzahlPersonen = $conn->query($sqlAnzahlPersonen);
+                    $rowAnzahlPersonen = $resultAnzahlPersonen->fetch_assoc();
+                    $anzahlPersonen = $rowAnzahlPersonen['anzahl_personen'];
+
+                    // Prepare the SQL statement with placeholders
+                    $sqlZutaten = "SELECT zn.name, rz.menge, e.name AS einheit, 
+                                        CASE 
+                                            WHEN vs.id IS NULL THEN 'Einkaufen'
+                                            WHEN DATE_ADD(vs.verbrauchsdatum, INTERVAL z.uebliche_haltbarkeit DAY) < CURDATE() THEN 'Abgelaufen'
+                                            WHEN DATE_ADD(vs.verbrauchsdatum, INTERVAL z.uebliche_haltbarkeit DAY) >= CURDATE() THEN 'Im Vorratsschrank'
+                                            ELSE 'Nichts'
+                                        END AS status 
+                                    FROM rezept_zutaten rz 
+                                    JOIN zutaten_namen zn ON rz.zutat_id = zn.zutat_id 
+                                    JOIN zutaten z ON zn.zutat_id = z.id
+                                    LEFT JOIN einheiten e ON z.einkaufseinheit_id = e.id 
+                                    LEFT JOIN vorratsschrank vs ON zn.zutat_id = vs.zutat_id AND vs.user_id = ? 
+                                    WHERE rz.rezept_id = ?";
+
+
+                    // Prepare the statement
+                    $stmt = $conn->prepare($sqlZutaten);
+
+                    // Bind parameters to the prepared statement
+                    $stmt->bind_param("ii", $userId, $rezept['rezept_id']); // "ii" means both parameters are integers
+
+                    // Execute the prepared statement
+                    $stmt->execute();
+
+                    // Get the result of the query
+                    $resultZutaten = $stmt->get_result();
+
+                    // Check if there are results
+                    if ($resultZutaten->num_rows > 0) {
+                    echo "<p>Zutatenliste und Verfügbarkeit:</p>";
+                    echo "<ul>";
+                    while ($zutat = $resultZutaten->fetch_assoc()) {
+                    // Correctly concatenate and escape output to prevent XSS
+                    echo "<li>" . htmlspecialchars($zutat['name']) . " - " . htmlspecialchars($zutat['menge']) . " " . htmlspecialchars($zutat['einheit']) . " (" . htmlspecialchars($zutat['status']) . ")</li>";
+                    }
+                    echo "</ul>";
+                    } else {
+                    echo "Keine Zutaten gefunden.";
+                    }
+
+                    // Close the statement
+                    $stmt->close();
+                ?>
+                <form action="updatePersonenanzahl.php" method="post">
+                    <input type="hidden" name="datum" value="<?= htmlspecialchars($datum); ?>">
+                    <label for="anzahlPersonen">Anzahl Personen:</label>
+                    <input type="number" id="anzahlPersonen" name="anzahlPersonen" value="<?= $anzahlPersonen; ?>" min="1">
+                    <button type="submit">Aktualisieren</button>
+                </form>
+
+            </section>
+
+            <!-- Während des Kochens -->
+            <section>
+                <h3>Während des Kochens</h3>
+                <p>... Kochanweisungen und Details ...</p>
+            </section>
+
+            <!-- Nach dem Essen -->
+            <section>
+                <h3>Nach dem Essen</h3>
+                <p>Reflektion und Planung:</p>
+                <ul>
+                    <li><a href="#">Wie hat es geschmeckt?(noch nicht implementiert)</a></li>
+                    <li><a href="#">Noch Hunger?(noch nicht implementiert)</a></li>
+                    <li><a href="#">Gibt es Reste?(noch nicht implementiert)</a>
+                        <ul>
+                            <li><a href="#">Für morgen aufheben(noch nicht implementiert)</a></li>
+                            <li><a href="#">Dem Nachbarn geben(noch nicht implementiert)</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+        <?php endif; ?>
     </main>
-    <footer></footer>
+    <footer>
+        <p>&copy; 2024 Transformations-Design</p>
+    </footer>
 </body>
 </html>
-
-CREATE TABLE einheiten (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(50) NOT NULL,
-    umrechnungsfaktor_zu_basis DECIMAL(10, 2) NOT NULL,
-    basis_einheit_id INT NULL,
-    hat_spezifischen_umrechnungsfaktor BOOLEAN NOT NULL DEFAULT FALSE,
-    FOREIGN KEY (basis_einheit_id) REFERENCES einheiten(id),
-);
--- Basiseinheiten einfügen
-INSERT INTO einheiten (name, umrechnungsfaktor_zu_basis) VALUES ('Gramm', 1), ('Liter', 1);
-INSERT INTO einheiten (name, umrechnungsfaktor_zu_basis, basis_einheit_id) VALUES ('Kilogramm', 1000, 1), ('Pfund', 453.59, 1), ('Unze', 28.35, 1);
-INSERT INTO einheiten (name, umrechnungsfaktor_zu_basis, basis_einheit_id) VALUES ('Milliliter', 0.001, 2), ('Teelöffel', 0.005, 2), ('Esslöffel', 0.015, 2), ('Tasse', 0.24, 2);
-
-CREATE TABLE zutaten_saisonalitaet (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    zutat_id INT NOT NULL,
-    saison_start DATE NOT NULL,
-    saison_ende DATE NOT NULL,
-    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
-);
-
-CREATE TABLE Planetary_Health_Diet_Categories (
-    ID INT PRIMARY KEY,
-    Kategorie VARCHAR(255),
-    Taegliche_Menge_g INT,
-    Beispiele TEXT
-);
-INSERT INTO Planetary_Health_Diet_Categories (ID, Kategorie, Taegliche_Menge_g, Beispiele) VALUES
-(1, 'Getreide (Vollkorn)', 232, 'Vollkornprodukte, unverarbeitete Mais-, Weizen-, Reis- oder Haferprodukte'),
-(2, 'Hülsenfrüchte', 50, 'Linsen, Bohnen, Erbsen, Kichererbsen'),
-(3, 'Gemüse', 300, 'Ein Mix aus verschiedenen Gemüsesorten'),
-(4, 'Obst', 200, 'Äpfel, Bananen, Orangen, Beeren'),
-(5, 'Nüsse und Samen', 50, ''),
-(6, 'Fleisch (Rot und verarbeitet)', 14, 'Begrenzen auf rotes und verarbeitetes Fleisch'),
-(7, 'Geflügel', 29, ''),
-(8, 'Fisch', 28, ''),
-(9, 'Milchprodukte', 250, 'Milch, Joghurt, Käse'),
-(10, 'Eier', 13, 'Entspricht etwa 1,5 Eiern pro Woche'),
-(11, 'Pflanzliche Öle', 40, 'Olivenöl, Rapsöl, Sonnenblumenöl'),
-(12, 'Zucker', 31, ''),
-(13, 'Stärkehaltiges Gemüse', 50, 'Kartoffeln, Süßkartoffeln');
-
-CREATE TABLE zutaten_namen (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    zutat_id INT NOT NULL,
-    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
-);
-
-CREATE TABLE konventionen (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    single_name_id INT NOT NULL,
-    plural_name_id INT,
-    zutat_id INT NOT NULL,
-    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
-);
-
-
-CREATE TABLE zutaten (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    uebliche_haltbarkeit INT DEFAULT 7 COMMENT 'Haltbarkeit in Tagen',
-    kategorie_id INT DEFAULT NULL,
-    phd_kategorie_id INT,
-    volumen DECIMAL(10, 2),
-    einkaufseinheit_id INT,
-    kocheinheit_id INT,    
-    spezifischer_umrechnungsfaktor DECIMAL(10, 2),
-    FOREIGN KEY (phd_kategorie_id) REFERENCES Planetary_Health_Diet_Categories(ID),
-    FOREIGN KEY (kategorie_id) REFERENCES kategorien(id),
-    FOREIGN KEY (einkaufseinheit_id) REFERENCES einheiten(id),
-    FOREIGN KEY (kocheinheit_id) REFERENCES einheiten(id)
-);
-
-CREATE TABLE kategorien (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    sortierreihenfolge INT NOT NULL
-);

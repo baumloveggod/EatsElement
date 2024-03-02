@@ -62,9 +62,9 @@ if ($result->num_rows > 0) {
                                             ELSE 'Nichts'
                                         END AS status 
                                     FROM rezept_zutaten rz 
-                                    LEFT JOIN einheiten e ON rz.einkaufseinheit_id = e.id 
                                     JOIN zutaten_namen zn ON rz.zutat_id = zn.zutat_id 
-                                    LEFT JOIN zutaten z ON zn.zutat_id = z.id
+                                    JOIN zutaten z ON zn.zutat_id = z.id
+                                    LEFT JOIN einheiten e ON z.einkaufseinheit_id = e.id 
                                     LEFT JOIN vorratsschrank vs ON zn.zutat_id = vs.zutat_id AND vs.user_id = ? 
                                     WHERE rz.rezept_id = ?";
 

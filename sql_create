@@ -29,13 +29,11 @@ CREATE TABLE zutaten (
     kategorie_id INT DEFAULT NULL,
     phd_kategorie_id INT,
     volumen DECIMAL(10, 2),
-    einkaufseinheit_id INT,
-    kocheinheit_id INT,    
+    einheit_id INT,   
     spezifischer_umrechnungsfaktor DECIMAL(10, 2),
     FOREIGN KEY (phd_kategorie_id) REFERENCES Planetary_Health_Diet_Categories(ID),
     FOREIGN KEY (kategorie_id) REFERENCES kategorien(id),
-    FOREIGN KEY (einkaufseinheit_id) REFERENCES einheiten(id),
-    FOREIGN KEY (kocheinheit_id) REFERENCES einheiten(id)
+    FOREIGN KEY (einheit_id) REFERENCES einheiten(id)
 );
 
 CREATE TABLE kategorien (

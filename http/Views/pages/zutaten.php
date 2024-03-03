@@ -6,7 +6,7 @@
 
     // Verbindung zur Datenbank herstellen
     require_once '../../Utils/db_connect.php';
-    
+
     include '../templates/einheitenFormular.php';
 
     // Funktion, um Optionen für ein Dropdown-Menü zu generieren
@@ -108,7 +108,7 @@
             <!-- Container für das Einheiten-Formular, zuerst versteckt -->
             <div id="neueEinheitFormular" style="display:none;">
                 
-                <php? echo einheitsForm(); ?>
+                <?php echo einheitsForm(); ?>
             </div>
 
             <script>

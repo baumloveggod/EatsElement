@@ -1540,7 +1540,7 @@ Content:
 
     // Verbindung zur Datenbank herstellen
     require_once '../../Utils/db_connect.php';
-    
+
     include '../templates/einheitenFormular.php';
 
     // Funktion, um Optionen für ein Dropdown-Menü zu generieren
@@ -1642,7 +1642,7 @@ Content:
             <!-- Container für das Einheiten-Formular, zuerst versteckt -->
             <div id="neueEinheitFormular" style="display:none;">
                 
-                <php? echo einheitsForm(); ?>
+                <?php echo einheitsForm(); ?>
             </div>
 
             <script>
@@ -1691,6 +1691,8 @@ checkUserAuthentication();
 
 // Add new unit
 function insert_into_Eineheiten(){
+    global $conn;
+    
     $name = $_POST['name'];
     $umrechnungsfaktor = $_POST['umrechnungsfaktor'];
     $basisEinheit = $_POST['basisEinheit'];

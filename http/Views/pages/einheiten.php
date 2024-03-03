@@ -7,6 +7,12 @@ require_once '../../Utils/SessionManager.php';
 require_once '../../Utils/db_connect.php';
 checkUserAuthentication();
 
+
+include '../templates/einheitenFormular.php';
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['name'], $_POST['umrechnungsfaktor'], $_POST['basisEinheit'])) {
+    insert_into_Eineheiten();
+}
+
 // Berechne die Anzahl der notwendigen Durchläufe für die paginierte Anzeige
 $countSql = "SELECT COUNT(id) AS total FROM einheiten";
 $countResult = $conn->query($countSql);
@@ -32,7 +38,7 @@ $loops = ceil($totalUnits / $batchSize); // Berechnung der Anzahl der Durchläuf
         <h3>Einheit hinzufügen</h3>
         
             <form action="" method="post">
-                <?php include '../templates/einheitenFormular.php'; ?>
+                <?php echo einheitsForm(); ?>
                 <input type="submit" value="Einheit Hinzufügen" id="einheitHinzufuegenButton">
             </form>
 

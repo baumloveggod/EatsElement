@@ -6,6 +6,9 @@
 
     // Verbindung zur Datenbank herstellen
     require_once '../../Utils/db_connect.php';
+    
+    include '../templates/einheitenFormular.php';
+
     // Funktion, um Optionen für ein Dropdown-Menü zu generieren
     function generateOptions($conn, $tableName, $idColumn, $nameColumn) {
         $options = '';
@@ -104,7 +107,8 @@
 
             <!-- Container für das Einheiten-Formular, zuerst versteckt -->
             <div id="neueEinheitFormular" style="display:none;">
-                <?php include '../templates/einheitenFormular.php';?>
+                
+                <php? echo einheitsForm(); ?>
             </div>
 
             <script>
@@ -115,40 +119,6 @@
                     document.getElementById('neueEinheitFormular').style.display = 'none';
                 }
             }
-            </script>
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    // Verstecken des "Einheit Hinzufügen"-Buttons, wenn das Formular eingebunden wird
-                    document.getElementById('einheitHinzufuegenButton').style.display = 'none';
-
-                    // Event Listener für den "Zutat Hinzufügen"-Button
-                    document.querySelector('form[action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>"]').addEventListener('submit', function(e) {
-                        e.preventDefault(); // Verhindert das sofortige Absenden des Zutatenformulars
-
-                        // Überprüfen, ob eine neue Einheit hinzugefügt werden soll
-                        if (document.getElementById('einheit_id').value === 'neuHinzufuegen') {
-                            // Erstellen eines FormData-Objekts aus dem Einheitenformular
-                            var formData = new FormData(document.getElementById('neueEinheitFormular').querySelector('form'));
-                            
-                            // AJAX-Anfrage, um das Einheitenformular abzusenden
-                            fetch('../pfad/zum/einheitenFormularVerarbeitungsskript.php', {
-                                method: 'POST',
-                                body: formData
-                            }).then(function(response) {
-                                return response.text();
-                            }).then(function(text) {
-                                console.log('Einheit erfolgreich hinzugefügt');
-                                // Nach erfolgreichem Hinzufügen der Einheit, Zutatenformular absenden
-                                e.target.submit();
-                            }).catch(function(error) {
-                                console.error('Fehler beim Hinzufügen der Einheit', error);
-                            });
-                        } else {
-                            // Wenn keine neue Einheit hinzugefügt wird, Zutatenformular direkt absenden
-                            e.target.submit();
-                        }
-                    });
-                });
             </script>
 
             <input type="submit" value="Zutat Hinzufügen">

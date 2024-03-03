@@ -8,7 +8,7 @@ require_once '../../Utils/db_connect.php';
 checkUserAuthentication();
 
 // Add new unit
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['name'], $_POST['umrechnungsfaktor'], $_POST['basisEinheit'])) {
+function insert_into_Eineheiten(){
     $name = $_POST['name'];
     $umrechnungsfaktor = $_POST['umrechnungsfaktor'];
     $basisEinheit = $_POST['basisEinheit'];
@@ -32,13 +32,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['name'], $_POST['umrech
     $stmt->bind_param("sdii", $name, $umrechnungsfaktor, $basisEinheitId, $hatSpezifischenUmrechnungsfaktor);
 
     if ($stmt->execute()) {
-        echo "<p>Einheit erfolgreich hinzugefügt!</p>";
+        return "<p>Einheit erfolgreich hinzugefügt!</p>";
     } else {
-        echo "<p>Fehler beim Hinzufügen der Einheit: " . $stmt->error . "</p>";
+        return "<p>Fehler beim Hinzufügen der Einheit: " . $stmt->error . "</p>";
     }
 }
-?>
-    <label for="name">Name:</label>
+function einheitsForm(){
+    return '<label for="name">Name:</label>
     <input type="text" id="name" name="name" required><br><br>
     
     <label for="umrechnungsfaktor">Umrechnungsfaktor:</label>
@@ -50,4 +50,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['name'], $_POST['umrech
         <option value="Liter">Liter</option>
         <option value="Gramm">Gramm</option>
         <option value="speziell">speziell</option>
-    </select><br><br>
+    </select><br><br>';
+}
+?>

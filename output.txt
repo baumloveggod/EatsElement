@@ -185,6 +185,12 @@ require_once '../../Utils/SessionManager.php';
 require_once '../../Utils/db_connect.php';
 checkUserAuthentication();
 
+
+include '../templates/einheitenFormular.php';
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['name'], $_POST['umrechnungsfaktor'], $_POST['basisEinheit'])) {
+    insert_into_Eineheiten();
+}
+
 // Berechne die Anzahl der notwendigen Durchläufe für die paginierte Anzeige
 $countSql = "SELECT COUNT(id) AS total FROM einheiten";
 $countResult = $conn->query($countSql);
@@ -210,7 +216,7 @@ $loops = ceil($totalUnits / $batchSize); // Berechnung der Anzahl der Durchläufe
         <h3>Einheit hinzufügen</h3>
         
             <form action="" method="post">
-                <?php include '../templates/einheitenFormular.php'; ?>
+                <?php echo einheitsForm(); ?>
                 <input type="submit" value="Einheit Hinzufügen" id="einheitHinzufuegenButton">
             </form>
 
@@ -1534,6 +1540,9 @@ Content:
 
     // Verbindung zur Datenbank herstellen
     require_once '../../Utils/db_connect.php';
+    
+    include '../templates/einheitenFormular.php';
+
     // Funktion, um Optionen für ein Dropdown-Menü zu generieren
     function generateOptions($conn, $tableName, $idColumn, $nameColumn) {
         $options = '';
@@ -1632,7 +1641,8 @@ Content:
 
             <!-- Container für das Einheiten-Formular, zuerst versteckt -->
             <div id="neueEinheitFormular" style="display:none;">
-                <?php include '../templates/einheitenFormular.php';?>
+                
+                <php? echo einheitsForm(); ?>
             </div>
 
             <script>
@@ -1643,40 +1653,6 @@ Content:
                     document.getElementById('neueEinheitFormular').style.display = 'none';
                 }
             }
-            </script>
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    // Verstecken des "Einheit Hinzufügen"-Buttons, wenn das Formular eingebunden wird
-                    document.getElementById('einheitHinzufuegenButton').style.display = 'none';
-
-                    // Event Listener für den "Zutat Hinzufügen"-Button
-                    document.querySelector('form[action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>"]').addEventListener('submit', function(e) {
-                        e.preventDefault(); // Verhindert das sofortige Absenden des Zutatenformulars
-
-                        // Überprüfen, ob eine neue Einheit hinzugefügt werden soll
-                        if (document.getElementById('einheit_id').value === 'neuHinzufuegen') {
-                            // Erstellen eines FormData-Objekts aus dem Einheitenformular
-                            var formData = new FormData(document.getElementById('neueEinheitFormular').querySelector('form'));
-                            
-                            // AJAX-Anfrage, um das Einheitenformular abzusenden
-                            fetch('../pfad/zum/einheitenFormularVerarbeitungsskript.php', {
-                                method: 'POST',
-                                body: formData
-                            }).then(function(response) {
-                                return response.text();
-                            }).then(function(text) {
-                                console.log('Einheit erfolgreich hinzugefügt');
-                                // Nach erfolgreichem Hinzufügen der Einheit, Zutatenformular absenden
-                                e.target.submit();
-                            }).catch(function(error) {
-                                console.error('Fehler beim Hinzufügen der Einheit', error);
-                            });
-                        } else {
-                            // Wenn keine neue Einheit hinzugefügt wird, Zutatenformular direkt absenden
-                            e.target.submit();
-                        }
-                    });
-                });
             </script>
 
             <input type="submit" value="Zutat Hinzufügen">
@@ -1714,7 +1690,7 @@ require_once '../../Utils/db_connect.php';
 checkUserAuthentication();
 
 // Add new unit
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['name'], $_POST['umrechnungsfaktor'], $_POST['basisEinheit'])) {
+function insert_into_Eineheiten(){
     $name = $_POST['name'];
     $umrechnungsfaktor = $_POST['umrechnungsfaktor'];
     $basisEinheit = $_POST['basisEinheit'];
@@ -1738,13 +1714,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['name'], $_POST['umrech
     $stmt->bind_param("sdii", $name, $umrechnungsfaktor, $basisEinheitId, $hatSpezifischenUmrechnungsfaktor);
 
     if ($stmt->execute()) {
-        echo "<p>Einheit erfolgreich hinzugefügt!</p>";
+        return "<p>Einheit erfolgreich hinzugefügt!</p>";
     } else {
-        echo "<p>Fehler beim Hinzufügen der Einheit: " . $stmt->error . "</p>";
+        return "<p>Fehler beim Hinzufügen der Einheit: " . $stmt->error . "</p>";
     }
 }
-?>
-    <label for="name">Name:</label>
+function einheitsForm(){
+    return '<label for="name">Name:</label>
     <input type="text" id="name" name="name" required><br><br>
     
     <label for="umrechnungsfaktor">Umrechnungsfaktor:</label>
@@ -1756,7 +1732,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['name'], $_POST['umrech
         <option value="Liter">Liter</option>
         <option value="Gramm">Gramm</option>
         <option value="speziell">speziell</option>
-    </select><br><br>
+    </select><br><br>';
+}
+?>
 
 Path: ./http/Views\templates\footer.php
 Content:

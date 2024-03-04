@@ -17,7 +17,10 @@ def write_file_info_to_output(paths, output_file):
     with open(output_file, 'w', encoding='utf-8') as f_output:
         print("A: ")
         for path in paths:
+            print("B: " + path)
             if os.path.isdir(path):
+                
+                print("D: " + path)
                 for root, dirs, files in os.walk(path):
                     if '.git' in dirs:
                         dirs.remove('.git')
@@ -27,6 +30,7 @@ def write_file_info_to_output(paths, output_file):
                         print(files)
                         process_file(os.path.join(root, filename), f_output)
             elif os.path.isfile(path):
+                print("C: " + path)
                 process_file(path, f_output)
 
 def process_file(filepath, f_output):
@@ -80,9 +84,9 @@ def git_commit_and_push(commit_message):
         subprocess.run(["git", "push"], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Fehler beim Ausführen von Git-Befehlen: {e}")
-
+#,'./http/Views/einheitenFormular.php','./http/Views/einheiten.php',
 # Main script
-write_file_info_to_output(['./http/Views/zutaten.php','./http/Views/einheitenFormular.php','./http/Views/einheiten.php','sql_create'], 'output.txt')
+write_file_info_to_output(['./http/Views/zutaten.php''sql_create'], 'output.txt')
 changed_files = get_git_changes()
 if changed_files:  # Only proceed if there are changed files
     commit_message = generate_commit_message(changed_files)

@@ -371,66 +371,59 @@ Content:
                 wichtig für PHD da die berenung mit gramm arbeitet<br><br>
                 </div>
                 <script>
-                    // This function toggles the visibility of the new unit form and its inputs' required status
-                    function checkNeueEinheit(value) {
-                        var isNewUnitSelected = value === "neuHinzufuegen";
-                        var neueEinheitFormular = document.getElementById('neueEinheitFormular');
-                        var volumenBlock = document.getElementById('volumen_block');
-                        var volumenInput = document.getElementById('volumen');
+    // This function toggles the visibility of the new unit form and its inputs' required status
+    function checkNeueEinheit(value) {
+        var isNewUnitSelected = value === "neuHinzufuegen";
+        var neueEinheitFormular = document.getElementById('neueEinheitFormular');
+        var volumenBlock = document.getElementById('volumen_block');
+        var volumenInput = document.getElementById('volumen');
 
-                        // Toggle the new unit form visibility
-                        neueEinheitFormular.style.display = isNewUnitSelected ? 'block' : 'none';
+        // Toggle the new unit form visibility
+        neueEinheitFormular.style.display = isNewUnitSelected ? 'block' : 'none';
 
-                        // Set the required attribute for inputs in the new unit form based on its visibility
-                        var inputs = neueEinheitFormular.getElementsByTagName('input');
-                        for (var i = 0; i < inputs.length; i++) {
-                            inputs[i].required = isNewUnitSelected;
-                        }
+        // Set the required attribute for inputs in the new unit form based on its visibility
+        var inputs = neueEinheitFormular.getElementsByTagName('input');
+        for (var i = 0; i < inputs.length; i++) {
+            inputs[i].required = isNewUnitSelected;
+        }
 
-                        // Adjust visibility and required attribute for the volumen input
-                        // Assume the basis unit is linked to whether the volumen should be shown or not
-                        var displayVolumen = 'none';
-                        if (value === '2' || (isNewUnitSelected && document.getElementById('basisEinheit').value === 'Liter')) {
-                            displayVolumen = 'block';
-                        }
-                        
-                        volumenBlock.style.display = displayVolumen;
-                        volumenInput.style.display = displayVolumen;
-                        volumenInput.required = displayVolumen === 'block';
+        // Adjust visibility and required attribute for the volumen input
+        var displayVolumen = 'none';
+        if (value === '2' || 
+        (isNewUnitSelected && document.getElementById('basisEinheit').value === 'Liter')|| 
+        (selectedOption.getAttribute('data-basis') === '2')) {
+            displayVolumen = 'block';
+        }
+        
+        volumenBlock.style.display = displayVolumen;
+        volumenInput.style.display = displayVolumen;
+        volumenInput.required = displayVolumen === 'block';
 
-                        if (isNewUnitSelected)
-                        checkBasisEinheit((document.getElementById('basisEinheit').value));
+        if (isNewUnitSelected)
+            checkBasisEinheit(document.getElementById('basisEinheit').value);
 
-                        // Neuer Teil: Überprüfen, ob die ausgewählte Einheit einen speziellen Umrechnungsfaktor benötigt
-                    var selectedOption = document.querySelector('#einheit_id option:checked');
-                    var hatSpezifischenUmrechnungsfaktor = selectedOption.getAttribute('data-spezifischer-umrechnungsfaktor') === '1'; // Annahme: '1' bedeutet wahr
+        // Neuer Teil: Überprüfen, ob die ausgewählte Einheit einen speziellen Umrechnungsfaktor benötigt
+        var selectedOption = document.querySelector('#einheit_id option:checked');
+        if (selectedOption !== null) { // Check if selectedOption is not null
+            var hatSpezifischenUmrechnungsfaktor = selectedOption.getAttribute('data-spezifischer-umrechnungsfaktor') === '1'; // Annahme: '1' bedeutet wahr
+            // Sichtbarkeit und Required-Status für das Umrechnungsfaktor-Feld anpassen
+            var umrechnungsfaktorFeld = document.getElementById('umrechnungsfaktorFeld'); // Stellen Sie sicher, dass Sie ein entsprechendes Feld im HTML-Markup haben
+            umrechnungsfaktorFeld.style.display = hatSpezifischenUmrechnungsfaktor ? 'block' : 'none';
+            umrechnungsfaktorFeld.required = hatSpezifischenUmrechnungsfaktor;
+        } else {
+            // Handle the case where no option is selected or exists
+            document.getElementById('umrechnungsfaktorFeld').style.display = 'none';
+            document.getElementById('umrechnungsfaktorFeld').required = false;
+        }
+    }
+    // Event-Listener für die Auswahländerung hinzufügen
+    document.getElementById('einheit_id').addEventListener('change', function() {
+        checkNeueEinheit(this.value);
+    });
+    // Initialen Check ausführen
+    checkNeueEinheit(document.getElementById('einheit_id').value);
+</script>
 
-                    // Sichtbarkeit und Required-Status für das Umrechnungsfaktor-Feld anpassen
-                    var umrechnungsfaktorFeld = document.getElementById('umrechnungsfaktorFeld'); // Stellen Sie sicher, dass Sie ein entsprechendes Feld im HTML-Markup haben
-                    if (hatSpezifischenUmrechnungsfaktor) {
-                        umrechnungsfaktorFeld.style.display = 'block';
-                        umrechnungsfaktorFeld.required = true;
-                    } else {
-                        umrechnungsfaktorFeld.style.display = 'none';
-                        umrechnungsfaktorFeld.required = false;
-                    }
-                    }// Event-Listener für die Auswahländerung hinzufügen
-                    document.getElementById('einheit_id').addEventListener('change', function() {
-                        checkNeueEinheit(this.value);
-                    });// Initialen Check ausführen
-                checkNeueEinheit(document.getElementById('einheit_id').value);
-
-                    // This function updates the visibility of the volumen input based on the selected base unit
-                    function checkBasisEinheit(value) {
-                        var volumenBlock = document.getElementById('volumen_block');
-                        var volumenInput = document.getElementById('volumen');
-
-                        var displayVolumen = value === 'Liter' ? 'block' : 'none';
-                        volumenBlock.style.display = displayVolumen;
-                        volumenInput.style.display = displayVolumen;
-                        volumenInput.required = displayVolumen === 'block';
-                    }
-                </script>
 
 
 

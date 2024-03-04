@@ -23,6 +23,7 @@ def write_file_info_to_output(paths, output_file):
                     if '.godot' in dirs:
                         dirs.remove('.godot')
                     for filename in files:
+                        print(files)
                         process_file(os.path.join(root, filename), f_output)
             elif os.path.isfile(path):
                 process_file(path, f_output)

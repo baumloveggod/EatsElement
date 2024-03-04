@@ -10,7 +10,7 @@ checkUserAuthentication();
 // Add new unit
 function insert_into_Eineheiten(){
     global $conn;
-    
+
     $name = $_POST['name'];
     $umrechnungsfaktor = $_POST['umrechnungsfaktor'];
     $basisEinheit = $_POST['basisEinheit'];
@@ -34,21 +34,24 @@ function insert_into_Eineheiten(){
     $stmt->bind_param("sdii", $name, $umrechnungsfaktor, $basisEinheitId, $hatSpezifischenUmrechnungsfaktor);
 
     if ($stmt->execute()) {
-        return "<p>Einheit erfolgreich hinzugefügt!</p>";
+        echo "<p>Einheit erfolgreich hinzugefügt!</p>";
+        // Gib die ID der neu eingefügten Einheit zurück
+        return $conn->insert_id;
     } else {
-        return "<p>Fehler beim Hinzufügen der Einheit: " . $stmt->error . "</p>";
-    }
+        echo "<p>Fehler beim Hinzufügen der Einheit: " . $stmt->error . "</p>";
+        return null; // Rückgabe von null im Fehlerfall
+}
 }
 function einheitsForm(){
     return '<label for="name">Name:</label>
-    <input type="text" id="name" name="name" required><br><br>
+    <input type="text" id="name" name="name" ><br><br>
     
     <label for="umrechnungsfaktor">Umrechnungsfaktor:</label>
-    <input type="number" id="umrechnungsfaktor" name="umrechnungsfaktor" step="0.01" required>
+    <input type="number" id="umrechnungsfaktor" name="umrechnungsfaktor" step="0.01" >
     bei "spezieler Bassis ist die referenc immer Gramm<br><br>
     
     <label for="basisEinheit">Basis Einheit:</label>
-    <select id="basisEinheit" name="basisEinheit" required>
+    <select id="basisEinheit" name="basisEinheit"  onchange="checkBasisEinheit(this.value)">
         <option value="Liter">Liter</option>
         <option value="Gramm">Gramm</option>
         <option value="speziell">speziell</option>

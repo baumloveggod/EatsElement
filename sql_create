@@ -132,7 +132,7 @@ CREATE TABLE unverpackte_gefaesse (
 CREATE TABLE einheiten (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(50) NOT NULL,
-    umrechnungsfaktor_zu_basis DECIMAL(10, 2) NOT NULL,
+    umrechnungsfaktor_zu_basis DECIMAL(10, 2),
     basis_einheit_id INT NULL,
     volumen DECIMAL(10, 2),
     hat_spezifischen_umrechnungsfaktor BOOLEAN NOT NULL DEFAULT FALSE,

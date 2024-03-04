@@ -10,53 +10,97 @@
     include '../templates/einheitenFormular.php';
 
     // Funktion, um Optionen für ein Dropdown-Menü zu generieren
-    function generateOptions($conn, $tableName, $idColumn, $nameColumn) {
+    function generateOptions($conn, $tableName, $idColumn, $nameColumn, $isEinheiten = false) {
         $options = '';
-        $sql = "SELECT $idColumn, $nameColumn FROM $tableName ORDER BY $nameColumn ASC";
+        $sql = $isEinheiten ? "SELECT $idColumn, $nameColumn, basis_einheit_id FROM $tableName ORDER BY $nameColumn ASC" : "SELECT $idColumn, $nameColumn FROM $tableName ORDER BY $nameColumn ASC";
         $result = $conn->query($sql);
         if ($result->num_rows > 0) {
             while($row = $result->fetch_assoc()) {
-                $options .= "<option value='" . $row[$idColumn] . "'>" . htmlspecialchars($row[$nameColumn]) . "</option>";
+                if ($isEinheiten) {
+                    $options .= "<option value='" . $row[$idColumn] . "' data-basis='" . $row['basis_einheit_id'] . "'>" . htmlspecialchars($row[$nameColumn]) . "</option>";
+                } else {
+                    $options .= "<option value='" . $row[$idColumn] . "'>" . htmlspecialchars($row[$nameColumn]) . "</option>";
+                }
             }
         }
         return $options;
     }
+    
 
     // Überprüfen, ob das Formular gesendet wurde
     if ($_SERVER["REQUEST_METHOD"] == "POST") {
-        // Daten aus dem Formular holen und bereinigen
-        $name = $_POST['name'];
-        $haltbarkeit = $_POST['haltbarkeit'];
-        $volumen = $_POST['volumen'];
-        $kategorie_id = $_POST['kategorie_id'];
-        $phd_kategorie_id = $_POST['phd_kategorie_id'];
-        $einheit_id = $_POST['einheit_id'];
-        $umrechnungsfaktor = !empty($_POST['umrechnungsfaktor']) ? $_POST['umrechnungsfaktor'] : NULL;
+        // Überprüfen, ob das Formular gesendet wurde und die Aktion "Zutat Unter Anderem Namen Hinzufügen" ist
+        if ($_POST['aktion'] === "Zutat Unter Anderem Namen Hinzufügen") {
+            // Daten aus dem Formular holen
+            $alternativerName = $_POST['alternativerName'];
 
-        // Prepared Statement vorbereiten
-        $stmt = $conn->prepare("INSERT INTO zutaten (uebliche_haltbarkeit, volumen, kategorie_id, phd_kategorie_id, einheit_id   , spezifischer_umrechnungsfaktor) VALUES (?, ?, ?, ?, ?, ?)");
+            // Suche nach einer Zutat mit dem alternativen Namen
+            $stmt = $conn->prepare("SELECT zutat_id FROM zutaten_namen WHERE name = ?");
+            $stmt->bind_param("s", $alternativerName);
+            $stmt->execute();
+            $result = $stmt->get_result();
 
-        // Parameter binden
-        $stmt->bind_param("idiiid", $haltbarkeit, $volumen, $kategorie_id, $phd_kategorie_id, $einheit_id, $umrechnungsfaktor);
+            if ($result->num_rows > 0) {
+                // Zutat existiert, also füge den neuen Namen hinzu
+                $row = $result->fetch_assoc();
+                $zutatId = $row['zutat_id'];
 
-        // Versuchen, die Prepared Statement auszuführen
-        if ($stmt->execute()) {
-            // Assuming $stmt->execute() was successful and $name is the name of the ingredient
-            $zutatId = $conn->insert_id; // Retrieves the ID of the last inserted row
-            $stmt = $conn->prepare("INSERT INTO zutaten_namen (name, zutat_id) VALUES (?, ?)");
-            $stmt->bind_param("si", $name, $zutatId);
-            if (!$stmt->execute()) {
-                echo "<p>Fehler beim Hinzufügen des Namens der Zutat: " . $stmt->error . "</p>";
+                // Neuen Namen zur zutaten_namen Tabelle hinzufügen
+                $neuerName = $_POST['zutaten_name']; // Der "neue" Name der Zutat
+                $stmt = $conn->prepare("INSERT INTO zutaten_namen (name, zutat_id) VALUES (?, ?)");
+                $stmt->bind_param("si", $neuerName, $zutatId);
+                if ($stmt->execute()) {
+                    echo "<p>Neuer Name erfolgreich hinzugefügt.</p>";
+                } else {
+                    echo "<p>Fehler beim Hinzufügen des neuen Namens: " . $stmt->error . "</p>";
+                }
+            } else {
+                // Zutat nicht gefunden
+                echo "<p>Die Zutat unter dem Namen '$alternativerName' wurde nicht gefunden. Bitte überprüfen Sie den Namen und versuchen Sie es erneut.</p>";
             }
+        
+            $stmt->close();
+        }else{
+                if ($_POST['einheit_id'] === 'neuHinzufuegen') {
+                    // Führe die Funktion zum Hinzufügen der neuen Einheit aus und erhalte die neue Einheits-ID
+                    $einheit_id = insert_into_Eineheiten();
+                }
+                else{
+                $einheit_id = $_POST['einheit_id'];
+                }
+                // Daten aus dem Formular holen und bereinigen
+                $name = $_POST['zutaten_name'];
+                $haltbarkeit = $_POST['haltbarkeit'];
+                $volumen = $_POST['volumen'];
+                $kategorie_id = $_POST['kategorie_id'];
+                $phd_kategorie_id = $_POST['phd_kategorie_id'];
+                $umrechnungsfaktor = !empty($_POST['umrechnungsfaktor']) ? $_POST['umrechnungsfaktor'] : NULL;
 
-            echo "<p>Zutat erfolgreich hinzugefügt!</p>";
-        } else {
-            echo "<p>Fehler beim Hinzufügen der Zutat: " . $stmt->error . "</p>";
+                // Prepared Statement vorbereiten
+                $stmt = $conn->prepare("INSERT INTO zutaten (uebliche_haltbarkeit, volumen, kategorie_id, phd_kategorie_id, einheit_id   , spezifischer_umrechnungsfaktor) VALUES (?, ?, ?, ?, ?, ?)");
+
+                // Parameter binden
+                $stmt->bind_param("idiiid", $haltbarkeit, $volumen, $kategorie_id, $phd_kategorie_id, $einheit_id, $umrechnungsfaktor);
+
+                // Versuchen, die Prepared Statement auszuführen
+                if ($stmt->execute()) {
+                    // Assuming $stmt->execute() was successful and $name is the name of the ingredient
+                    $zutatId = $conn->insert_id; // Retrieves the ID of the last inserted row
+                    $stmt = $conn->prepare("INSERT INTO zutaten_namen (name, zutat_id) VALUES (?, ?)");
+                    $stmt->bind_param("si", $name, $zutatId);
+                    if (!$stmt->execute()) {
+                        echo "<p>Fehler beim Hinzufügen des Namens der Zutat: " . $stmt->error . "</p>";
+                    }
+
+                    echo "<p>Zutat erfolgreich hinzugefügt!</p>";
+                } else {
+                    echo "<p>Fehler beim Hinzufügen der Zutat: " . $stmt->error . "</p>";
+                }
+
+                // Prepared Statement schließen
+                $stmt->close();
+            }
         }
-
-        // Prepared Statement schließen
-        $stmt->close();
-    }
 
     ?>
 
@@ -69,76 +113,130 @@
     <body>
         <h2>Zutat Hinzufügen</h2>
         <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
-            <label for="name">Name:</label>
-            <input type="text" id="name" name="name" required><br><br>
+            <label for="zutaten_name">Name:</label>
+            <input type="text" id="zutaten_name" name="zutaten_name" ><br><br>
             
-            <label for="haltbarkeit">Haltbarkeit (in Tagen):</label>
-            <input type="number" id="haltbarkeit" name="haltbarkeit" required><br><br>
-            
-            <label for="volumen">Volumen:</label>
-            <input type="text" id="volumen" name="volumen" required><br><br>
-            
-            <label for="kategorie_id">Kategorie:</label>
-            <select id="kategorie_id" name="kategorie_id" required>
-                <?php echo generateOptions($conn, 'kategorien', 'id', 'name'); ?>
-            </select><br><br>
-            
-            <label for="phd_kategorie_id">Planetary Health Diet Category:</label>
-            <select id="phd_kategorie_id" name="phd_kategorie_id" required>
-                <?php echo generateOptions($conn, 'Planetary_Health_Diet_Categories', 'ID', 'Kategorie'); ?>
-            </select><br><br>
-            <?php // Test, ob Daten aus der 'einheiten' Tabelle abgerufen werden können
-                $sqlTest = "SELECT id, name FROM einheiten";
-                $resultTest = $conn->query($sqlTest);
-                if ($resultTest->num_rows > 0) {
-                    while($row = $resultTest->fetch_assoc()) {
-                    echo  "option value='" . $row["id"] . "y " . $row["name"] . "option" ."<br>";
+            <script>
+                function toggleForm(checkbox) {
+                    var isChecked = checkbox.checked;
+                    document.getElementById('alternativerNameContainer').style.display = isChecked ? 'block' : 'none';
+                    document.getElementById('restDesFormulars').style.display = isChecked ? 'none' : 'block';
+                    // Beispiel zum Entfernen des `required`-Attributs
+                    if (isChecked){
+                        //document.getElementsByClasse('alternativerNameContainer').setAttribute('required', '');
+                        document.getElementsByClasse('restDesFormulars').removeAttribute('required');
+                    } else{
+                        document.getElementsByClasse('alternativerNameContainer').removeAttribute('required');
+                        //document.getElementsByClasse('restDesFormulars').setAttribute('required', '');
                     }
-                    echo "<p>Daten aus der Tabelle 'einheiten' erfolgreich abgerufen.</p>";
-                } else {
-                    echo "ne";
-                }
-                ?>  
-            <label for="einheit_id">einheit:</label>
-            <select id="einheit_id" name="einheit_id" required onchange=checkNeueEinheit(this.value)>
-                <?php echo generateOptions($conn, 'einheiten', 'id', 'name'); ?>
-                <option value="neuHinzufuegen">Neu hinzufügen...</option>
-            </select><br><br>
 
-            <!-- Container für das Einheiten-Formular, zuerst versteckt -->
-            <div id="neueEinheitFormular" style="display:none;">
-                
-                <?php echo einheitsForm(); ?>
+                }
+            </script>
+            
+            <label for="existiertUnterAnderemNamen">Existiert ide zutat unter einem anderem Namen?</label>
+            <input type="checkbox" id="existiertUnterAnderemNamen" name="existiertUnterAnderemNamen" onchange="toggleForm(this)" checked>
+            
+            <div id="alternativerNameContainer" style="display:block;">
+                <label for="alternativerName">Anderer Name:</label>
+                <input type="text" id="alternativerName" name="alternativerName"><br><br>
+                <input type="submit" name="aktion" value="Zutat Unter Anderem Namen Hinzufügen">
             </div>
 
-            <script>
-            function checkNeueEinheit(value) {
-                if (value === "neuHinzufuegen") {
-                    document.getElementById('neueEinheitFormular').style.display = 'block';
-                } else {
-                    document.getElementById('neueEinheitFormular').style.display = 'none';
-                }
-            }
-            </script>
+            <div id="restDesFormulars" style="display:none;">
 
-            <input type="submit" value="Zutat Hinzufügen">
+                <label for="haltbarkeit">Haltbarkeit (in Tagen):</label>
+                <input class="restDesFormulars" type="number" id="haltbarkeit" name="haltbarkeit" ><br><br>
+                
+                
+                <label for="kategorie_id">Kategorie:</label>
+                <select class="restDesFormulars" id="kategorie_id" name="kategorie_id" >
+                    <?php echo generateOptions($conn, 'kategorien', 'id', 'name'); ?>
+                </select><br><br>
+                
+                <label for="phd_kategorie_id">Planetary Health Diet Category:</label>
+                <select class="restDesFormulars" id="phd_kategorie_id" name="phd_kategorie_id" >
+                    <?php echo generateOptions($conn, 'Planetary_Health_Diet_Categories', 'ID', 'Kategorie'); ?>
+                </select><br><br>
+                <label for="einheit_id">einheit:</label>
+                <select id="einheit_id" name="einheit_id"  onchange=checkNeueEinheit(this.value)>
+                    <?php echo generateOptions($conn, 'einheiten', 'id', 'name', true); ?>
+
+                    <option value="neuHinzufuegen">Neu hinzufügen...</option>
+                </select><br><br>
+                <div id="neueEinheitFormular" style="display:none;">
+                    
+                    <?php echo einheitsForm(); ?>
+                </div>
+                <div id="volumen_block" style="display:none;">
+                <label for="volumen">Volumen:</label>
+                <input class="restDesFormulars" type="text" id="volumen" name="volumen" style="display:none;" >
+                wichtig für PHD da die berenung mit gramm arbeitet<br><br>
+                </div>
+                <script>
+                    function checkBasisEinheit(value){
+                        var displayVolumen = 'none';
+                        if (value === 'Liter') {
+                                displayVolumen = 'block';
+                            }
+                        document.getElementById('volumen_block').style.display = displayVolumen;
+                        document.getElementById('volumen').style.display = displayVolumen;
+                    }
+                    
+                    function checkNeueEinheit(value) {
+                        var displayVolumen = 'none';
+                        if (value === "neuHinzufuegen") {
+                            document.getElementById('neueEinheitFormular').style.display = 'block';
+                        } else {
+                            document.getElementById('neueEinheitFormular').style.display = 'none';
+                            }
+                        // Volumen-Feld nur anzeigen, wenn die Einheit selbst oder die Basis-Einheit Liter ist
+                        // Retrieve the selected option element to get its data-basis attribute
+                        var selectedOption = document.querySelector("#einheit_id option[value='" + value + "']");
+                        var basisId = selectedOption && selectedOption.getAttribute('data-basis');
+                        
+                        if (basisId === '2' || value === '2') {
+                            displayVolumen = 'block';
+                        }
+                        document.getElementById('volumen_block').style.display = displayVolumen;
+                        document.getElementById('volumen').style.display = displayVolumen;
+                    }
+                </script>
+
+
+                <input type="submit" value="Zutat Hinzufügen">
+            
+            </div>
         </form>
         <h2>Vorhandene Zutaten</h2>
         <?php
-        // Vorhandene Zutaten auflisten
-        $sql = "SELECT zutaten.id, zutaten_namen.name, zutaten.uebliche_haltbarkeit, zutaten.volumen FROM zutaten JOIN zutaten_namen ON zutaten.id = zutaten_namen.zutat_id ORDER BY zutaten_namen.name ASC";
-        $result = $conn->query($sql);
+// Vorhandene Zutaten auflisten mit Anpassungen
+$sql = "SELECT zutaten.id, 
+               GROUP_CONCAT(zutaten_namen.name SEPARATOR ', ') AS names, 
+               zutaten.uebliche_haltbarkeit, 
+               zutaten.volumen, 
+               kategorien.name AS kategorie_name, 
+               Planetary_Health_Diet_Categories.Kategorie AS phd_kategorie_name, 
+               einheiten.name AS einheit_name
+        FROM zutaten 
+        JOIN zutaten_namen ON zutaten.id = zutaten_namen.zutat_id
+        JOIN kategorien ON zutaten.kategorie_id = kategorien.id
+        JOIN Planetary_Health_Diet_Categories ON zutaten.phd_kategorie_id = Planetary_Health_Diet_Categories.ID
+        JOIN einheiten ON zutaten.einheit_id = einheiten.id
+        GROUP BY zutaten.id
+        ORDER BY names ASC";
 
-        if ($result->num_rows > 0) {
-            echo "<table border='1'>";
-            echo "<tr><th>Name</th><th>Haltbarkeit (Tage)</th><th>Volumen</th></tr>";
-            while ($row = $result->fetch_assoc()) {
-                echo "<tr><td>" . htmlspecialchars($row['name']) . "</td><td>" . htmlspecialchars($row['uebliche_haltbarkeit']) . "</td><td>" . htmlspecialchars($row['volumen']) . "</td></tr>";
-            }
-            echo "</table>";
-        } else {
-            echo "Keine Zutaten gefunden.";
-        }
-        ?>
+$result = $conn->query($sql);
+
+if ($result->num_rows > 0) {
+    echo "<table border='1'>";
+    echo "<tr><th>Namen</th><th>Haltbarkeit (Tage)</th><th>Volumen</th><th>Kategorie</th><th>PHD Kategorie</th><th>Einheit</th></tr>";
+    while ($row = $result->fetch_assoc()) {
+        echo "<tr><td>" . htmlspecialchars($row['names']) . "</td><td>" . htmlspecialchars($row['uebliche_haltbarkeit']) . "</td><td>" . htmlspecialchars($row['volumen']) . "</td><td>" . htmlspecialchars($row['kategorie_name']) . "</td><td>" . htmlspecialchars($row['phd_kategorie_name']) . "</td><td>" . htmlspecialchars($row['einheit_name']) . "</td></tr>";
+    }
+    echo "</table>";
+} else {
+    echo "Keine Zutaten gefunden.";
+}
+?>
     </body>
     </html>

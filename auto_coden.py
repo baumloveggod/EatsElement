@@ -18,6 +18,7 @@ def write_file_info_to_output(paths, output_file):
         print("A: ")
         for path in paths:
             print("B: " + path)
+            print(os.path.isdir(path))
             if os.path.isdir(path):
                 
                 print("D: " + path)

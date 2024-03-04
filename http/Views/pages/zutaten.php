@@ -47,9 +47,9 @@
                 $zutatId = $row['zutat_id'];
 
                 // Neuen Namen zur zutaten_namen Tabelle hinzufügen
-                $neuerName = $_POST['zutaten_name']; // Der "neue" Name der Zutat
+                $zutaten_name = $_POST['zutaten_name']; // Der "neue" Name der Zutat
                 $stmt = $conn->prepare("INSERT INTO zutaten_namen (name, zutat_id) VALUES (?, ?)");
-                $stmt->bind_param("si", $neuerName, $zutatId);
+                $stmt->bind_param("si", $zutaten_name, $zutatId);
                 if ($stmt->execute()) {
                     echo "<p>Neuer Name erfolgreich hinzugefügt.</p>";
                 } else {
@@ -101,11 +101,12 @@
                         echo "<p>Name is required.</p>";
                         // Handle the error appropriately - perhaps by not proceeding with the DB insert
                     }
+                    $zutaten_name = $_POST['zutaten_name'];
 
                     // Assuming $stmt->execute() was successful and $name is the name of the ingredient
                     $zutatId = $conn->insert_id; // Retrieves the ID of the last inserted row
                     $stmt = $conn->prepare("INSERT INTO zutaten_namen (name, zutat_id) VALUES (?, ?)");
-                    $stmt->bind_param("si", $name, $zutatId);
+                    $stmt->bind_param("si", $zutaten_name, $zutatId);
                     if (!$stmt->execute()) {
                         echo "<p>Fehler beim Hinzufügen des Namens der Zutat: " . $stmt->error . "</p>";
                     }

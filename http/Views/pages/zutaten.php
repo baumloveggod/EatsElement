@@ -190,7 +190,6 @@
                     <option value="neuHinzufuegen">Neu hinzufügen...</option>
                 </select><br><br>
                 <div id="neueEinheitFormular" style="display:none;">
-                    <option value="">Bitte wählen</option>
                     <?php echo einheitsForm(); ?>
                 </div>
                 <div id="volumen_block" style="display:none;">

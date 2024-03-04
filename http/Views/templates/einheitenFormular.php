@@ -52,6 +52,7 @@ function einheitsForm(){
     
     <label for="basisEinheit">Basis Einheit:</label>
     <select id="basisEinheit" name="basisEinheit"  onchange="checkBasisEinheit(this.value)">
+        <option value="">Bitte wählen</option>     
         <option value="Liter">Liter</option>
         <option value="Gramm">Gramm</option>
         <option value="speziell">speziell</option>

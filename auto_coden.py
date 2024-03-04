@@ -15,6 +15,7 @@ def is_text_file(filepath):
 
 def write_file_info_to_output(paths, output_file):
     with open(output_file, 'w', encoding='utf-8') as f_output:
+        print("A: ")
         for path in paths:
             if os.path.isdir(path):
                 for root, dirs, files in os.walk(path):

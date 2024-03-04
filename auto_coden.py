@@ -86,9 +86,9 @@ def git_commit_and_push(commit_message):
         subprocess.run(["git", "push"], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Fehler beim Ausführen von Git-Befehlen: {e}")
-#,'./http/Views/einheitenFormular.php','./http/Views/einheiten.php',
+#,'./http/Views/einheitenFormular.php','./http/Views/einheiten.php', ./http/Views/zutaten
 # Main script
-write_file_info_to_output(['./http/Views/zutaten.php','sql_create'], 'output.txt')
+write_file_info_to_output(['test.php','sql_create'], 'output.txt')
 changed_files = get_git_changes()
 if changed_files:  # Only proceed if there are changed files
     commit_message = generate_commit_message(changed_files)

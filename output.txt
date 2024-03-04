@@ -1,383 +1,412 @@
-Path: test.php
+Path: ./http/Views/pages/einheiten.php
 Content:
 <?php
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-require_once 'Utils/db_connect.php';
-
-// Schritt 1: Überprüfen, ob Rezepte vorhanden sind
-$sql = "SELECT COUNT(*) FROM rezepte";
-$result = $conn->query($sql);
-$row = $result->fetch_row();
-
-if ($row[0] == 0) {
-    // Schritt 2: Füge Kategorien hinzu, falls noch nicht vorhanden (Optional, falls nicht bereits manuell hinzugefügt)
-    $kategorienSql = "INSERT INTO kategorien (name, sortierreihenfolge) VALUES
-    ('unbekannte zutat', 11),
-    ('Obst & Gemüse', 1),
-    ('Backwaren', 2),
-    ('Fleisch & Fisch', 3),
-    ('Milchprodukte & Eier', 4),
-    ('Tiefkühlkost', 5),
-    ('Konserven & Trockenwaren', 6),
-    ('Getränke', 7),
-    ('Süßwaren & Snacks', 8),
-    ('Gesundheit & Schönheit', 9),
-    ('Haushaltswaren', 10)
-    ON DUPLICATE KEY UPDATE name=VALUES(name);"; // Verhindert Duplikate, wenn Skript erneut ausgeführt wird.
-    $conn->query($kategorienSql);
-
-    // Verbindung zur Datenbank herstellen
-
-    $zutatenListe = [
-        [
-            'name' => 'Äpfel',
-            'kategorie' => 'Obst & Gemüse',
-            'haltbarkeit' => 30,
-            'phd_kategorie' => 4, // Obst
-            'naehrstoffe' => [
-                'kalorien' => 52,
-                'proteine' => 0.26,
-                'fette' => 0.17,
-                'kohlenhydrate' => 13.81,
-                'ballaststoffe' => 2.4,
-                'zucker' => 10.39
-            ]
-        ],
-        ['name' => 'Brokkoli', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 15, 'phd_kategorie' => 3], // Gemüse
-        ['name' => 'Karotten', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30, 'phd_kategorie' => 3], // Gemüse
-        ['name' => 'Römersalat', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 7, 'phd_kategorie' => 3], // Gemüse
-        ['name' => 'Croutons', 'kategorie' => 'Backwaren', 'haltbarkeit' => 60, 'phd_kategorie' => 1], // Getreide (Vollkorn), Annahme basierend auf dem primären Getreideprodukt
-        ['name' => 'Caesar-Dressing', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 90, 'phd_kategorie' => 11], // Pflanzliche Öle, typischerweise basierend auf der Ölbasis im Dressing
-        ['name' => 'Linsen', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365, 'phd_kategorie' => 2], // Hülsenfrüchte
-        ['name' => 'Zwiebel', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30, 'phd_kategorie' => 3], // Gemüse
-        ['name' => 'Sellerie', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 21, 'phd_kategorie' => 3], // Gemüse
-        ['name' => 'Gemüsebrühe', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365, 'phd_kategorie' => 3], // Gemüse, Annahme basierend auf dem primären Inhalt
-        ['name' => 'Tofu', 'kategorie' => 'Gesundheit & Schönheit', 'haltbarkeit' => 60, 'phd_kategorie' => 2], // Hülsenfrüchte, Tofu wird aus Sojabohnen hergestellt
-        ['name' => 'Tomatensoße', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365, 'phd_kategorie' => 3], // Gemüse
-        ['name' => 'Knoblauch', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 60, 'phd_kategorie' => 3], // Gemüse
-        ['name' => 'Pasta', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365, 'phd_kategorie' => 1], // Getreide (Vollkorn), Annahme basierend auf Getreidebasis
-        ['name' => 'Zucchini', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30, 'phd_kategorie' => 3], // Gemüse
-        ['name' => 'Aubergine', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30, 'phd_kategorie' => 3], // Gemüse
-        ['name' => 'Paprika', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 30, 'phd_kategorie' => 3], // Gemüse
-        ['name' => 'Thymian', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 180, 'phd_kategorie' => 3], // Gemüse, Kräuter fallen oft unter diese Kategorie
-        ['name' => 'Mehl', 'kategorie' => 'Backwaren', 'haltbarkeit' => 365, 'phd_kategorie' => 1], // Getreide (Vollkorn), Annahme basierend auf dem primären Getreideprodukt
-        ['name' => 'Milch', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 10, 'phd_kategorie' => 9], // Milchprodukte
-        ['name' => 'Butter', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 30, 'phd_kategorie' => 9], // Milchprodukte
-        ['name' => 'Salz', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 1095, 'phd_kategorie' => null], // Salz passt nicht direkt in eine PHD-Kategorie
-        // Zuvor begonnene Zutaten mit ergänzten PHD-Kategorien
-        ['name' => 'Vollkornbrot', 'kategorie' => 'Backwaren', 'haltbarkeit' => 7, 'phd_kategorie' => 1,'naehrstoffe' => [
-            'kalorien' => 247,
-            'proteine' => 13,
-            'fette' => 3.4,
-            'kohlenhydrate' => 41,
-            'ballaststoffe' => 7,
-            'zucker' => 6
-        ]], // Getreide (Vollkorn)
-        ['name' => 'Hühnchenbrust', 'kategorie' => 'Fleisch & Fisch', 'haltbarkeit' => 10, 'phd_kategorie' => 7,'naehrstoffe' => [
-            'kalorien' => 165,
-            'proteine' => 31,
-            'fette' => 3.6,
-            'kohlenhydrate' => 0,
-            'ballaststoffe' => 0,
-            'zucker' => 0
-        ]], // Geflügel
-        ['name' => 'Joghurt', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 15, 'phd_kategorie' => 9,'naehrstoffe' => [
-            'kalorien' => 59,
-            'proteine' => 10,
-            'fette' => 0.4,
-            'kohlenhydrate' => 3.6,
-            'ballaststoffe' => 0,
-            'zucker' => 3.6
-        ]], // Milchprodukte
-        ['name' => 'Tikka Masala Paste', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 180, 'phd_kategorie' => 11,'naehrstoffe' => [
-            'kalorien' => 150,
-            'proteine' => 2,
-            'fette' => 8,
-            'kohlenhydrate' => 18,
-            'ballaststoffe' => 2,
-            'zucker' => 12
-        ]], // Pflanzliche Öle, angenommen aufgrund der Ölbasis in der Paste
-        ['name' => 'Tomaten', 'kategorie' => 'Obst & Gemüse', 'haltbarkeit' => 10, 'phd_kategorie' => 3,'naehrstoffe' => [
-            'kalorien' => 18,
-            'proteine' => 0.88,
-            'fette' => 0.2,
-            'kohlenhydrate' => 3.89,
-            'ballaststoffe' => 1.2,
-            'zucker' => 2.63
-        ]], // Gemüse
-        ['name' => 'Sahne', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 10, 'phd_kategorie' => 9,'naehrstoffe' => [
-            'kalorien' => 342,
-            'proteine' => 2.9,
-            'fette' => 36,
-            'kohlenhydrate' => 2.7,
-            'ballaststoffe' => 0,
-            'zucker' => 2.7
-        ]], // Milchprodukte
-        ['name' => 'Ei', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 21, 'phd_kategorie' => 10,'naehrstoffe' => [
-            'kalorien' => 155,
-            'proteine' => 13,
-            'fette' => 11,
-            'kohlenhydrate' => 1.1,
-            'ballaststoffe' => 0,
-            'zucker' => 1.1
-        ]], // Eier
-        ['name' => 'Speck', 'kategorie' => 'Fleisch & Fisch', 'haltbarkeit' => 14, 'phd_kategorie' => 6,'naehrstoffe' => [
-            'kalorien' => 541,
-            'proteine' => 37,
-            'fette' => 42,
-            'kohlenhydrate' => 1.4,
-            'ballaststoffe' => 0,
-            'zucker' => 0
-        ]], // Fleisch (Rot und verarbeitet)
-        ['name' => 'Spaghetti', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 365, 'phd_kategorie' => 1,'naehrstoffe' => [
-            'kalorien' => 158,
-            'proteine' => 5.8,
-            'fette' => 0.9,
-            'kohlenhydrate' => 31,
-            'ballaststoffe' => 1.8,
-            'zucker' => 0.8
-        ]], // Getreide (Vollkorn)
-        ['name' => 'Parmesan', 'kategorie' => 'Milchprodukte & Eier', 'haltbarkeit' => 60, 'phd_kategorie' => 9,'naehrstoffe' => [
-            'kalorien' => 431,
-            'proteine' => 38,
-            'fette' => 29,
-            'kohlenhydrate' => 4.1,
-            'ballaststoffe' => 0,
-            'zucker' => 0.9
-        ]], // Milchprodukte
-        ['name' => 'Kokosmilch', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 180, 'phd_kategorie' => 11,'naehrstoffe' => [
-            'kalorien' => 230,
-            'proteine' => 2.3,
-            'fette' => 24,
-            'kohlenhydrate' => 6,
-            'ballaststoffe' => 2.2,
-            'zucker' => 3.3
-        ]], // Pflanzliche Öle, angenommen aufgrund der Fettbasis
-        ['name' => 'Currypaste', 'kategorie' => 'Konserven & Trockenwaren', 'haltbarkeit' => 180, 'phd_kategorie' => 11,'naehrstoffe' => [
-            'kalorien' => 325,
-            'proteine' => 3.8,
-            'fette' => 17,
-            'kohlenhydrate' => 40,
-            'ballaststoffe' => 9.8,
-            'zucker' => 29
-        ]] // Pflanzliche Öle, angenommen aufgrund der Ölbasis in der Paste
-        // Beachten Sie, dass einige Zutaten möglicherweise keiner spezifischen PHD-Kategorie zugeordnet werden können, wie z.B. Salz.
-    ];
-    
-    
-    foreach ($zutatenListe as $zutat) {
-        // Ermittle die kategorie_id basierend auf dem Kategorienamen
-        $kategorieStmt = $conn->prepare("SELECT id FROM kategorien WHERE name = ?");
-        $kategorieStmt->bind_param("s", $zutat['kategorie']);
-        $kategorieStmt->execute();
-        $result = $kategorieStmt->get_result();
-        if ($row = $result->fetch_assoc()) {
-            $kategorie_id = $row['id'];
-
-            $insertStmtZutaten = $conn->prepare("INSERT INTO zutaten (kategorie_id, uebliche_haltbarkeit, phd_kategorie_id) VALUES (?, ?, ?)");
-            $insertStmtZutaten->bind_param("iii", $kategorie_id, $zutat['haltbarkeit'], $zutat['phd_kategorie']);
-            $insertStmtZutaten->execute();
-            $zutatId = $conn->insert_id;// Holt die ID der gerade eingefügten Zutat
-
-            $insertStmtNamen = $conn->prepare("INSERT INTO zutaten_namen (name, zutat_id) VALUES (?, ?)");
-            $insertStmtNamen->bind_param("si", $zutat['name'], $zutatId);
-            $insertStmtNamen->execute();
-
-        }
-        // Neuer Code zum Einfügen der Nährstoffdaten
-        $insertStmtNaehrstoffe = $conn->prepare("INSERT INTO naehrstoffe (zutat_id, kalorien, proteine, fette, kohlenhydrate, ballaststoffe, zucker) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $insertStmtNaehrstoffe->bind_param("idddddd", $zutatId, $zutat['naehrstoffe']['kalorien'], $zutat['naehrstoffe']['proteine'], $zutat['naehrstoffe']['fette'], $zutat['naehrstoffe']['kohlenhydrate'], $zutat['naehrstoffe']['ballaststoffe'], $zutat['naehrstoffe']['zucker']);
-        $insertStmtNaehrstoffe->execute();
-    }
+require_once '../../Utils/SessionManager.php';
+require_once '../../Utils/db_connect.php';
+checkUserAuthentication();
 
 
-    // Schritt 2.1: Keine Rezepte vorhanden, füge Beispielrezepte ein
-    $beispielRezepte = [
-        [
-        "titel" => "Chicken Tikka Masala",
-        "beschreibung" => "Beliebtes indisches Gericht mit cremiger Tomatensoße.",
-        "zubereitungszeit" => 40,
-        "zutaten" => [
-            ["name" => "Hühnerbrust","menge" =>  "500g"],
-            ["name" => "Joghurt", "menge" =>  "100ml"],
-            ["name" => "Tikka Masala Paste", "menge" =>  "3 EL"],
-            ["name" => "Tomaten", "menge" =>  "400g"],
-            ["name" => "Sahne", "menge" =>  "100ml"]
-        ]
-        ],[
-            "titel" => "Spaghetti Carbonara",
-            "beschreibung" => "Klassisches italienisches Pasta-Gericht mit Speck und Sahnesoße.",
-            "zubereitungszeit" => 20,
-            "zutaten" => [
-                ["name" => "Ei", "menge" =>  "2 Stück"],
-                ["name" => "Speck", "menge" =>  "100g"],
-                ["name" => "Spaghetti","menge" =>   "200g"],
-                ["name" => "Parmesan","menge" =>   "50g"]
-            ]
-        ],
-        [
-            "titel" => "Gemüsecurry",
-            "beschreibung" => "Würziges und gesundes Gemüsecurry mit Reis.",
-            "zubereitungszeit" => 30,
-            "zutaten" => [
-                ["name" => "Kokosmilch","menge" =>   "250ml"],
-                ["name" => "Currypaste","menge" =>   "2 EL"],
-                ["name" => "Brokkoli","menge" =>   "1 Kopf"],
-                ["name" => "Karotten","menge" =>   "2 Stück"]
-            ]
-        ],
-        [
-            "titel" => "Caesar Salad",
-            "beschreibung" => "Klassischer Caesar Salad mit knusprigen Croutons und Parmesan.",
-            "zubereitungszeit" => 15,
-            "zutaten" => [
-                ["name" => "Römersalat","menge" =>   "1 Kopf"],
-                ["name" => "Croutons","menge" =>   "100g"],
-                ["name" => "Parmesan","menge" =>   "30g"],
-                ["name" => "Caesar-Dressing","menge" =>   "50ml"]
-            ]
-        ],[
-        
-        "titel" => "Linsensuppe",
-        "beschreibung" => "Herzhafte Linsensuppe, perfekt für kalte Tage.",
-        "zubereitungszeit" => 45,
-        "zutaten" => [
-            ["name" => "Linsen","menge" =>   "200g"],
-            ["name" => "Zwiebel","menge" =>   "1 Stück"],
-            ["name" => "Karotten","menge" =>   "2 Stück"],
-            ["name" => "Sellerie","menge" =>   "1 Stange"],
-            ["name" => "Gemüsebrühe","menge" =>   "1 Liter"]
-        ]
-    ],[
-        "titel" => "Vegane Bolognese",
-        "beschreibung" => "Pflanzenbasierte Version des italienischen Klassikers.",
-        "zubereitungszeit" => 30,
-        "zutaten" => [
-            ["name" => "Tofu","menge" =>   "200g"],
-            ["name" => "Tomatensoße","menge" =>   "500ml"],
-            ["name" => "Zwiebel","menge" =>   "1 Stück"],
-            ["name" => "Knoblauch","menge" =>   "2 Zehen"],
-            ["name" => "Pasta","menge" =>   "300g"]
-        ]
-    ],[
-        "titel" => "Ratatouille",
-        "beschreibung" => "Französisches Gemüsegericht, bunt und aromatisch.",
-        "zubereitungszeit" => 60,
-        "zutaten" => [
-            ["name" => "Zucchini","menge" =>   "2 Stück"],
-            ["name" => "Aubergine","menge" =>   "1 Stück"],
-            ["name" => "Paprika","menge" =>   "2 Stück"],
-            ["name" => "Tomaten","menge" =>   "3 Stück"],
-            ["name" => "Thymian","menge" =>   "1 Zweig"]
-        ]
-    ],[
-        "titel" => "Pfannkuchen",
-        "beschreibung" => "Einfache und leckere Pfannkuchen, süß oder herzhaft.",
-        "zubereitungszeit" => 20,
-        "zutaten" => ["name" => 
-            ["name" => "Mehl","menge" =>   "250g"],
-            ["name" => "Eier","menge" =>   "2 Stück"],
-            ["name" => "Milch","menge" =>   "500ml"],
-            ["name" => "Butter","menge" =>   "Zum Braten"],
-            ["name" => "Salz","menge" =>   "1 Prise"]
-        ]
-    ]
-    ];
-
-    $stmtRezept = $conn->prepare("INSERT INTO rezepte (titel, beschreibung, zubereitungszeit) VALUES (?, ?, ?)");
-    $stmtCheckZutat = $conn->prepare("SELECT zutat_id FROM zutaten_namen WHERE name = ?");
-    $stmtZutaten = $conn->prepare("INSERT INTO rezept_zutaten (rezept_id, zutat_id, menge, einheit_id) VALUES (?, ?, ?, ?)");
-    $stmtCheckExisting = $conn->prepare("SELECT COUNT(*) FROM rezept_zutaten WHERE rezept_id = ? AND zutat_id = ?");
-    
-    foreach ($beispielRezepte as $rezept) {
-        $stmtRezept->bind_param("ssi", $rezept['titel'], $rezept['beschreibung'], $rezept['zubereitungszeit']);
-        $stmtRezept->execute();
-        $rezeptId = $stmtRezept->insert_id;
-    
-        foreach ($rezept['zutaten'] as $zutat) {
-            $stmtCheckZutat->bind_param("s", $zutat['name']);
-            $stmtCheckZutat->execute();
-            $result = $stmtCheckZutat->get_result();
-            if ($result->num_rows > 0) {
-                $row = $result->fetch_assoc();
-                $zutatId = $row['zutat_id'];
-                
-                echo $zutat['menge'] . "  : ";
-                $eingabe = $zutat['menge'];
-                // Überprüfen, ob die Eingabe nur aus Zahlen besteht
-                if (is_numeric($eingabe)) {
-                    $quantity  = $eingabe;
-                    $einheitName  = "";
-                } elseif (is_string($eingabe)) { // Überprüfen, ob die Eingabe nur aus Buchstaben besteht
-                    // Hier könnte zusätzlich geprüft werden, ob es sich tatsächlich nur um Wörter handelt,
-                    // z.B. durch einen regulären Ausdruck, der sicherstellt, dass keine Zahlen enthalten sind.
-                    if (preg_match('/^[a-zA-ZäöüÄÖÜß\s]+$/', $eingabe)) {
-                        $quantity  = -1;
-                        $einheitName  = $eingabe;
-                    } else {
-                        // Falls die Eingabe sowohl Buchstaben als auch Zahlen enthält
-                        echo "Die Eingabe enthält sowohl Buchstaben als auch Zahlen.\n";
-                        preg_match('/^(\d+)\s*(.*)$/', $zutat['menge'], $matches);
-                        $quantity = (int)$matches[1];
-                        $einheitName = trim($matches[2]);// Oder eine Fehlerbehandlung nach Bedarf
-                    }
-                } else {
-                    // Falls die Eingabe weder reine Zahlen noch reine Wörter enthält
-                    echo "Ungültige Eingabe.\n";
-                    $quantity  = -1;
-                    $einheitName  = ""; // Oder eine Fehlerbehandlung nach Bedarf
-                }
-                
-                echo $quantity . " + " . $einheitName. "</br>";
-                // SQL-Abfrage, um die einheit_id zu ermitteln
-                $stmtEinheit = $conn->prepare("SELECT id FROM einheiten WHERE name = ?");
-                $stmtEinheit->bind_param("s", $einheitName);
-                $stmtEinheit->execute();
-                $resultEinheit = $stmtEinheit->get_result();
-
-                if ($resultEinheit->num_rows > 0) {
-                    // Einheit existiert, benutze existierende einheit_id
-                    $rowEinheit = $resultEinheit->fetch_assoc();
-                    $einheitId = $rowEinheit['id'];
-                } else {
-                    // Optional: Einheit existiert nicht, füge sie ein und benutze neue einheit_id
-                    // Dies hängt von deiner Anforderung ab, ob du neue Einheiten automatisch hinzufügen möchtest
-                    $stmtEinheitInsert = $conn->prepare("INSERT INTO einheiten (name, umrechnungsfaktor_zu_basis) VALUES (?, ?)");
-                    $umrechnungsfaktorZuBasis = 1; // Standardwert oder berechne basierend auf Einheit
-                    $stmtEinheitInsert->bind_param("sd", $einheitName, $umrechnungsfaktorZuBasis);
-                    $stmtEinheitInsert->execute();
-                    $einheitId = $stmtEinheitInsert->insert_id;
-                }
-                $stmtCheckExisting->bind_param("ii", $rezeptId, $zutatId);
-                $stmtCheckExisting->execute();
-                $result = $stmtCheckExisting->get_result(); // Correct variable for fetching result
-                $row = $result->fetch_array(); // Fetching the row directly as an array
-                if ($row[0] == 0) { // Assuming COUNT(*) returns 0 if not exists
-                    $stmtZutaten->bind_param("iiii", $rezeptId, $zutatId, $quantity, $einheitId);
-                    $stmtZutaten->execute();
-                }
-            }
-            // It's good practice to free each result set as soon as you're done with it
-            if(isset($result) && $result instanceof mysqli_result) {
-                $result->free();
-                unset($result); // Entfernen Sie die Referenz, um doppelte Freigaben zu verhindern
-            }
-            
-        }
-        
-    }
-} else {
-    echo "Es sind bereits Rezepte in der Datenbank vorhanden.";
+include '../templates/einheitenFormular.php';
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['name'], $_POST['umrechnungsfaktor'], $_POST['basisEinheit'])) {
+    insert_into_Eineheiten();
 }
 
-$stmtRezept->close();   
-$stmtCheckZutat->close();
-$stmtZutaten->close();
-$conn->close();
+// Berechne die Anzahl der notwendigen Durchläufe für die paginierte Anzeige
+$countSql = "SELECT COUNT(id) AS total FROM einheiten";
+$countResult = $conn->query($countSql);
+$countRow = $countResult->fetch_assoc();
+$totalUnits = $countRow['total'];
+
+$batchSize = 5; // Festlegung der Anzahl der Einheiten pro Batch
+$loops = ceil($totalUnits / $batchSize); // Berechnung der Anzahl der Durchläufe
 ?>
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <?php include '../templates/header.php'; ?>
+    <title>Einheiten Verwaltung</title>
+</head>
+<body>
+    <?php include '../templates/navigation.php'; ?>
+    
+    <main>
+        <h2>Einheiten Verwaltung</h2>
+        
+        <h3>Einheit hinzufügen</h3>
+        
+            <form action="" method="post">
+                <?php echo einheitsForm(); ?>
+                <input type="submit" value="Einheit Hinzufügen" id="einheitHinzufuegenButton">
+            </form>
+
+        <h3>Vorhandene Einheiten</h3>
+        <table>
+            <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Umrechnungsfaktor</th>
+                        <th>Basis Einheit ID</th>
+                        <th>hat_spezifischen_umrechnungsfaktor</th>
+                    </tr>
+                </thead>
+            <tbody>
+                <?php 
+                for ($i = 0; $i < $loops; $i++) {
+                    $offset = $i * $batchSize;
+                    $sql = "SELECT id, name, umrechnungsfaktor_zu_basis, basis_einheit_id, hat_spezifischen_umrechnungsfaktor FROM einheiten ORDER BY name ASC LIMIT $offset, $batchSize";
+                    $result = $conn->query($sql);
+
+                    while ($row = $result->fetch_assoc()) {
+                        // Ausgabe jedes Datensatzes
+                        echo "<tr>";
+                        echo "<td>" . htmlspecialchars($row['name']) . "</td>";
+                        echo "<td>" . htmlspecialchars($row['umrechnungsfaktor_zu_basis']) . "</td>";
+                        echo "<td>" . (is_null($row['basis_einheit_id']) ? 'NULL' : htmlspecialchars($row['basis_einheit_id'])) . "</td>";
+                        echo "<td>" . (htmlspecialchars($row['hat_spezifischen_umrechnungsfaktor']) ? 'ja' : 'Nein') . "</td>";
+                        echo "</tr>";
+                    }
+                }
+                ?>
+            </tbody>
+        </table>
+
+    </main>
+    
+    <?php include '../templates/footer.php'; ?>
+</body>
+</html>
+
+
+Path: ./http/Views/pages/zutaten.php
+Content:
+    <?php
+    // Fehlerberichterstattung einschalten
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
+
+    // Verbindung zur Datenbank herstellen
+    require_once '../../Utils/db_connect.php';
+
+    include '../templates/einheitenFormular.php';
+
+    // Funktion, um Optionen für ein Dropdown-Menü zu generieren, erweitert um den speziellen Umrechnungsfaktor-Status
+    function generateOptions($conn, $tableName, $idColumn, $nameColumn, $isEinheiten = false) {
+        $options = '';
+        $sql = $isEinheiten ? "SELECT $idColumn, $nameColumn, basis_einheit_id, hat_spezifischen_umrechnungsfaktor FROM $tableName ORDER BY $nameColumn ASC" : "SELECT $idColumn, $nameColumn FROM $tableName ORDER BY $nameColumn ASC";
+        $result = $conn->query($sql);
+        if ($result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                if ($isEinheiten) {
+                    $options .= "<option value='" . $row[$idColumn] . "' data-basis='" . $row['basis_einheit_id'] . "' data-spezifischer-umrechnungsfaktor='" . $row['hat_spezifischen_umrechnungsfaktor'] . "'>" . htmlspecialchars($row[$nameColumn]) . "</option>";
+                } else {
+                    $options .= "<option value='" . $row[$idColumn] . "'>" . htmlspecialchars($row[$nameColumn]) . "</option>";
+                }
+            }
+        }
+        return $options;
+}
+
+    
+
+    // Überprüfen, ob das Formular gesendet wurde
+    if ($_SERVER["REQUEST_METHOD"] == "POST") {
+        // Überprüfen, ob das Formular gesendet wurde und die Aktion "Zutat Unter Anderem Namen Hinzufügen" ist
+        if (isset($_POST['aktion_name']) && $_POST['aktion_name'] === "Zutat Unter Anderem Namen Hinzufügen") {
+            // Daten aus dem Formular holen
+            $alternativerName = $_POST['alternativerName'];
+
+            // Suche nach einer Zutat mit dem alternativen Namen
+            $stmt = $conn->prepare("SELECT zutat_id FROM zutaten_namen WHERE name = ?");
+            $stmt->bind_param("s", $alternativerName);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            if ($result->num_rows > 0) {
+                // Zutat existiert, also füge den neuen Namen hinzu
+                $row = $result->fetch_assoc();
+                $zutatId = $row['zutat_id'];
+
+                // Neuen Namen zur zutaten_namen Tabelle hinzufügen
+                $neuerName = $_POST['zutaten_name']; // Der "neue" Name der Zutat
+                $stmt = $conn->prepare("INSERT INTO zutaten_namen (name, zutat_id) VALUES (?, ?)");
+                $stmt->bind_param("si", $neuerName, $zutatId);
+                if ($stmt->execute()) {
+                    echo "<p>Neuer Name erfolgreich hinzugefügt.</p>";
+                } else {
+                    echo "<p>Fehler beim Hinzufügen des neuen Namens: " . $stmt->error . "</p>";
+                }
+            } else {
+                // Zutat nicht gefunden
+                echo "<p>Die Zutat unter dem Namen '$alternativerName' wurde nicht gefunden. Bitte überprüfen Sie den Namen und versuchen Sie es erneut.</p>";
+            }
+        
+            $stmt->close();
+        }else{
+                
+                if ($_POST['einheit_id'] === 'neuHinzufuegen') {
+                    
+                    // Führe die Funktion zum Hinzufügen der neuen Einheit aus und erhalte die neue Einheits-ID
+                    $einheit_id = insert_into_Eineheiten();
+                }
+                else{
+                $einheit_id = $_POST['einheit_id'];
+                }
+
+            // Überprüfen, ob die ausgewählte Einheit einen spezifischen Umrechnungsfaktor erfordert
+            $einheitQuery = $conn->prepare("SELECT hat_spezifischen_umrechnungsfaktor FROM einheiten WHERE id = ?");
+            $einheitQuery->bind_param("i", $einheit_id);
+            $einheitQuery->execute();
+            $einheitResult = $einheitQuery->get_result();
+            if ($einheitRow = $einheitResult->fetch_assoc()) {
+                $hatSpezifischenUmrechnungsfaktor = $einheitRow['hat_spezifischen_umrechnungsfaktor'];
+            } else {
+                $hatSpezifischenUmrechnungsfaktor = false;
+            }
+
+            // Setze den Umrechnungsfaktor basierend auf der Einheit
+            $umrechnungsfaktor = NULL;
+            if ($hatSpezifischenUmrechnungsfaktor) {
+                $umrechnungsfaktor = !empty($_POST['umrechnungsfaktor']) ? $_POST['umrechnungsfaktor'] : NULL;
+            }
+
+            // Prepared Statement zum Hinzufügen der Zutat vorbereiten
+            $stmt = $conn->prepare("INSERT INTO zutaten (uebliche_haltbarkeit, volumen, kategorie_id, phd_kategorie_id, einheit_id, spezifischer_umrechnungsfaktor) VALUES (?, ?, ?, ?, ?, ?)");
+
+            // Parameter binden
+            $stmt->bind_param("idiiid", $haltbarkeit, $volumen, $kategorie_id, $phd_kategorie_id, $einheit_id, $umrechnungsfaktor);
+
+                // Versuchen, die Prepared Statement auszuführen
+                if ($stmt->execute()) {
+                    if (empty($_POST['zutaten_name'])) {
+                        echo "<p>Name is required.</p>";
+                        // Handle the error appropriately - perhaps by not proceeding with the DB insert
+                    }
+
+                    // Assuming $stmt->execute() was successful and $name is the name of the ingredient
+                    $zutatId = $conn->insert_id; // Retrieves the ID of the last inserted row
+                    $stmt = $conn->prepare("INSERT INTO zutaten_namen (name, zutat_id) VALUES (?, ?)");
+                    $stmt->bind_param("si", $name, $zutatId);
+                    if (!$stmt->execute()) {
+                        echo "<p>Fehler beim Hinzufügen des Namens der Zutat: " . $stmt->error . "</p>";
+                    }
+
+                    echo "<p>Zutat erfolgreich hinzugefügt!</p>";
+                } else {
+                    echo "<p>Fehler beim Hinzufügen der Zutat: " . $stmt->error . "</p>";
+                }
+
+                // Prepared Statement schließen
+                $stmt->close();
+            }
+        }
+
+    ?>
+
+    <!DOCTYPE html>
+    <html lang="de">
+    <head>
+        <meta charset="UTF-8">
+        <title>Zutat Hinzufügen</title>
+    </head>
+    <body>
+        <h2>Zutat Hinzufügen</h2>
+        <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+            <label for="zutaten_name">Name:</label>
+            <input type="text" id="zutaten_name" name="zutaten_name" ><br><br>
+            
+            <script>
+                function toggleForm(checkbox) {
+                    var isChecked = checkbox.checked;
+                    var alternativerNameContainer = document.getElementById('alternativerNameContainer');
+                    var restDesFormulars = document.getElementById('restDesFormulars');
+                    
+                    // Sichtbarkeit umschalten
+                    alternativerNameContainer.style.display = isChecked ? 'block' : 'none';
+                    restDesFormulars.style.display = isChecked ? 'none' : 'block';
+
+                    // Setze oder entferne das 'required' Attribut basierend auf dem Zustand des Kontrollkästchens
+                    var inputsAlternative = alternativerNameContainer.getElementsByTagName('input');
+                    for (var i = 0; i < inputsAlternative.length; i++) {
+                        inputsAlternative[i].required = isChecked; // Diese Felder sind nur erforderlich, wenn der Container sichtbar ist
+                    }
+
+                    var inputsRest = restDesFormulars.getElementsByTagName('input');
+                    for (var i = 0; i < inputsRest.length; i++) {
+                        // Überprüfe, ob das Eingabefeld sichtbar ist, bevor du es als required markierst
+                        if (inputsRest[i].type !== 'submit' && inputsRest[i].id !== 'volumen') { // 'volumen' wird separat behandelt
+                            inputsRest[i].required = !isChecked; // Diese Felder sind nur erforderlich, wenn der Container sichtbar ist
+                        }
+                    }
+
+                    // Spezialfall für 'volumen', das nur erforderlich ist, wenn es sichtbar ist
+                    var volumenInput = document.getElementById('volumen');
+                    if (volumenInput.style.display !== 'none') {
+                        volumenInput.required = true;
+                    } else {
+                        volumenInput.required = false;
+                    }
+                    if (!checkbox){
+                        checkNeueEinheit(document.getElementById('einheit_id').value);
+                    }
+                }
+                window.onload = function() {
+                    toggleForm(document.getElementById('existiertUnterAnderemNamen'));
+                }
+
+            </script>
+            
+            <label for="existiertUnterAnderemNamen">Existiert ide zutat unter einem anderem Namen?</label>
+            <input type="checkbox" id="existiertUnterAnderemNamen" name="existiertUnterAnderemNamen" onchange="toggleForm(this)" checked>
+            
+            <div id="alternativerNameContainer" style="display:block;">
+                <label for="alternativerName">Anderer Name:</label>
+                <input type="text" id="alternativerName" name="alternativerName"><br><br>
+                <input type="submit" name="aktion_name" value="Zutat Unter Anderem Namen Hinzufügen">
+            </div>
+
+            <div id="restDesFormulars" style="display:none;">
+
+                <label for="haltbarkeit">Haltbarkeit (in Tagen):</label>
+                <input class="restDesFormulars" type="number" id="haltbarkeit" name="haltbarkeit" ><br><br>
+                
+                
+                <label for="kategorie_id">Kategorie:</label>
+                <select class="restDesFormulars" id="kategorie_id" name="kategorie_id" >
+                    <option value="">Bitte wählen</option>    
+                    <?php echo generateOptions($conn, 'kategorien', 'id', 'name'); ?>
+                </select><br><br>
+                
+                <label for="phd_kategorie_id">Planetary Health Diet Category:</label>
+                <select class="restDesFormulars" id="phd_kategorie_id" name="phd_kategorie_id" >
+                    <?php echo generateOptions($conn, 'Planetary_Health_Diet_Categories', 'ID', 'Kategorie'); ?>
+                </select><br><br>
+                <label for="einheit_id">einheit:</label>
+                <select id="einheit_id" name="einheit_id"  onchange=checkNeueEinheit(this.value)>
+                    <option value="">Bitte wählen</option>
+                    <?php echo generateOptions($conn, 'einheiten', 'id', 'name', true); ?>
+
+                    <option value="neuHinzufuegen">Neu hinzufügen...</option>
+                </select><br><br>
+                <div id="neueEinheitFormular" style="display:none;">
+                    <?php echo einheitsForm(); ?>
+                </div>
+                <div id="umrechnungsfaktorFeld" style="display: none;">
+                    <label for="umrechnungsfaktor">Umrechnungsfaktor:</label>
+                    <input type="number" id="umrechnungsfaktor" name="umrechnungsfaktor" step="0.01" required>
+                </div>
+
+                <div id="volumen_block" style="display:none;">
+                <label for="volumen">Volumen:</label>
+                <input class="restDesFormulars" type="text" id="volumen" name="volumen" style="display:none;" >
+                wichtig für PHD da die berenung mit gramm arbeitet<br><br>
+                </div>
+                <script>
+                    // This function toggles the visibility of the new unit form and its inputs' required status
+                    function checkNeueEinheit(value) {
+                        var isNewUnitSelected = value === "neuHinzufuegen";
+                        var neueEinheitFormular = document.getElementById('neueEinheitFormular');
+                        var volumenBlock = document.getElementById('volumen_block');
+                        var volumenInput = document.getElementById('volumen');
+
+                        // Toggle the new unit form visibility
+                        neueEinheitFormular.style.display = isNewUnitSelected ? 'block' : 'none';
+
+                        // Set the required attribute for inputs in the new unit form based on its visibility
+                        var inputs = neueEinheitFormular.getElementsByTagName('input');
+                        for (var i = 0; i < inputs.length; i++) {
+                            inputs[i].required = isNewUnitSelected;
+                        }
+
+                        // Adjust visibility and required attribute for the volumen input
+                        // Assume the basis unit is linked to whether the volumen should be shown or not
+                        var displayVolumen = 'none';
+                        if (value === '2' || (isNewUnitSelected && document.getElementById('basisEinheit').value === 'Liter')) {
+                            displayVolumen = 'block';
+                        }
+                        
+                        volumenBlock.style.display = displayVolumen;
+                        volumenInput.style.display = displayVolumen;
+                        volumenInput.required = displayVolumen === 'block';
+
+                        if (isNewUnitSelected)
+                        checkBasisEinheit((document.getElementById('basisEinheit').value));
+
+                        // Neuer Teil: Überprüfen, ob die ausgewählte Einheit einen speziellen Umrechnungsfaktor benötigt
+                    var selectedOption = document.querySelector('#einheit_id option:checked');
+                    var hatSpezifischenUmrechnungsfaktor = selectedOption.getAttribute('data-spezifischer-umrechnungsfaktor') === '1'; // Annahme: '1' bedeutet wahr
+
+                    // Sichtbarkeit und Required-Status für das Umrechnungsfaktor-Feld anpassen
+                    var umrechnungsfaktorFeld = document.getElementById('umrechnungsfaktorFeld'); // Stellen Sie sicher, dass Sie ein entsprechendes Feld im HTML-Markup haben
+                    if (hatSpezifischenUmrechnungsfaktor) {
+                        umrechnungsfaktorFeld.style.display = 'block';
+                        umrechnungsfaktorFeld.required = true;
+                    } else {
+                        umrechnungsfaktorFeld.style.display = 'none';
+                        umrechnungsfaktorFeld.required = false;
+                    }
+                    }// Event-Listener für die Auswahländerung hinzufügen
+                    document.getElementById('einheit_id').addEventListener('change', function() {
+                        checkNeueEinheit(this.value);
+                    });// Initialen Check ausführen
+                checkNeueEinheit(document.getElementById('einheit_id').value);
+
+                    // This function updates the visibility of the volumen input based on the selected base unit
+                    function checkBasisEinheit(value) {
+                        var volumenBlock = document.getElementById('volumen_block');
+                        var volumenInput = document.getElementById('volumen');
+
+                        var displayVolumen = value === 'Liter' ? 'block' : 'none';
+                        volumenBlock.style.display = displayVolumen;
+                        volumenInput.style.display = displayVolumen;
+                        volumenInput.required = displayVolumen === 'block';
+                    }
+                </script>
+
+
+
+                <input type="submit" value="Zutat Hinzufügen">
+            
+            </div>
+        </form>
+        <h2>Vorhandene Zutaten</h2>
+        <?php
+// Vorhandene Zutaten auflisten mit Anpassungen
+$sql = "SELECT zutaten.id, 
+               GROUP_CONCAT(zutaten_namen.name SEPARATOR ', ') AS names, 
+               zutaten.uebliche_haltbarkeit, 
+               zutaten.volumen, 
+               kategorien.name AS kategorie_name, 
+               Planetary_Health_Diet_Categories.Kategorie AS phd_kategorie_name, 
+               einheiten.name AS einheit_name
+        FROM zutaten 
+        JOIN zutaten_namen ON zutaten.id = zutaten_namen.zutat_id
+        JOIN kategorien ON zutaten.kategorie_id = kategorien.id
+        JOIN Planetary_Health_Diet_Categories ON zutaten.phd_kategorie_id = Planetary_Health_Diet_Categories.ID
+        JOIN einheiten ON zutaten.einheit_id = einheiten.id
+        GROUP BY zutaten.id
+        ORDER BY names ASC";
+
+$result = $conn->query($sql);
+
+if ($result->num_rows > 0) {
+    echo "<table border='1'>";
+    echo "<tr><th>Namen</th><th>Haltbarkeit (Tage)</th><th>Volumen</th><th>Kategorie</th><th>PHD Kategorie</th><th>Einheit</th></tr>";
+    while ($row = $result->fetch_assoc()) {
+        echo "<tr><td>" . htmlspecialchars($row['names']) . "</td><td>" . htmlspecialchars($row['uebliche_haltbarkeit']) . "</td><td>" . htmlspecialchars($row['volumen']) . "</td><td>" . htmlspecialchars($row['kategorie_name']) . "</td><td>" . htmlspecialchars($row['phd_kategorie_name']) . "</td><td>" . htmlspecialchars($row['einheit_name']) . "</td></tr>";
+    }
+    echo "</table>";
+} else {
+    echo "Keine Zutaten gefunden.";
+}
+?>
+    </body>
+    </html>
 
 
 Path: sql_create

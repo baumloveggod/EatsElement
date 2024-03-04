@@ -30,7 +30,7 @@
     // Überprüfen, ob das Formular gesendet wurde
     if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Überprüfen, ob das Formular gesendet wurde und die Aktion "Zutat Unter Anderem Namen Hinzufügen" ist
-        if ($_POST['aktion'] === "Zutat Unter Anderem Namen Hinzufügen") {
+        if (isset($_POST['aktion_name']) && $_POST['aktion_name'] === "Zutat Unter Anderem Namen Hinzufügen") {
             // Daten aus dem Formular holen
             $alternativerName = $_POST['alternativerName'];
 
@@ -119,18 +119,42 @@
             <script>
                 function toggleForm(checkbox) {
                     var isChecked = checkbox.checked;
-                    document.getElementById('alternativerNameContainer').style.display = isChecked ? 'block' : 'none';
-                    document.getElementById('restDesFormulars').style.display = isChecked ? 'none' : 'block';
-                    // Beispiel zum Entfernen des `required`-Attributs
-                    if (isChecked){
-                        //document.getElementsByClasse('alternativerNameContainer').setAttribute('required', '');
-                        document.getElementsByClasse('restDesFormulars').removeAttribute('required');
-                    } else{
-                        document.getElementsByClasse('alternativerNameContainer').removeAttribute('required');
-                        //document.getElementsByClasse('restDesFormulars').setAttribute('required', '');
+                    var alternativerNameContainer = document.getElementById('alternativerNameContainer');
+                    var restDesFormulars = document.getElementById('restDesFormulars');
+                    
+                    // Sichtbarkeit umschalten
+                    alternativerNameContainer.style.display = isChecked ? 'block' : 'none';
+                    restDesFormulars.style.display = isChecked ? 'none' : 'block';
+
+                    // Setze oder entferne das 'required' Attribut basierend auf dem Zustand des Kontrollkästchens
+                    var inputsAlternative = alternativerNameContainer.getElementsByTagName('input');
+                    for (var i = 0; i < inputsAlternative.length; i++) {
+                        inputsAlternative[i].required = isChecked; // Diese Felder sind nur erforderlich, wenn der Container sichtbar ist
                     }
 
+                    var inputsRest = restDesFormulars.getElementsByTagName('input');
+                    for (var i = 0; i < inputsRest.length; i++) {
+                        // Überprüfe, ob das Eingabefeld sichtbar ist, bevor du es als required markierst
+                        if (inputsRest[i].type !== 'submit' && inputsRest[i].id !== 'volumen') { // 'volumen' wird separat behandelt
+                            inputsRest[i].required = !isChecked; // Diese Felder sind nur erforderlich, wenn der Container sichtbar ist
+                        }
+                    }
+
+                    // Spezialfall für 'volumen', das nur erforderlich ist, wenn es sichtbar ist
+                    var volumenInput = document.getElementById('volumen');
+                    if (volumenInput.style.display !== 'none') {
+                        volumenInput.required = true;
+                    } else {
+                        volumenInput.required = false;
+                    }
+                    if (!checkbox){
+                        checkNeueEinheit(document.getElementById('einheit_id').value);
+                    }
                 }
+                window.onload = function() {
+                    toggleForm(document.getElementById('existiertUnterAnderemNamen'));
+                }
+
             </script>
             
             <label for="existiertUnterAnderemNamen">Existiert ide zutat unter einem anderem Namen?</label>
@@ -139,7 +163,7 @@
             <div id="alternativerNameContainer" style="display:block;">
                 <label for="alternativerName">Anderer Name:</label>
                 <input type="text" id="alternativerName" name="alternativerName"><br><br>
-                <input type="submit" name="aktion" value="Zutat Unter Anderem Namen Hinzufügen">
+                <input type="submit" name="aktion_name" value="Zutat Unter Anderem Namen Hinzufügen">
             </div>
 
             <div id="restDesFormulars" style="display:none;">
@@ -150,6 +174,7 @@
                 
                 <label for="kategorie_id">Kategorie:</label>
                 <select class="restDesFormulars" id="kategorie_id" name="kategorie_id" >
+                    <option value="">Bitte wählen</option>    
                     <?php echo generateOptions($conn, 'kategorien', 'id', 'name'); ?>
                 </select><br><br>
                 
@@ -159,12 +184,13 @@
                 </select><br><br>
                 <label for="einheit_id">einheit:</label>
                 <select id="einheit_id" name="einheit_id"  onchange=checkNeueEinheit(this.value)>
+                    <option value="">Bitte wählen</option>
                     <?php echo generateOptions($conn, 'einheiten', 'id', 'name', true); ?>
 
                     <option value="neuHinzufuegen">Neu hinzufügen...</option>
                 </select><br><br>
                 <div id="neueEinheitFormular" style="display:none;">
-                    
+                    <option value="">Bitte wählen</option>
                     <?php echo einheitsForm(); ?>
                 </div>
                 <div id="volumen_block" style="display:none;">
@@ -173,34 +199,49 @@
                 wichtig für PHD da die berenung mit gramm arbeitet<br><br>
                 </div>
                 <script>
-                    function checkBasisEinheit(value){
-                        var displayVolumen = 'none';
-                        if (value === 'Liter') {
-                                displayVolumen = 'block';
-                            }
-                        document.getElementById('volumen_block').style.display = displayVolumen;
-                        document.getElementById('volumen').style.display = displayVolumen;
-                    }
-                    
+                    // This function toggles the visibility of the new unit form and its inputs' required status
                     function checkNeueEinheit(value) {
+                        var isNewUnitSelected = value === "neuHinzufuegen";
+                        var neueEinheitFormular = document.getElementById('neueEinheitFormular');
+                        var volumenBlock = document.getElementById('volumen_block');
+                        var volumenInput = document.getElementById('volumen');
+
+                        // Toggle the new unit form visibility
+                        neueEinheitFormular.style.display = isNewUnitSelected ? 'block' : 'none';
+
+                        // Set the required attribute for inputs in the new unit form based on its visibility
+                        var inputs = neueEinheitFormular.getElementsByTagName('input');
+                        for (var i = 0; i < inputs.length; i++) {
+                            inputs[i].required = isNewUnitSelected;
+                        }
+
+                        // Adjust visibility and required attribute for the volumen input
+                        // Assume the basis unit is linked to whether the volumen should be shown or not
                         var displayVolumen = 'none';
-                        if (value === "neuHinzufuegen") {
-                            document.getElementById('neueEinheitFormular').style.display = 'block';
-                        } else {
-                            document.getElementById('neueEinheitFormular').style.display = 'none';
-                            }
-                        // Volumen-Feld nur anzeigen, wenn die Einheit selbst oder die Basis-Einheit Liter ist
-                        // Retrieve the selected option element to get its data-basis attribute
-                        var selectedOption = document.querySelector("#einheit_id option[value='" + value + "']");
-                        var basisId = selectedOption && selectedOption.getAttribute('data-basis');
-                        
-                        if (basisId === '2' || value === '2') {
+                        if (value === '2' || (isNewUnitSelected && document.getElementById('basisEinheit').value === 'Liter')) {
                             displayVolumen = 'block';
                         }
-                        document.getElementById('volumen_block').style.display = displayVolumen;
-                        document.getElementById('volumen').style.display = displayVolumen;
+                        
+                        volumenBlock.style.display = displayVolumen;
+                        volumenInput.style.display = displayVolumen;
+                        volumenInput.required = displayVolumen === 'block';
+
+                        if (isNewUnitSelected)
+                        checkBasisEinheit((document.getElementById('basisEinheit').value));
+                    }
+
+                    // This function updates the visibility of the volumen input based on the selected base unit
+                    function checkBasisEinheit(value) {
+                        var volumenBlock = document.getElementById('volumen_block');
+                        var volumenInput = document.getElementById('volumen');
+
+                        var displayVolumen = value === 'Liter' ? 'block' : 'none';
+                        volumenBlock.style.display = displayVolumen;
+                        volumenInput.style.display = displayVolumen;
+                        volumenInput.required = displayVolumen === 'block';
                     }
                 </script>
+
 
 
                 <input type="submit" value="Zutat Hinzufügen">

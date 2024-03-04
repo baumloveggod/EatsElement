@@ -9,22 +9,23 @@
 
     include '../templates/einheitenFormular.php';
 
-    // Funktion, um Optionen für ein Dropdown-Menü zu generieren
+    // Funktion, um Optionen für ein Dropdown-Menü zu generieren, erweitert um den speziellen Umrechnungsfaktor-Status
     function generateOptions($conn, $tableName, $idColumn, $nameColumn, $isEinheiten = false) {
         $options = '';
-        $sql = $isEinheiten ? "SELECT $idColumn, $nameColumn, basis_einheit_id FROM $tableName ORDER BY $nameColumn ASC" : "SELECT $idColumn, $nameColumn FROM $tableName ORDER BY $nameColumn ASC";
+        $sql = $isEinheiten ? "SELECT $idColumn, $nameColumn, basis_einheit_id, hat_spezifischen_umrechnungsfaktor FROM $tableName ORDER BY $nameColumn ASC" : "SELECT $idColumn, $nameColumn FROM $tableName ORDER BY $nameColumn ASC";
         $result = $conn->query($sql);
         if ($result->num_rows > 0) {
             while($row = $result->fetch_assoc()) {
                 if ($isEinheiten) {
-                    $options .= "<option value='" . $row[$idColumn] . "' data-basis='" . $row['basis_einheit_id'] . "'>" . htmlspecialchars($row[$nameColumn]) . "</option>";
+                    $options .= "<option value='" . $row[$idColumn] . "' data-basis='" . $row['basis_einheit_id'] . "' data-spezifischer-umrechnungsfaktor='" . $row['hat_spezifischen_umrechnungsfaktor'] . "'>" . htmlspecialchars($row[$nameColumn]) . "</option>";
                 } else {
                     $options .= "<option value='" . $row[$idColumn] . "'>" . htmlspecialchars($row[$nameColumn]) . "</option>";
                 }
             }
         }
         return $options;
-    }
+}
+
     
 
     // Überprüfen, ob das Formular gesendet wurde
@@ -61,29 +62,46 @@
         
             $stmt->close();
         }else{
+                
                 if ($_POST['einheit_id'] === 'neuHinzufuegen') {
+                    
                     // Führe die Funktion zum Hinzufügen der neuen Einheit aus und erhalte die neue Einheits-ID
                     $einheit_id = insert_into_Eineheiten();
                 }
                 else{
                 $einheit_id = $_POST['einheit_id'];
                 }
-                // Daten aus dem Formular holen und bereinigen
-                $name = $_POST['zutaten_name'];
-                $haltbarkeit = $_POST['haltbarkeit'];
-                $volumen = $_POST['volumen'];
-                $kategorie_id = $_POST['kategorie_id'];
-                $phd_kategorie_id = $_POST['phd_kategorie_id'];
+
+            // Überprüfen, ob die ausgewählte Einheit einen spezifischen Umrechnungsfaktor erfordert
+            $einheitQuery = $conn->prepare("SELECT hat_spezifischen_umrechnungsfaktor FROM einheiten WHERE id = ?");
+            $einheitQuery->bind_param("i", $einheit_id);
+            $einheitQuery->execute();
+            $einheitResult = $einheitQuery->get_result();
+            if ($einheitRow = $einheitResult->fetch_assoc()) {
+                $hatSpezifischenUmrechnungsfaktor = $einheitRow['hat_spezifischen_umrechnungsfaktor'];
+            } else {
+                $hatSpezifischenUmrechnungsfaktor = false;
+            }
+
+            // Setze den Umrechnungsfaktor basierend auf der Einheit
+            $umrechnungsfaktor = NULL;
+            if ($hatSpezifischenUmrechnungsfaktor) {
                 $umrechnungsfaktor = !empty($_POST['umrechnungsfaktor']) ? $_POST['umrechnungsfaktor'] : NULL;
+            }
 
-                // Prepared Statement vorbereiten
-                $stmt = $conn->prepare("INSERT INTO zutaten (uebliche_haltbarkeit, volumen, kategorie_id, phd_kategorie_id, einheit_id   , spezifischer_umrechnungsfaktor) VALUES (?, ?, ?, ?, ?, ?)");
+            // Prepared Statement zum Hinzufügen der Zutat vorbereiten
+            $stmt = $conn->prepare("INSERT INTO zutaten (uebliche_haltbarkeit, volumen, kategorie_id, phd_kategorie_id, einheit_id, spezifischer_umrechnungsfaktor) VALUES (?, ?, ?, ?, ?, ?)");
 
-                // Parameter binden
-                $stmt->bind_param("idiiid", $haltbarkeit, $volumen, $kategorie_id, $phd_kategorie_id, $einheit_id, $umrechnungsfaktor);
+            // Parameter binden
+            $stmt->bind_param("idiiid", $haltbarkeit, $volumen, $kategorie_id, $phd_kategorie_id, $einheit_id, $umrechnungsfaktor);
 
                 // Versuchen, die Prepared Statement auszuführen
                 if ($stmt->execute()) {
+                    if (empty($_POST['zutaten_name'])) {
+                        echo "<p>Name is required.</p>";
+                        // Handle the error appropriately - perhaps by not proceeding with the DB insert
+                    }
+
                     // Assuming $stmt->execute() was successful and $name is the name of the ingredient
                     $zutatId = $conn->insert_id; // Retrieves the ID of the last inserted row
                     $stmt = $conn->prepare("INSERT INTO zutaten_namen (name, zutat_id) VALUES (?, ?)");
@@ -192,6 +210,11 @@
                 <div id="neueEinheitFormular" style="display:none;">
                     <?php echo einheitsForm(); ?>
                 </div>
+                <div id="umrechnungsfaktorFeld" style="display: none;">
+                    <label for="umrechnungsfaktor">Umrechnungsfaktor:</label>
+                    <input type="number" id="umrechnungsfaktor" name="umrechnungsfaktor" step="0.01" required>
+                </div>
+
                 <div id="volumen_block" style="display:none;">
                 <label for="volumen">Volumen:</label>
                 <input class="restDesFormulars" type="text" id="volumen" name="volumen" style="display:none;" >
@@ -227,7 +250,25 @@
 
                         if (isNewUnitSelected)
                         checkBasisEinheit((document.getElementById('basisEinheit').value));
+
+                        // Neuer Teil: Überprüfen, ob die ausgewählte Einheit einen speziellen Umrechnungsfaktor benötigt
+                    var selectedOption = document.querySelector('#einheit_id option:checked');
+                    var hatSpezifischenUmrechnungsfaktor = selectedOption.getAttribute('data-spezifischer-umrechnungsfaktor') === '1'; // Annahme: '1' bedeutet wahr
+
+                    // Sichtbarkeit und Required-Status für das Umrechnungsfaktor-Feld anpassen
+                    var umrechnungsfaktorFeld = document.getElementById('umrechnungsfaktorFeld'); // Stellen Sie sicher, dass Sie ein entsprechendes Feld im HTML-Markup haben
+                    if (hatSpezifischenUmrechnungsfaktor) {
+                        umrechnungsfaktorFeld.style.display = 'block';
+                        umrechnungsfaktorFeld.required = true;
+                    } else {
+                        umrechnungsfaktorFeld.style.display = 'none';
+                        umrechnungsfaktorFeld.required = false;
                     }
+                    }// Event-Listener für die Auswahländerung hinzufügen
+                    document.getElementById('einheit_id').addEventListener('change', function() {
+                        checkNeueEinheit(this.value);
+                    });// Initialen Check ausführen
+                checkNeueEinheit(document.getElementById('einheit_id').value);
 
                     // This function updates the visibility of the volumen input based on the selected base unit
                     function checkBasisEinheit(value) {

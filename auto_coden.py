@@ -13,20 +13,19 @@ def is_text_file(filepath):
     except Exception:
         return False
 
-def write_file_info_to_output(directory, output_file, extra_files=[]):
-    with open(output_file, 'w') as f_output:
-        for root, dirs, files in os.walk(directory):
-            if '.git' in dirs:
-                dirs.remove('.git')
-            if '.godot' in dirs:
-                dirs.remove('.godot')
-            for filename in files:
-                process_file(os.path.join(root, filename), f_output)
-
-        # Process additional files
-        for extra_file in extra_files:
-            if os.path.exists(extra_file):
-                process_file(extra_file, f_output)
+def write_file_info_to_output(paths, output_file):
+    with open(output_file, 'w', encoding='utf-8') as f_output:
+        for path in paths:
+            if os.path.isdir(path):
+                for root, dirs, files in os.walk(path):
+                    if '.git' in dirs:
+                        dirs.remove('.git')
+                    if '.godot' in dirs:
+                        dirs.remove('.godot')
+                    for filename in files:
+                        process_file(os.path.join(root, filename), f_output)
+            elif os.path.isfile(path):
+                process_file(path, f_output)
 
 def process_file(filepath, f_output):
     if is_text_file(filepath):
@@ -81,7 +80,7 @@ def git_commit_and_push(commit_message):
         print(f"Fehler beim Ausführen von Git-Befehlen: {e}")
 
 # Main script
-write_file_info_to_output('./http/Views', 'output.txt', ['sql_create'])
+write_file_info_to_output(['./http/Views/zutaten.php','./http/Views/einheitenFormular.php','./http/Views/einheiten.php','sql_create'], 'output.txt')
 changed_files = get_git_changes()
 if changed_files:  # Only proceed if there are changed files
     commit_message = generate_commit_message(changed_files)

@@ -47,7 +47,7 @@ function einheitsForm(){
     
     <label for="umrechnungsfaktor">Umrechnungsfaktor:</label>
     <input type="number" id="umrechnungsfaktor" name="umrechnungsfaktor" step="0.01" >
-    bei "spezieler Bassis ist die referenc immer Gramm<br><br>
+    <div id="info_speziel"> bei "spezieler Bassis ist die referenc immer Gramm</div><br><br>
     
     <label for="basisEinheit">Basis Einheit:</label>
     <select id="basisEinheit" name="basisEinheit"  onchange="checkBasisEinheit(this.value)">

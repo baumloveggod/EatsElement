@@ -215,6 +215,7 @@
                 <div id="umrechnungsfaktorFeld" style="display: none;">
                     <label for="umrechnungsfaktor">Umrechnungsfaktor:</label>
                     <input type="number" id="umrechnungsfaktor" name="umrechnungsfaktor" step="0.01" required>
+                    <div> bei "spezieler Bassis ist die referenc immer Gramm</div><br><br>
                 </div>
 
                 <div id="volumen_block" style="display:none;">
@@ -275,6 +276,21 @@
     });
     // Initialen Check ausführen
     checkNeueEinheit(document.getElementById('einheit_id').value);
+    // This function updates the visibility of the volumen input based on the selected base unit
+    function checkBasisEinheit(value) {
+                        var volumenBlock = document.getElementById('volumen_block');
+                        var volumenInput = document.getElementById('volumen');
+
+                        var displayVolumen = value === 'Liter' ? 'block' : 'none';
+                        volumenBlock.style.display = displayVolumen;
+                        volumenInput.style.display = displayVolumen;
+                        volumenInput.required = displayVolumen === 'block';
+
+                        
+                        var info_speziel = document.getElementById('info_speziel');
+                        var displayVolumen = value === 'speziell' ? info_speziel.style.display = "block" : info_speziel.style.display = 'none'; 
+                        
+                    }
 </script>
 
 

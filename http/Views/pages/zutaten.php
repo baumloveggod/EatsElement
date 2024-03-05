@@ -295,7 +295,6 @@ function checkNeueEinheit(value) {
         }
         
         volumenBlock.style.display = displayVolumen;
-        volumenInput.style.display = displayVolumen;
         volumenInput.required = displayVolumen === 'block';
 
         if (isNewUnitSelected)
@@ -323,7 +322,7 @@ function checkNeueEinheit(value) {
     checkNeueEinheit(document.getElementById('einheit_id').value);
     // This function updates the visibility of the volumen input based on the selected base unit
     function checkBasisEinheit(value) {
-                        var volumenBlock = document.getElementById('volumen_block');
+        var volumenBlock = document.getElementById('volumen_block');
                         var volumenInput = document.getElementById('volumen');
 
                         var displayVolumen = value === 'Liter' ? 'block' : 'none';

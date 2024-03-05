@@ -13,7 +13,7 @@ checkUserAuthentication();
 function insert_into_Eineheiten(){
     global $conn;
     $name = $_POST['name'] ?? ''; // Verwenden Sie den Null-Coalescing-Operator, um sicherzustellen, dass $name nicht NULL ist.
-    $umrechnungsfaktor = $_POST['umrechnungsfaktor'] ?? null;
+    $umrechnungsfaktor = $_POST['einheit_umrechnungsfaktor'] ?? null;
     $basisEinheit = $_POST['basisEinheit'] ?? '';
     
     $basisEinheitId = null;
@@ -52,7 +52,7 @@ function einheitsForm(){
     <div id="info_speziel"> bei "spezieler Bassis ist die referenc immer Gramm</div><br><br>
     
     <label for="basisEinheit">Basis Einheit:</label>
-    <select id="basisEinheit" name="basisEinheit"  onchange="checkBasisEinheit(this.value)">
+    <select id="basisEinheit" name="basisEinheit">
         <option value="">Bitte wählen</option>     
         <option value="Liter">Liter</option>
         <option value="Gramm">Gramm</option>
@@ -352,7 +352,7 @@ Content:
                     <?php echo generateOptions($conn, 'Planetary_Health_Diet_Categories', 'ID', 'Kategorie'); ?>
                 </select><br><br>
                 <label for="einheit_id">einheit:</label>
-                <select id="einheit_id" name="einheit_id"  onchange=checkNeueEinheit(this.value)>
+                <select id="einheit_id" name="einheit_id">
                     <option value="">Bitte wählen</option>
                     <?php echo generateOptions($conn, 'einheiten', 'id', 'name', true); ?>
 
@@ -372,74 +372,61 @@ Content:
                 <input class="restDesFormulars" type="text" id="volumen" name="volumen" style="display:none;" >
                 wichtig für PHD da die berenung mit gramm arbeitet<br><br>
                 </div>
-                <script>
-    // This function toggles the visibility of the new unit form and its inputs' required status
-    function checkNeueEinheit(value) {
-        var isNewUnitSelected = value === "neuHinzufuegen";
-        var neueEinheitFormular = document.getElementById('neueEinheitFormular');
-        var volumenBlock = document.getElementById('volumen_block');
-        var volumenInput = document.getElementById('volumen');
-
-        // Toggle the new unit form visibility
-        neueEinheitFormular.style.display = isNewUnitSelected ? 'block' : 'none';
-
-        // Set the required attribute for inputs in the new unit form based on its visibility
-        var inputs = neueEinheitFormular.getElementsByTagName('input');
-        for (var i = 0; i < inputs.length; i++) {
-            inputs[i].required = isNewUnitSelected;
-        }
-
-        // Adjust visibility and required attribute for the volumen input
-        var selectedOption = document.querySelector('#einheit_id option:checked')
-        var displayVolumen = 'none';
-        if (value === '2' || 
-        (isNewUnitSelected && document.getElementById('basisEinheit').value === 'Liter')|| 
-        (selectedOption.getAttribute('data-basis') === '2')) {
-            displayVolumen = 'block';
-        }
-        
-        volumenBlock.style.display = displayVolumen;
-        volumenInput.style.display = displayVolumen;
-        volumenInput.required = displayVolumen === 'block';
-
-        if (isNewUnitSelected)
-            checkBasisEinheit(document.getElementById('basisEinheit').value);
-
-        // Neuer Teil: Überprüfen, ob die ausgewählte Einheit einen speziellen Umrechnungsfaktor benötigt
-        var selectedOption = document.querySelector('#einheit_id option:checked');
-        if (selectedOption !== null) { // Check if selectedOption is not null
-            var hatSpezifischenUmrechnungsfaktor = selectedOption.getAttribute('data-spezifischer-umrechnungsfaktor') === '1'; // Annahme: '1' bedeutet wahr
-            // Sichtbarkeit und Required-Status für das Umrechnungsfaktor-Feld anpassen
-            var umrechnungsfaktorFeld = document.getElementById('umrechnungsfaktorFeld'); // Stellen Sie sicher, dass Sie ein entsprechendes Feld im HTML-Markup haben
-            umrechnungsfaktorFeld.style.display = hatSpezifischenUmrechnungsfaktor ? 'block' : 'none';
-            umrechnungsfaktorFeld.required = hatSpezifischenUmrechnungsfaktor;
-        } else {
-            // Handle the case where no option is selected or exists
-            document.getElementById('umrechnungsfaktorFeld').style.display = 'none';
-            document.getElementById('umrechnungsfaktorFeld').required = false;
-        }
+                    <script>document.addEventListener("DOMContentLoaded", function() {
+    // Bind change event listener to the units dropdown
+    var einheitDropdown = document.getElementById('einheit_id');
+    if (einheitDropdown) {
+        einheitDropdown.addEventListener('change', handleEinheitChange);
     }
-    // Event-Listener für die Auswahländerung hinzufügen
-    document.getElementById('einheit_id').addEventListener('change', function() {
-        checkNeueEinheit(this.value);
-    });
-    // Initialen Check ausführen
-    checkNeueEinheit(document.getElementById('einheit_id').value);
-    // This function updates the visibility of the volumen input based on the selected base unit
-    function checkBasisEinheit(value) {
-                        var volumenBlock = document.getElementById('volumen_block');
-                        var volumenInput = document.getElementById('volumen');
 
-                        var displayVolumen = value === 'Liter' ? 'block' : 'none';
-                        volumenBlock.style.display = displayVolumen;
-                        volumenInput.style.display = displayVolumen;
-                        volumenInput.required = displayVolumen === 'block';
+    // Initial check to set the correct state when the page loads
+    if (einheitDropdown) {
+        handleEinheitChange({target: einheitDropdown});
+    }
+    
+    var basisEinheitDropdown = document.getElementById('basisEinheit');
+    if (basisEinheitDropdown) {
+        basisEinheitDropdown.addEventListener('change', handleBasisEinheitChange);
+    }
+    
+    // Initial check for basisEinheitDropdown
+    if (basisEinheitDropdown) {
+        handleBasisEinheitChange({target: basisEinheitDropdown});
+    }
+});
 
-                        
-                        var info_speziel = document.getElementById('info_speziel');
-                        var displayVolumen = value === 'speziell' ? info_speziel.style.display = "block" : info_speziel.style.display = 'none'; 
-                        
-                    }
+function handleEinheitChange(event) {
+    var selectedOption = event.target.options[event.target.selectedIndex];
+    var umrechnungsfaktorField = document.getElementById('umrechnungsfaktorFeld');
+    var umrechnungsfaktorInput = document.getElementById('umrechnungsfaktor');
+    
+    // Check if the selected unit requires a conversion factor
+    if (selectedOption.dataset.spezifischerUmrechnungsfaktor === '1') {
+        umrechnungsfaktorField.style.display = 'block';
+        umrechnungsfaktorInput.required = true;
+    } else {
+        umrechnungsfaktorField.style.display = 'none';
+        umrechnungsfaktorInput.required = false;
+        umrechnungsfaktorInput.value = ''; // Clear the input if it's not required
+    }
+}
+
+function handleBasisEinheitChange(event) {
+    var selectedValue = event.target.value;
+    var volumenBlock = document.getElementById('volumen_block');
+    var volumenInput = document.getElementById('volumen');
+    
+    // Adjust visibility and required attribute for the volume input
+    if (selectedValue === 'Liter') {
+        volumenBlock.style.display = 'block';
+        volumenInput.required = true;
+    } else {
+        volumenBlock.style.display = 'none';
+        volumenInput.required = false;
+        volumenInput.value = ''; // Clear the input if it's hidden
+    }
+}
+
 </script>
 
 

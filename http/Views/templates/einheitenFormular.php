@@ -11,7 +11,7 @@ checkUserAuthentication();
 function insert_into_Eineheiten(){
     global $conn;
     $name = $_POST['name'] ?? ''; // Verwenden Sie den Null-Coalescing-Operator, um sicherzustellen, dass $name nicht NULL ist.
-    $umrechnungsfaktor = $_POST['umrechnungsfaktor'] ?? null;
+    $umrechnungsfaktor = $_POST['einheit_umrechnungsfaktor'] ?? null;
     $basisEinheit = $_POST['basisEinheit'] ?? '';
     
     $basisEinheitId = null;
@@ -50,7 +50,7 @@ function einheitsForm(){
     <div id="info_speziel"> bei "spezieler Bassis ist die referenc immer Gramm</div><br><br>
     
     <label for="basisEinheit">Basis Einheit:</label>
-    <select id="basisEinheit" name="basisEinheit"  onchange="checkBasisEinheit(this.value)">
+    <select id="basisEinheit" name="basisEinheit">
         <option value="">Bitte wählen</option>     
         <option value="Liter">Liter</option>
         <option value="Gramm">Gramm</option>

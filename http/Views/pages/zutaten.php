@@ -199,6 +199,7 @@
                 
                 <label for="phd_kategorie_id">Planetary Health Diet Category:</label>
                 <select class="restDesFormulars" id="phd_kategorie_id" name="phd_kategorie_id" >
+                    <option value="">Bitte wählen</option> 
                     <?php echo generateOptions($conn, 'Planetary_Health_Diet_Categories', 'ID', 'Kategorie'); ?>
                 </select><br><br>
                 <label for="einheit_id">einheit:</label>
@@ -239,6 +240,7 @@
         }
 
         // Adjust visibility and required attribute for the volumen input
+        var selectedOption = document.querySelector('#einheit_id option:checked')
         var displayVolumen = 'none';
         if (value === '2' || 
         (isNewUnitSelected && document.getElementById('basisEinheit').value === 'Liter')|| 

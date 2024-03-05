@@ -12,6 +12,7 @@ checkUserAuthentication();
 // Add new unit
 function insert_into_Eineheiten(){
     global $conn;
+    global $_POST;
     $name = $_POST['name'] ?? ''; // Verwenden Sie den Null-Coalescing-Operator, um sicherzustellen, dass $name nicht NULL ist.
     $umrechnungsfaktor = $_POST['einheit_umrechnungsfaktor'] ?? null;
     $basisEinheit = $_POST['basisEinheit'] ?? '';
@@ -211,38 +212,31 @@ Content:
         
             $stmt->close();
         }else{
-                
-                if ($_POST['einheit_id'] === 'neuHinzufuegen') {
+            //zutaten_name : alternativerName : haltbarkeit : kategorie_id : phd_kategorie_id : einheit_id : name : einheit_umrechnungsfaktor : basisEinheit : umrechnungsfaktor : volumen
+            foreach ($_POST as $a => $value) {
+                echo $a . " : ";
+            }
+            
+            if ($_POST['einheit_id'] === 'neuHinzufuegen') {
                     
-                    // Führe die Funktion zum Hinzufügen der neuen Einheit aus und erhalte die neue Einheits-ID
-                    $einheit_id = insert_into_Eineheiten();
-                }
-                else{
+                // Führe die Funktion zum Hinzufügen der neuen Einheit aus und erhalte die neue Einheits-ID
+                $einheit_id = insert_into_Eineheiten();
+            }
+            else{
                 $einheit_id = $_POST['einheit_id'];
-                }
-
-            // Überprüfen, ob die ausgewählte Einheit einen spezifischen Umrechnungsfaktor erfordert
-            $einheitQuery = $conn->prepare("SELECT hat_spezifischen_umrechnungsfaktor FROM einheiten WHERE id = ?");
-            $einheitQuery->bind_param("i", $einheit_id);
-            $einheitQuery->execute();
-            $einheitResult = $einheitQuery->get_result();
-            if ($einheitRow = $einheitResult->fetch_assoc()) {
-                $hatSpezifischenUmrechnungsfaktor = $einheitRow['hat_spezifischen_umrechnungsfaktor'];
-            } else {
-                $hatSpezifischenUmrechnungsfaktor = false;
             }
-
-            // Setze den Umrechnungsfaktor basierend auf der Einheit
-            $umrechnungsfaktor = NULL;
-            if ($hatSpezifischenUmrechnungsfaktor) {
-                $umrechnungsfaktor = !empty($_POST['umrechnungsfaktor']) ? $_POST['umrechnungsfaktor'] : NULL;
-            }
+            $hatSpezifischenUmrechnungsfaktor = $_POST['basisEinheit'] === 'speziell';
+            $haltbarkeit = $_POST['haltbarkeit'] ?? null;
+            $volumen = $_POST['volumen'] ?? null;
+            $kategorie_id = $_POST['kategorie_id'] ?? null;
+            $phd_kategorie_id = $_POST['phd_kategorie_id'] ?? null;
+            $spezifischer_umrechnungsfaktor = ($hatSpezifischenUmrechnungsfaktor) ? $_POST['einheit_id'] === 'neuHinzufuegen' ? $_POST['einheit_umrechnungsfaktor']:$_POST['umrechnungsfaktor'] : null;
 
             // Prepared Statement zum Hinzufügen der Zutat vorbereiten
             $stmt = $conn->prepare("INSERT INTO zutaten (uebliche_haltbarkeit, volumen, kategorie_id, phd_kategorie_id, einheit_id, spezifischer_umrechnungsfaktor) VALUES (?, ?, ?, ?, ?, ?)");
-
+            echo $haltbarkeit . " : " .  $volumen . " : " . $kategorie_id . " : " . $phd_kategorie_id . " : " . $einheit_id . " : " . $spezifischer_umrechnungsfaktor;
             // Parameter binden
-            $stmt->bind_param("idiiid", $haltbarkeit, $volumen, $kategorie_id, $phd_kategorie_id, $einheit_id, $umrechnungsfaktor);
+            $stmt->bind_param("idiiid", $haltbarkeit, $volumen, $kategorie_id, $phd_kategorie_id, $einheit_id, $spezifischer_umrechnungsfaktor);
 
                 // Versuchen, die Prepared Statement auszuführen
                 if ($stmt->execute()) {
@@ -369,7 +363,7 @@ Content:
 
                 <div id="volumen_block" style="display:none;">
                 <label for="volumen">Volumen:</label>
-                <input class="restDesFormulars" type="text" id="volumen" name="volumen" style="display:none;" >
+                <input class="restDesFormulars" type="text" id="volumen" name="volumen">
                 wichtig für PHD da die berenung mit gramm arbeitet<br><br>
                 </div>
                     <script>document.addEventListener("DOMContentLoaded", function() {
@@ -484,12 +478,11 @@ function checkNeueEinheit(value) {
 
                         var displayVolumen = value === 'Liter' ? 'block' : 'none';
                         volumenBlock.style.display = displayVolumen;
-                        volumenInput.style.display = displayVolumen;
                         volumenInput.required = displayVolumen === 'block';
 
                         
                         var info_speziel = document.getElementById('info_speziel');
-                        var displayVolumen = value === 'speziell' ? info_speziel.style.display = "block" : info_speziel.style.display = 'none'; 
+                        info_speziel.style.display = value === 'speziell' ?  "block" : 'none'; 
                         
                     }
 

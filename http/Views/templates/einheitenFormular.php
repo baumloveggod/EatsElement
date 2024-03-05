@@ -10,6 +10,7 @@ checkUserAuthentication();
 // Add new unit
 function insert_into_Eineheiten(){
     global $conn;
+    global $_POST;
     $name = $_POST['name'] ?? ''; // Verwenden Sie den Null-Coalescing-Operator, um sicherzustellen, dass $name nicht NULL ist.
     $umrechnungsfaktor = $_POST['einheit_umrechnungsfaktor'] ?? null;
     $basisEinheit = $_POST['basisEinheit'] ?? '';

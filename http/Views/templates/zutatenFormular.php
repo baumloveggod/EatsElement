@@ -7,7 +7,7 @@ error_reporting(E_ALL);
 // Verbindung zur Datenbank herstellen
 require_once '../../Utils/db_connect.php';
 
-include '../templates/einheitenFormular.php';
+include '/einheitenFormular.php';
 
 // Funktion, um Optionen für ein Dropdown-Menü zu generieren, erweitert um den speziellen Umrechnungsfaktor-Status
 function generateOptions($conn, $tableName, $idColumn, $nameColumn, $isEinheiten = false) {

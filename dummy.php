@@ -1,4 +1,4 @@
-<?php foreach ($rezept['zutaten'] as $zutat) {
+    <?php foreach ($rezept['zutaten'] as $zutat) {
     $stmtCheckZutat->bind_param("s", $zutat['name']);
     $stmtCheckZutat->execute();
     $result = $stmtCheckZutat->get_result();

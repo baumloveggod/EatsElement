@@ -1,4 +1,4 @@
-    <?php
+<?php
 // Fehlerberichterstattung einschalten
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -7,7 +7,7 @@ error_reporting(E_ALL);
 // Verbindung zur Datenbank herstellen
 require_once '../../Utils/db_connect.php';
 
-include '/einheitenFormular.php';
+include 'einheitenFormular.php';
 
 // Funktion, um Optionen für ein Dropdown-Menü zu generieren, erweitert um den speziellen Umrechnungsfaktor-Status
 function generateOptions($conn, $tableName, $idColumn, $nameColumn, $isEinheiten = false) {
@@ -29,9 +29,11 @@ function generateOptions($conn, $tableName, $idColumn, $nameColumn, $isEinheiten
 
 
 // Überprüfen, ob das Formular gesendet wurde
-insert_into_Zutaten(){
+function insert_into_Zutaten(){
+    global $conn;
+    global $_POST;
     // Überprüfen, ob das Formular gesendet wurde und die Aktion "Zutat Unter Anderem Namen Hinzufügen" ist
-    if (isset($_POST['aktion_name']) && $_POST['aktion_name'] === "Zutat Unter Anderem Namen Hinzufügen") {
+    if(isset($_POST['aktion_name']) && $_POST['aktion_name'] === "Zutat Unter Anderem Namen Hinzufügen") {
         // Daten aus dem Formular holen
         $alternativerName = $_POST['alternativerName'];
 
@@ -114,53 +116,60 @@ insert_into_Zutaten(){
         }
     }
 
-ZutatenForm(){
-return "
- <form action='<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>' method='post'>
+function ZutatenForm(){
+    global $conn;
+    $action = htmlspecialchars($_SERVER["PHP_SELF"]);
+    $kategorienOptions = generateOptions($conn, 'kategorien', 'id', 'name'); // Assuming generateOptions() is a function that returns a string
+    $phdKategorieOptions = generateOptions($conn, 'Planetary_Health_Diet_Categories', 'ID', 'Kategorie');
+    $einheitenOptions = generateOptions($conn, 'einheiten', 'id', 'name', true);
+    $einheitsForm = einheitsForm(); // Assuming einheitsForm() is a function that returns a string
+
+    return <<<HTML
+ <form action="{$action}" method='post'>
      <label for='zutaten_name'>Name:</label>
      <input type='text' id='zutaten_name' name='zutaten_name' ><br><br>
      
      <script>
-        function toggleForm(checkbox) {
-            var isChecked = checkbox.checked;
-            var alternativerNameContainer = document.getElementById('alternativerNameContainer');
-            var restDesFormulars = document.getElementById('restDesFormulars');
-            
-            // Sichtbarkeit umschalten
-            alternativerNameContainer.style.display = isChecked ? 'block' : 'none';
-            restDesFormulars.style.display = isChecked ? 'none' : 'block';
+     function toggleForm(checkbox) {
+        var isChecked = checkbox.checked;
+        var alternativerNameContainer = document.getElementById('alternativerNameContainer');
+        var restDesFormulars = document.getElementById('restDesFormulars');
+        
+        // Sichtbarkeit umschalten
+        alternativerNameContainer.style.display = isChecked ? 'block' : 'none';
+        restDesFormulars.style.display = isChecked ? 'none' : 'block';
 
-            // Setze oder entferne das 'required' Attribut basierend auf dem Zustand des Kontrollkästchens
-            var inputsAlternative = alternativerNameContainer.getElementsByTagName('input');
-            for (var i = 0; i < inputsAlternative.length; i++) {
-                inputsAlternative[i].required = isChecked; // Diese Felder sind nur erforderlich, wenn der Container sichtbar ist
-            }
+        // Setze oder entferne das 'required' Attribut basierend auf dem Zustand des Kontrollkästchens
+        var inputsAlternative = alternativerNameContainer.getElementsByTagName('input');
+        for (var i = 0; i < inputsAlternative.length; i++) {
+            inputsAlternative[i].required = isChecked; // Diese Felder sind nur erforderlich, wenn der Container sichtbar ist
+        }
 
-            var inputsRest = restDesFormulars.getElementsByTagName('input');
-            for (var i = 0; i < inputsRest.length; i++) {
-                 // Überprüfe, ob das Eingabefeld sichtbar ist, bevor du es als required markierst
-                if (inputsRest[i].type !== 'submit' && inputsRest[i].id !== 'volumen') { // 'volumen' wird separat behandelt
-                    inputsRest[i].required = !isChecked; // Diese Felder sind nur erforderlich, wenn der Container sichtbar ist
-                }
-            }
-
-            // Spezialfall für 'volumen', das nur erforderlich ist, wenn es sichtbar ist
-            var volumenInput = document.getElementById('volumen');
-            if (volumenInput.style.display !== 'none') {
-                volumenInput.required = true;
-            } else {
-                volumenInput.required = false;
-            }
-            if (!checkbox){
-                checkNeueEinheit(document.getElementById('einheit_id').value);
+        var inputsRest = restDesFormulars.getElementsByTagName('input');
+        for (var i = 0; i < inputsRest.length; i++) {
+             // Überprüfe, ob das Eingabefeld sichtbar ist, bevor du es als required markierst
+            if (inputsRest[i].type !== 'submit' && inputsRest[i].id !== 'volumen') { // 'volumen' wird separat behandelt
+                inputsRest[i].required = !isChecked; // Diese Felder sind nur erforderlich, wenn der Container sichtbar ist
             }
         }
-        window.onload = function() {
-            toggleForm(document.getElementById('existiertUnterAnderemNamen'));
+
+        // Spezialfall für 'volumen', das nur erforderlich ist, wenn es sichtbar ist
+        var volumenInput = document.getElementById('volumen');
+        if (volumenInput.style.display !== 'none') {
+            volumenInput.required = true;
+        } else {
+            volumenInput.required = false;
         }
-    </script>
+        if (!checkbox){
+            checkNeueEinheit(document.getElementById('einheit_id').value);
+        }
+    }
+    window.onload = function() {
+        toggleForm(document.getElementById('existiertUnterAnderemNamen'));
+    }
+     </script>
      
-    <label for='existiertUnterAnderemNamen'>Existiert ide zutat unter einem anderem Namen?</label>
+    <label for='existiertUnterAnderemNamen'>Existiert die Zutat unter einem anderen Namen?</label>
     <input type='checkbox' id='existiertUnterAnderemNamen' name='existiertUnterAnderemNamen' onchange='toggleForm(this)' checked>
      
     <div id='alternativerNameContainer' style='display:block;'>
@@ -175,40 +184,28 @@ return "
         <label for='kategorie_id'>Kategorie:</label>
         <select class='restDesFormulars' id='kategorie_id' name='kategorie_id' >
             <option value=''>Bitte wählen</option>    
-            <?php echo generateOptions($conn, 'kategorien', 'id', 'name'); ?>
+            {$kategorienOptions}
         </select><br><br>
         
         <label for='phd_kategorie_id'>Planetary Health Diet Category:</label>
         <select class='restDesFormulars' id='phd_kategorie_id' name='phd_kategorie_id' >
             <option value=''>Bitte wählen</option> 
-            <?php echo generateOptions($conn, 'Planetary_Health_Diet_Categories', 'ID', 'Kategorie'); ?>
+            {$phdKategorieOptions}
         </select><br><br>
 
-        <label for='einheit_id'>einheit:</label>
+        <label for='einheit_id'>Einheit:</label>
         <select id='einheit_id' name='einheit_id'>
             <option value=''>Bitte wählen</option>
-            <?php echo generateOptions($conn, 'einheiten', 'id', 'name', true); ?>
-
+            {$einheitenOptions}
             <option value='neuHinzufuegen'>Neu hinzufügen...</option>
         </select><br><br>
 
         <div id='neueEinheitFormular' style='display:none;'>
-            <?php echo einheitsForm(); ?>
+            {$einheitsForm}
         </div>
 
-        <div id='umrechnungsfaktorFeld' style='display: none;'>
-            <label for='umrechnungsfaktor'>Umrechnungsfaktor:</label>
-            <input type='number' id='umrechnungsfaktor' name='umrechnungsfaktor' step='0.01' required>
-            <div> bei 'spezieler Bassis ist die referenc immer Gramm</div><br><br>
-        </div>
-
-        <div id='volumen_block' style='display:none;'>
-            <label for='volumen'>Volumen:</label>
-            <input class='restDesFormulars' type='text' id='volumen' name='volumen'>
-            wichtig für PHD da die berenung mit gramm arbeitet<br><br>
-        </div>
         <script>
-            document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function() {
             // Bind change event listener to the units dropdown
             var einheitDropdown = document.getElementById('einheit_id');
             if (einheitDropdown) {
@@ -323,6 +320,7 @@ return "
         </script>
         <input type='submit' value='Zutat Hinzufügen'>
     </div>
-</form>";
+</form>
+HTML;
 }
 ?>

@@ -7,7 +7,7 @@
     // Verbindung zur Datenbank herstellen
     require_once '../../Utils/db_connect.php';
 
-    include '../templates/einheitenFormular.php';
+    include '../templates/zutatenFormular.php';
 
     // Überprüfen, ob das Formular gesendet wurde
     if ($_SERVER["REQUEST_METHOD"] == "POST") {

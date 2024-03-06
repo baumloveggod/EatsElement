@@ -1,4 +1,4 @@
-Path: zutatenFormular.php
+Path: altes_zutaten.php
 Content:
     <?php
     // Fehlerberichterstattung einschalten

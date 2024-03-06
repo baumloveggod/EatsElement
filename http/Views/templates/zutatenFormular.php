@@ -29,7 +29,7 @@ function generateOptions($conn, $tableName, $idColumn, $nameColumn, $isEinheiten
 
 
 // Überprüfen, ob das Formular gesendet wurde
-function insert_into_Zutaten {
+function insert_into_Zutaten() {
     // Überprüfen, ob das Formular gesendet wurde und die Aktion "Zutat Unter Anderem Namen Hinzufügen" ist
     if (isset($_POST['aktion_name']) && $_POST['aktion_name'] === "Zutat Unter Anderem Namen Hinzufügen") {
         // Daten aus dem Formular holen
@@ -117,7 +117,6 @@ function insert_into_Zutaten {
 
 function ZutatenForm(){
     return "
-<form action=\"<?php echo htmlspecialchars(\$_SERVER[\"PHP_SELF\"]); ?>\" method=\"post\">
             <label for=\"zutaten_name\">Name:</label>
             <input type=\"text\" id=\"zutaten_name\" name=\"zutaten_name\" ><br><br>
             
@@ -336,7 +335,6 @@ function checkNeueEinheit(value) {
                 <input type=\"submit\" value=\"Zutat Hinzufügen\">
             
             </div>
-        </form>
-HTML;"
+        </form>";
 }
 ?>

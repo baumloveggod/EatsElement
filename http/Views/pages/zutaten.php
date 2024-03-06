@@ -23,6 +23,8 @@
     </head>
     <body>
         <h2>Zutat Hinzufügen</h2>
+        
+        <form action=<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?> method=\"post\">
         <?php echo ZutatenForm();?>
         <h2>Vorhandene Zutaten</h2>
         <?php

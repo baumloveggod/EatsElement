@@ -12,7 +12,8 @@ require_once '../../Utils/db_connect.php';
 include 'einheitenFormular.php';
 
 // Funktion, um Optionen für ein Dropdown-Menü zu generieren, erweitert um den speziellen Umrechnungsfaktor-Status
-function generateOptions($conn, $tableName, $idColumn, $nameColumn, $isEinheiten = false) {
+function generateOptions($tableName, $idColumn, $nameColumn, $isEinheiten = false) {
+    global $conn;
     $options = '';
     $sql = $isEinheiten ? "SELECT $idColumn, $nameColumn, basis_einheit_id, hat_spezifischen_umrechnungsfaktor FROM $tableName ORDER BY $nameColumn ASC" : "SELECT $idColumn, $nameColumn FROM $tableName ORDER BY $nameColumn ASC";
     $result = $conn->query($sql);
@@ -181,18 +182,18 @@ function ZutatenForm(){
                 <label for=\"kategorie_id\">Kategorie:</label>
                 <select class=\"restDesFormulars\" id=\"kategorie_id\" name=\"kategorie_id\" >
                     <option value=\"\">Bitte wählen</option>    
-                    <?php echo generateOptions(\$conn, 'kategorien', 'id', 'name'); ?>
+                    <?php echo generateOptions('kategorien', 'id', 'name'); ?>
                 </select><br><br>
                 
                 <label for=\"phd_kategorie_id\">Planetary Health Diet Category:</label>
                 <select class=\"restDesFormulars\" id=\"phd_kategorie_id\" name=\"phd_kategorie_id\" >
                     <option value=\"\">Bitte wählen</option> 
-                    <?php echo generateOptions(\$conn, 'Planetary_Health_Diet_Categories', 'ID', 'Kategorie'); ?>
+                    <?php echo generateOptions('Planetary_Health_Diet_Categories', 'ID', 'Kategorie'); ?>
                 </select><br><br>
                 <label for=\"einheit_id\">einheit:</label>
                 <select id=\"einheit_id\" name=\"einheit_id\">
                     <option value=\"\">Bitte wählen</option>
-                    <?php echo generateOptions(\$conn, 'einheiten', 'id', 'name', true); ?>
+                    <?php echo generateOptions('einheiten', 'id', 'name', true); ?>
 
                     <option value=\"neuHinzufuegen\">Neu hinzufügen...</option>
                 </select><br><br>

@@ -7,8 +7,7 @@
     // Verbindung zur Datenbank herstellen
     require_once '../../Utils/db_connect.php';
 
-    include '../templates/zutatenFormular.php';
-
+    include '../templates/zutaten_post.php';
     // Überprüfen, ob das Formular gesendet wurde
     if ($_SERVER["REQUEST_METHOD"] == "POST") {
         insert_into_Zutaten();
@@ -24,8 +23,8 @@
     <body>
         <h2>Zutat Hinzufügen</h2>
         
-        <form action=<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?> method=\"post\">
-        <?php echo ZutatenForm();?>
+        <form action=<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?> method="post">
+        <?php include '../templates/zutatenFormular.php';?>
         <h2>Vorhandene Zutaten</h2>
         <?php
 // Vorhandene Zutaten auflisten mit Anpassungen

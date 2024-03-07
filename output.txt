@@ -1,4 +1,4 @@
-Path: ./http/Views/templates/zutatenFormular.php
+Path: ./http/Views/templates/zutaten_post.php
 Content:
 <?php
 // Fehlerberichterstattung einschalten
@@ -9,27 +9,7 @@ error_reporting(E_ALL);
 // Verbindung zur Datenbank herstellen
 require_once '../../Utils/db_connect.php';
 
-include 'einheitenFormular.php';
-
-// Funktion, um Optionen für ein Dropdown-Menü zu generieren, erweitert um den speziellen Umrechnungsfaktor-Status
-function generateOptions($tableName, $idColumn, $nameColumn, $isEinheiten = false) {
-    global $conn;
-    $options = '';
-    $sql = $isEinheiten ? "SELECT $idColumn, $nameColumn, basis_einheit_id, hat_spezifischen_umrechnungsfaktor FROM $tableName ORDER BY $nameColumn ASC" : "SELECT $idColumn, $nameColumn FROM $tableName ORDER BY $nameColumn ASC";
-    $result = $conn->query($sql);
-    if ($result->num_rows > 0) {
- while($row = $result->fetch_assoc()) {
-     if ($isEinheiten) {
-  $options .= "<option value='" . $row[$idColumn] . "' data-basis='" . $row['basis_einheit_id'] . "' data-spezifischer-umrechnungsfaktor='" . $row['hat_spezifischen_umrechnungsfaktor'] . "'>" . htmlspecialchars($row[$nameColumn]) . "</option>";
-     } else {
-  $options .= "<option value='" . $row[$idColumn] . "'>" . htmlspecialchars($row[$nameColumn]) . "</option>";
-     }
- }
-    }
-    return $options;
-}
-
-
+include 'einheiten_post.php';
 
 // Überprüfen, ob das Formular gesendet wurde
 function insert_into_Zutaten() {
@@ -116,16 +96,39 @@ function insert_into_Zutaten() {
      $stmt->close();
  }
     }
+?>
 
+Path: ./http/Views/templates/zutatenFormular.php
+Content:
+<?php
+// Fehlerberichterstattung einschalten
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-function ZutatenForm(){
- $action = htmlspecialchars($_SERVER["PHP_SELF"]);
- $kategorienOptions = generateOptions( 'kategorien', 'id', 'name'); // Assuming generateOptions() is a function that returns a string
- $phdKategorieOptions = generateOptions('Planetary_Health_Diet_Categories', 'ID', 'Kategorie');
- $einheitenOptions = generateOptions('einheiten', 'id', 'name', true);
- $einheitsForm = einheitsForm(); // Assuming einheitsForm() is a function that returns a string
-    
- return <<<HTML
+// Verbindung zur Datenbank herstellen
+require_once '../../Utils/db_connect.php';
+
+include 'einheitenFormular.php';
+
+// Funktion, um Optionen für ein Dropdown-Menü zu generieren, erweitert um den speziellen Umrechnungsfaktor-Status
+function generateOptions($tableName, $idColumn, $nameColumn, $isEinheiten = false) {
+    global $conn;
+    $options = '';
+    $sql = $isEinheiten ? "SELECT $idColumn, $nameColumn, basis_einheit_id, hat_spezifischen_umrechnungsfaktor FROM $tableName ORDER BY $nameColumn ASC" : "SELECT $idColumn, $nameColumn FROM $tableName ORDER BY $nameColumn ASC";
+    $result = $conn->query($sql);
+    if ($result->num_rows > 0) {
+ while($row = $result->fetch_assoc()) {
+     if ($isEinheiten) {
+  $options .= "<option value='" . $row[$idColumn] . "' data-basis='" . $row['basis_einheit_id'] . "' data-spezifischer-umrechnungsfaktor='" . $row['hat_spezifischen_umrechnungsfaktor'] . "'>" . htmlspecialchars($row[$nameColumn]) . "</option>";
+     } else {
+  $options .= "<option value='" . $row[$idColumn] . "'>" . htmlspecialchars($row[$nameColumn]) . "</option>";
+     }
+ }
+    }
+    return $options;
+}
+?>
      <form action= $action method="post">
      <label for="zutaten_name">Name:</label>
      <input type="text" id="zutaten_name" name="zutaten_name" ><br><br>
@@ -204,8 +207,8 @@ function ZutatenForm(){
 
       <option value="neuHinzufuegen">Neu hinzufügen...</option>
   </select><br><br>
-  <div id="neueEinheitFormular" style="display:none;">
-      <?php echo einheitsForm(); ?>
+  <div id="neueEinheitFormular" style="display:none;"> 
+    <?php include '../templates/einheitenFormular.html';?>
   </div>
   <div id="umrechnungsfaktorFeld" style="display: none;">
       <label for="umrechnungsfaktor">Umrechnungsfaktor:</label>
@@ -340,9 +343,6 @@ function ZutatenForm(){
         <input type="submit" value="Zutat Hinzufügen">         
     </div>
 </form>
-HTML;
-}
-?>
 
 Path: ./http/Views/templates/einheitenFormular.php
 Content:
@@ -403,7 +403,7 @@ $loops = ceil($totalUnits / $batchSize); // Berechnung der Anzahl der Durchläuf
         <h3>Einheit hinzufügen</h3>
         
             <form action="" method="post">
-                <?php include '../templates/einheitenFormular.php';?>
+                <?php include '../templates/einheitenFormular.html';?>
                 <input type="submit" value="Einheit Hinzufügen" id="einheitHinzufuegenButton">
             </form>
 
@@ -456,8 +456,7 @@ Content:
     // Verbindung zur Datenbank herstellen
     require_once '../../Utils/db_connect.php';
 
-    include '../templates/zutatenFormular.php';
-
+    include '../templates/zutaten_post.php';
     // Überprüfen, ob das Formular gesendet wurde
     if ($_SERVER["REQUEST_METHOD"] == "POST") {
         insert_into_Zutaten();
@@ -473,8 +472,8 @@ Content:
     <body>
         <h2>Zutat Hinzufügen</h2>
         
-        <form action=<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?> method=\"post\">
-        <?php echo ZutatenForm();?>
+        <form action=<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?> method="post">
+        <?php include '../templates/zutatenFormular.php';?>
         <h2>Vorhandene Zutaten</h2>
         <?php
 // Vorhandene Zutaten auflisten mit Anpassungen

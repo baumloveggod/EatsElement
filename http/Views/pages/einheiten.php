@@ -38,7 +38,7 @@ $loops = ceil($totalUnits / $batchSize); // Berechnung der Anzahl der Durchläuf
         <h3>Einheit hinzufügen</h3>
         
             <form action="" method="post">
-                <?php include '../templates/einheitenFormular.php';?>
+                <?php include '../templates/einheitenFormular.html';?>
                 <input type="submit" value="Einheit Hinzufügen" id="einheitHinzufuegenButton">
             </form>
 

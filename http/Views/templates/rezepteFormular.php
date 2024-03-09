@@ -1,4 +1,9 @@
 <?php
+// Fehlerberichterstattung einschalten
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 // Verbindung zur Datenbank herstellen
 require_once '../../Utils/db_connect.php';
 
@@ -20,10 +25,6 @@ if(isset($_GET['action']) && $_GET['action'] == 'checkZutat' && !empty($_GET['zu
     echo json_encode($zutaten);
     exit;
 }
-
-// Logik zum Hinzufügen neuer Zutaten, falls erforderlich, könnte hier hinzugefügt werden
-// ...
-
 ?>
 <form action="rezepte_post.php" method="post" enctype="multipart/form-data">
     <label for="titel">Titel:</label><br>
@@ -59,6 +60,17 @@ if(isset($_GET['action']) && $_GET['action'] == 'checkZutat' && !empty($_GET['zu
 </form>
 
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const zutatenContainer = document.getElementById('zutatenContainer');
+
+    // Event-Delegation für zutatenContainer, um Änderungen an allen Zutatenname-Eingabefeldern zu überwachen
+    zutatenContainer.addEventListener('input', function(event) {
+        if (event.target.classList.contains('zutatenName')) {
+            checkAndAddZutatBlock(event.target);
+        }
+    });
+});
+
 function checkAndAddZutatBlock(currentInput) {
     const container = document.getElementById('zutatenContainer');
     const allZutatenBlocks = container.querySelectorAll('.zutatBlock');
@@ -72,7 +84,7 @@ function checkAndAddZutatBlock(currentInput) {
         newZutatBlock.classList.add('zutatBlock');
         newZutatBlock.innerHTML = `
             <label>Zutatenname:</label>
-            <input type="text" name="zutaten[${newIndex}][name]" class="zutatenName" oninput="checkAndAddZutatBlock(this)">
+            <input type="text" name="zutaten[${newIndex}][name]" class="zutatenName">
             <?php require '../templates/zutatenFormular.php'; ?>
             <label>Menge:</label>
             <input type="text" name="zutaten[${newIndex}][menge]">
@@ -80,6 +92,7 @@ function checkAndAddZutatBlock(currentInput) {
         container.appendChild(newZutatBlock);
     }
 }
+
 document.addEventListener('DOMContentLoaded', function() {
     var zutatenNameInput = document.getElementById('zutatenName');
 

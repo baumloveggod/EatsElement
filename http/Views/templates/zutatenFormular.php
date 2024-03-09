@@ -29,8 +29,9 @@ function generateOptions($tableName, $idColumn, $nameColumn, $isEinheiten = fals
 ?>
      <form action= $action method="post">
      <label for="zutaten_name">Name:</label>
-     <input type="text" id="zutaten_name" name="zutaten_name" oninput="checkAndAddZutatBlock(this)"><br><br>
-     
+     <input type="text" id="zutaten_name" name="zutaten_name"><br><br>
+     <div id="zutatenFormularContainer">
+    
      <script>
         function toggleForm(checkbox) {
             var isChecked = checkbox.checked;
@@ -240,4 +241,6 @@ function generateOptions($tableName, $idColumn, $nameColumn, $isEinheiten = fals
          </script>
         <input type="submit" value="Zutat Hinzufügen">         
     </div>
+<!-- Your form elements here -->
+</div>
 </form>

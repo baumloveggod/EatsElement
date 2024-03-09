@@ -7,7 +7,7 @@ error_reporting(E_ALL);
 // Verbindung zur Datenbank herstellen
 require_once '../../Utils/db_connect.php';
 
-include 'einheiten_post.php';
+require '../templates/einheiten_post.php';
 
 // Überprüfen, ob das Formular gesendet wurde
 function insert_into_Zutaten() {

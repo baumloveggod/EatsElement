@@ -88,7 +88,7 @@ def git_commit_and_push(commit_message):
         print(f"Fehler beim Ausführen von Git-Befehlen: {e}")
 #,''altes_zutaten.php',
 # Main script
-write_file_info_to_output(['./http/Views/templates/einheiten.html','./http/Views/templates/zutaten_post.php','./http/Views/templates/zutatenFormular.php','./http/Views/templates/einheitenFormular.php','./http/Views/pages/einheiten.php', './http/Views/pages/zutaten.php','sql_create'], 'output.txt')
+write_file_info_to_output(['./http/Views/pages/rezepte.php','./http/Views/templates/rezepteFormular.php','./http/Views/templates/rezepte_post.php','./http/Views/templates/einheiten.html','./http/Views/templates/zutaten_post.php','./http/Views/templates/zutatenFormular.php','./http/Views/templates/einheitenFormular.php','./http/Views/pages/einheiten.php', './http/Views/pages/zutaten.php','sql_create'], 'output.txt')
 changed_files = get_git_changes()
 if changed_files:  # Only proceed if there are changed files
     commit_message = generate_commit_message(changed_files)

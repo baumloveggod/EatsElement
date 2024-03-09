@@ -49,7 +49,7 @@ if ($result->num_rows > 0) {
     echo "<table border='1'>";
     echo "<tr><th>Namen</th><th>Haltbarkeit (Tage)</th><th>Volumen</th><th>Kategorie</th><th>PHD Kategorie</th><th>Einheit</th></tr>";
     while ($row = $result->fetch_assoc()) {
-        echo "<tr><td>" . htmlspecialchars($row['names']) . "</td><td>" . htmlspecialchars($row['uebliche_haltbarkeit']) . "</td><td>" . htmlspecialchars($row['volumen']) . "</td><td>" . htmlspecialchars($row['kategorie_name']) . "</td><td>" . htmlspecialchars($row['phd_kategorie_name']) . "</td><td>" . htmlspecialchars($row['einheit_name']) . "</td></tr>";
+        echo "<tr><td>" . htmlspecialchars($row['names']) . "</td><td>" . htmlspecialchars($row['uebliche_haltbarkeit']) . "</td><td>" . htmlspecialchars($row['volumen'] ?? '') . "</td><td>" . htmlspecialchars($row['kategorie_name']) . "</td><td>" . htmlspecialchars($row['phd_kategorie_name']) . "</td><td>" . htmlspecialchars($row['einheit_name']) . "</td></tr>";
     }
     echo "</table>";
 } else {

@@ -42,11 +42,20 @@ CREATE TABLE kategorien (
     sortierreihenfolge INT NOT NULL
 );
 
+CREATE TABLE bilder (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    bild_url VARCHAR(255) NOT NULL,
+    user_id INT NOT NULL, -- Optional, falls Sie Bilder pro Benutzer trennen möchten
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
 
 
 CREATE TABLE rezepte (
     id INT AUTO_INCREMENT PRIMARY KEY,
     titel VARCHAR(255) NOT NULL,
+    autor VARCHAR(255),
+    untertitel TEXT,
+    bilder TEXT,
     beschreibung TEXT,
     zubereitungszeit INT,
     basis_personenanzahl INT DEFAULT 4

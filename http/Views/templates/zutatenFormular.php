@@ -29,7 +29,7 @@ function generateOptions($tableName, $idColumn, $nameColumn, $isEinheiten = fals
 ?>
      <form action= $action method="post">
      <label for="zutaten_name">Name:</label>
-     <input type="text" id="zutaten_name" name="zutaten_name" ><br><br>
+     <input type="text" id="zutaten_name" name="zutaten_name" oninput="checkAndAddZutatBlock(this)"><br><br>
      
      <script>
         function toggleForm(checkbox) {

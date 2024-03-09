@@ -48,8 +48,6 @@ if(isset($_GET['action']) && $_GET['action'] == 'checkZutat' && !empty($_GET['zu
 
     <div id="zutatenContainer">
         <div class="zutatBlock">
-            <label>Zutatenname:</label>
-            <input type="text" name="zutaten[0][name]" class="zutatenName" oninput="checkAndAddZutatBlock(this)">
             <?php require '../templates/zutatenFormular.php'; ?>
             <label>Menge:</label>
             <input type="text" name="zutaten[0][menge]">
@@ -75,14 +73,13 @@ function checkAndAddZutatBlock(currentInput) {
         newZutatBlock.innerHTML = `
             <label>Zutatenname:</label>
             <input type="text" name="zutaten[${newIndex}][name]" class="zutatenName" oninput="checkAndAddZutatBlock(this)">
+            <?php require '../templates/zutatenFormular.php'; ?>
             <label>Menge:</label>
             <input type="text" name="zutaten[${newIndex}][menge]">
         `;
         container.appendChild(newZutatBlock);
     }
 }
-
-<script>
 document.addEventListener('DOMContentLoaded', function() {
     var zutatenNameInput = document.getElementById('zutatenName');
 

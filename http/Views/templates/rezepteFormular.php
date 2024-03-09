@@ -81,10 +81,30 @@ function checkAndAddZutatBlock(currentInput) {
     }
 }
 
-// Funktion zur Überprüfung der Existenz einer Zutat und Anzeige des Zutatenformulars, falls nicht vorhanden
-// Hier könnte eine Autovervollständigungslogik hinzugefügt werden, die auskommentiert ist, da sie serverseitige Logik erfordert
-function checkZutatExistence(value, index) {
-    // Implementierung der Autovervollständigung und Überprüfung, ob Zutat existiert
-    // Wenn Zutat nicht existiert, zutatenFormular für diese Zutat einblenden (ohne Dopplung des Namensfeldes)
-}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var zutatenNameInput = document.getElementById('zutatenName');
+
+    zutatenNameInput.addEventListener('input', function() {
+        var zutatenName = this.value;
+
+        // AJAX-Anfrage, um zu überprüfen, ob die Zutat existiert
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', '../templates/checkZutatExist.php?zutatName=' + encodeURIComponent(zutatenName), true);
+        xhr.onload = function() {
+            if (this.status == 200) {
+                var exists = JSON.parse(this.responseText).exists;
+                // Logik, um das Zutatenformular ein- oder auszublenden
+                var zutatenFormularContainer = document.getElementById('zutatenFormularContainer');
+                if (exists) {
+                    zutatenFormularContainer.style.display = 'none';
+                } else {
+                    zutatenFormularContainer.style.display = 'block';
+                }
+            }
+        };
+        xhr.send();
+    });
+});
+
 </script>

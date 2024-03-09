@@ -44,7 +44,6 @@ if(isset($_GET['action']) && $_GET['action'] == 'checkZutat' && !empty($_GET['zu
         <option value="">Bitte wählen</option>
         <!-- Optionen für vorhandene Bilder -->
     </select>
-    oder
     <input type="file" id="bilder" name="bilder"><br>
 
     <div id="zutatenContainer">
@@ -61,61 +60,34 @@ if(isset($_GET['action']) && $_GET['action'] == 'checkZutat' && !empty($_GET['zu
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const zutatenContainer = document.getElementById('zutatenContainer');
+    checkAndAddZutatBlock();
+});
 
-    // Event-Delegation für zutatenContainer, um Änderungen an allen Zutatenname-Eingabefeldern zu überwachen
-    zutatenContainer.addEventListener('input', function(event) {
-        if (event.target.classList.contains('zutatenName')) {
-            checkAndAddZutatBlock(event.target);
+function checkAndAddZutatBlock() {
+    const container = document.getElementById('zutatenContainer');
+    container.addEventListener('input', function(event) {
+        // Findet den zuletzt hinzugefügten Zutatenblock
+        const lastZutatBlock = container.querySelector('.zutatBlock:last-of-type');
+        const zutatenNameInput = lastZutatBlock.querySelector('.zutatenName');
+        const mengeInput = lastZutatBlock.querySelector('.menge');
+
+        // Prüft, ob der letzte Block ausgefüllt wurde
+        if (zutatenNameInput && mengeInput && zutatenNameInput.value.trim() !== '' && mengeInput.value.trim() !== '') {
+            addZutatBlock(container);
         }
     });
-});
-
-function checkAndAddZutatBlock(currentInput) {
-    const container = document.getElementById('zutatenContainer');
-    const allZutatenBlocks = container.querySelectorAll('.zutatBlock');
-    const lastZutatBlock = allZutatenBlocks[allZutatenBlocks.length - 1];
-    const lastZutatenNameInput = lastZutatBlock.querySelector('.zutatenName');
-
-    // Prüft, ob das aktuelle Eingabefeld das letzte Zutatenname-Feld ist und ob es einen Wert hat
-    if (currentInput === lastZutatenNameInput && currentInput.value.trim() !== '') {
-        const newIndex = allZutatenBlocks.length;
-        const newZutatBlock = document.createElement('div');
-        newZutatBlock.classList.add('zutatBlock');
-        newZutatBlock.innerHTML = `
-            <label>Zutatenname:</label>
-            <input type="text" name="zutaten[${newIndex}][name]" class="zutatenName">
-            <?php require '../templates/zutatenFormular.php'; ?>
-            <label>Menge:</label>
-            <input type="text" name="zutaten[${newIndex}][menge]">
-        `;
-        container.appendChild(newZutatBlock);
-    }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    var zutatenNameInput = document.getElementById('zutatenName');
-
-    zutatenNameInput.addEventListener('input', function() {
-        var zutatenName = this.value;
-
-        // AJAX-Anfrage, um zu überprüfen, ob die Zutat existiert
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', '../templates/checkZutatExist.php?zutatName=' + encodeURIComponent(zutatenName), true);
-        xhr.onload = function() {
-            if (this.status == 200) {
-                var exists = JSON.parse(this.responseText).exists;
-                // Logik, um das Zutatenformular ein- oder auszublenden
-                var zutatenFormularContainer = document.getElementById('zutatenFormularContainer');
-                if (exists) {
-                    zutatenFormularContainer.style.display = 'none';
-                } else {
-                    zutatenFormularContainer.style.display = 'block';
-                }
-            }
-        };
-        xhr.send();
-    });
-});
-
+function addZutatBlock(container) {
+    const newIndex = container.querySelectorAll('.zutatBlock').length;
+    const newZutatBlock = document.createElement('div');
+    newZutatBlock.classList.add('zutatBlock');
+    newZutatBlock.innerHTML = `
+        <label>Zutatenname:</label>
+        <input type="text" name="zutaten[${newIndex}][name]" class="zutatenName" required>
+        <label>Menge:</label>
+        <input type="text" name="zutaten[${newIndex}][menge]" class="menge" required>
+    `;
+    container.appendChild(newZutatBlock);
+}
 </script>

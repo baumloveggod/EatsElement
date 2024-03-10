@@ -294,10 +294,6 @@ Content:
         <input type="file" id="bilder" name="bilder"><br>
 
         <div id="zutatenContainer">
-            <div class="zutatBlock">
-                <label>Menge:</label>
-                <input type="text" name="zutaten[0][menge]">
-            </div>
         </div>
         <br>
 

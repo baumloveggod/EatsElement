@@ -40,10 +40,6 @@ if(isset($_GET['action']) && $_GET['action'] == 'checkZutat' && !empty($_GET['zu
     <input type="number" id="basis_personenanzahl" name="basis_personenanzahl" required><br>
 
     <label for="bilder">Bilder:</label><br>
-    <select name="bilder_vorhanden" id="bilder_vorhanden">
-        <option value="">Bitte wählen</option>
-        <!-- Optionen für vorhandene Bilder -->
-    </select>
     <input type="file" id="bilder" name="bilder"><br>
 
     <div id="zutatenContainer">

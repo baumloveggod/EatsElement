@@ -53,27 +53,41 @@
 document.addEventListener("DOMContentLoaded", function() {
     var zutatenNameInput = document.getElementById('zutaten_name');
     zutatenNameInput.addEventListener('blur', function() {
-        var zutatenName = this.value;
-        if (zutatenName.length > 0) {
-            // Führen Sie eine AJAX-Anfrage durch, um zu überprüfen, ob der Name existiert
-            fetch(`.Views/pages/rezepte.php?action=checkZutat&zutatName=${encodeURIComponent(zutatenName)}`)
-            .then(response => response.json())
-            .then(data => {
-                // Annahme: Die API gibt ein leeres Array zurück, wenn keine Zutaten gefunden werden
-                if (data.length > 0) {
-                    // Zutat existiert, blenden Sie den relevanten Formularteil aus
-                    document.getElementById('existiertUnterAnderemNamen').closest('form').querySelectorAll("input[type='submit']").forEach(function(submitBtn) {
-                        submitBtn.closest('div').style.display = 'none';
-                    });
-                } else {
-                    // Zutat existiert nicht, zeigen Sie den relevanten Formularteil an
-                    document.getElementById('existiertUnterAnderemNamen').closest('form').querySelectorAll("input[type='submit']").forEach(function(submitBtn) {
-                        submitBtn.closest('div').style.display = 'block';
-                    });
-                }
-            });
-        }
-    });
+    var zutatenName = this.value;
+    console.log("Geprüfter Zutatenname:", zutatenName); // Debug: Überprüften Namen anzeigen
+
+    if (zutatenName.length > 0) {
+        let url = `./Views/rezepte.php?action=checkZutat&zutatName=${encodeURIComponent(zutatenName)}`;
+        console.log("Anfrage-URL:", url); // Debug: Anfrage-URL anzeigen
+
+        fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Antwort-Daten:", data); // Debug: Antwort-Daten anzeigen
+
+            if (data.length > 0) {
+                document.getElementById('existiertUnterAnderemNamen').closest('form').querySelectorAll("input[type='submit']").forEach(function(submitBtn) {
+                    submitBtn.closest('div').style.display = 'none';
+                });
+                console.log("Zutat existiert. Formular wird ausgeblendet."); // Debug: Bestätigung des Ausblendens
+            } else {
+                document.getElementById('existiertUnterAnderemNamen').closest('form').querySelectorAll("input[type='submit']").forEach(function(submitBtn) {
+                    submitBtn.closest('div').style.display = 'block';
+                });
+                console.log("Zutat existiert nicht. Formular wird eingeblendet."); // Debug: Bestätigung des Einblendens
+            }
+        })
+        .catch(error => {
+            console.error('Fehler beim Abrufen der Daten:', error);
+        });
+    }
+});
+
 });
 
 function addZutatBlock() {

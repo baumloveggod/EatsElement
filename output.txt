@@ -301,10 +301,31 @@ Content:
     </form>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initial einen Zutatenblock hinzufügen
-            addZutatBlock();
-        });
+document.addEventListener("DOMContentLoaded", function() {
+    var zutatenNameInput = document.getElementById('zutaten_name');
+    zutatenNameInput.addEventListener('blur', function() {
+        var zutatenName = this.value;
+        if (zutatenName.length > 0) {
+            // Führen Sie eine AJAX-Anfrage durch, um zu überprüfen, ob der Name existiert
+            fetch(`.Views/pages/rezepte.php?action=checkZutat&zutatName=${encodeURIComponent(zutatenName)}`)
+            .then(response => response.json())
+            .then(data => {
+                // Annahme: Die API gibt ein leeres Array zurück, wenn keine Zutaten gefunden werden
+                if (data.length > 0) {
+                    // Zutat existiert, blenden Sie den relevanten Formularteil aus
+                    document.getElementById('existiertUnterAnderemNamen').closest('form').querySelectorAll("input[type='submit']").forEach(function(submitBtn) {
+                        submitBtn.closest('div').style.display = 'none';
+                    });
+                } else {
+                    // Zutat existiert nicht, zeigen Sie den relevanten Formularteil an
+                    document.getElementById('existiertUnterAnderemNamen').closest('form').querySelectorAll("input[type='submit']").forEach(function(submitBtn) {
+                        submitBtn.closest('div').style.display = 'block';
+                    });
+                }
+            });
+        }
+    });
+});
 
 function addZutatBlock() {
     const container = document.getElementById('zutatenContainer');
@@ -349,9 +370,6 @@ function initInputListener(block, index) {
         });
     });
 }
-
-
-
-    </script>
+</script>
 
 

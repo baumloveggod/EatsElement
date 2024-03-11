@@ -24,7 +24,7 @@
         <h2>Zutat Hinzufügen</h2>
         
         <form action=<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?> method="post">
-        <Script> src="../templates/formFunctions.js"</Script>
+    <Script src="../templates/formFunctions.js"></Script>
         <?php require '../templates/zutatenFormular.php';?>
         <h2>Vorhandene Zutaten</h2>
         <?php

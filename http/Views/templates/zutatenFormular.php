@@ -27,7 +27,6 @@ function generateOptions($tableName, $idColumn, $nameColumn, $isEinheiten = fals
     return $options;
 }
 ?>
-<Script> src="../templates/formFunctions.js"</Script>
      <form action= $action method="post">
      <label for="zutaten_name">Name:</label>
      <input type="text" id="zutaten_name" name="zutaten_name"><br><br>

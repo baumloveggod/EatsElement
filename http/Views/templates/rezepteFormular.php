@@ -49,6 +49,7 @@
         <input type="submit" value="Rezept Hinzufügen">
     </form>
 
+<Script src="../templates/formFunctions.js"></Script>
     <script>
 document.addEventListener("DOMContentLoaded", function() {
     var zutatenNameInput = document.getElementById('zutaten_name');

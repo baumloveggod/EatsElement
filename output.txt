@@ -301,10 +301,14 @@ Content:
     </form>
 
     <script>
+
+
+
 document.addEventListener("DOMContentLoaded", function() {
     var zutatenNameInput = document.getElementById('zutaten_name');
-    zutatenNameInput.addEventListener('blur', function() {
-    var zutatenName = this.value;
+    if (zutatenNameInput) { // Überprüfen, ob das Element existiert
+        zutatenNameInput.addEventListener('blur', function() {
+            var zutatenName = this.value;
     console.log("Geprüfter Zutatenname:", zutatenName); // Debug: Überprüften Namen anzeigen
 
     if (zutatenName.length > 0) {
@@ -336,11 +340,11 @@ document.addEventListener("DOMContentLoaded", function() {
         .catch(error => {
             console.error('Fehler beim Abrufen der Daten:', error);
         });
+    } else {
+        console.error("Element mit der ID 'zutaten_name' wurde nicht gefunden.");
     }
 });
-
-});
-
+    }});
 function addZutatBlock() {
     const container = document.getElementById('zutatenContainer');
     const newIndex = container.querySelectorAll('.zutatBlock').length;
@@ -350,17 +354,22 @@ function addZutatBlock() {
     newZutatBlock.classList.add('zutatBlock');
     container.appendChild(newZutatBlock);
 
-    // Laden des Namensfeldes über zutatenFormular.php
+    // Laden des HTML-Contents über zutatenFormular.php
     fetch('../templates/zutatenFormular.php')
     .then(response => response.text())
     .then(htmlContent => {
-        // HTML für das Namensfeld setzen
-        newZutatBlock.innerHTML = htmlContent;
+        // HTML-Content anpassen, um eindeutige Namen für die Inputs zu setzen
+        const modifiedHtmlContent = htmlContent.replace(/name="zutaten_name"/g, `name="zutaten[${newIndex}][name]"`)
+                                               .replace(/id="zutaten_name"/g, `id="zutaten_name_${newIndex}"`)
+                                               .replace(/for="zutaten_name"/g, `for="zutaten_name_${newIndex}"`);
+        
+        // HTML für das angepasste Namensfeld setzen
+        newZutatBlock.innerHTML = modifiedHtmlContent;
         
         // HTML für das Mengenfeld direkt hinzufügen
         const mengeHTML = `
-            <label>Menge:</label>
-            <input type="text" name="zutaten[${newIndex}][menge]"><br><br>
+            <label for="zutaten_${newIndex}_menge">Menge:</label>
+            <input type="text" id="zutaten_${newIndex}_menge" name="zutaten[${newIndex}][menge]"><br><br>
         `;
         newZutatBlock.innerHTML += mengeHTML;
 
@@ -369,6 +378,7 @@ function addZutatBlock() {
     })
     .catch(error => console.error('Fehler beim Laden des Zutatenblocks:', error));
 }
+
 
 function initInputListener(block, index) {
     const inputs = block.querySelectorAll('input');

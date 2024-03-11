@@ -50,9 +50,6 @@
     </form>
 
     <script>
-
-
-
 document.addEventListener("DOMContentLoaded", function() {
     var zutatenNameInput = document.getElementById('zutaten_name');
     if (zutatenNameInput) { // Überprüfen, ob das Element existiert
@@ -92,8 +89,9 @@ document.addEventListener("DOMContentLoaded", function() {
     } else {
         console.error("Element mit der ID 'zutaten_name' wurde nicht gefunden.");
     }
+    });
+    }addZutatBlock();
 });
-    }});
 function addZutatBlock() {
     const container = document.getElementById('zutatenContainer');
     const newIndex = container.querySelectorAll('.zutatBlock').length;

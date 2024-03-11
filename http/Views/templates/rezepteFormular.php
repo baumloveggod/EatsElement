@@ -49,8 +49,8 @@
         <input type="submit" value="Rezept Hinzufügen">
     </form>
 
-<Script src="../templates/formFunctions.js"></Script>
-    <script>
+<Script src="../templates/formFunctions.js" ></Script>
+    <script defer>
 document.addEventListener("DOMContentLoaded", function() {
     var zutatenNameInput = document.getElementById('zutaten_name');
     if (zutatenNameInput) { // Überprüfen, ob das Element existiert

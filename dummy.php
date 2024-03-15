@@ -578,3 +578,76 @@ if ($result->num_rows > 0) {
     </footer>
 </body>
 </html>
+
+
+document.addEventListener("DOMContentLoaded", function() {
+    initializeForm();
+    bindEventListeners();
+});
+
+function initializeForm() {
+    const checkbox = document.querySelector('.existiertUnterAnderemNamen');
+    toggleFormSections(checkbox);
+}
+
+function bindEventListeners() {
+    const einheitDropdown = document.querySelector('.einheit_id');
+    const basisEinheitDropdown = document.querySelector('.basisEinheit');
+
+    if (einheitDropdown) {
+        einheitDropdown.addEventListener('change', () => toggleNewUnitForm(einheitDropdown.value));
+    }
+
+    if (basisEinheitDropdown) {
+        basisEinheitDropdown.addEventListener('change', () => toggleVolumeSection(basisEinheitDropdown.value));
+    }
+}
+
+function toggleFormSections(checkbox) {
+    const isChecked = checkbox ? checkbox.checked : false;
+    toggleVisibility('.alternativerNameContainer', isChecked);
+    toggleVisibility('.restDesFormulars', !isChecked);
+    setInputsRequired('.alternativerNameContainer', isChecked);
+    setInputsRequired('.restDesFormulars', !isChecked, ['submit', 'volumen']); // Exclude 'submit' and 'volumen' class
+    toggleVolumeInputRequirement();
+}
+
+function toggleVisibility(selector, shouldShow) {
+    const element = document.querySelector(selector);
+    if (element) {
+        element.style.display = shouldShow ? 'block' : 'none';
+    }
+}
+
+function setInputsRequired(selector, required, excludeTypes = []) {
+    const container = document.querySelector(selector);
+    if (container) {
+        const inputs = container.getElementsByTagName('input');
+        for (let input of inputs) {
+            if (!excludeTypes.includes(input.type) && !input.classList.contains('volumen')) {
+                input.required = required;
+            }
+        }
+    }
+}
+
+function toggleVolumeInputRequirement() {
+    const volumenInput = document.querySelector('.volumen');
+    if (volumenInput) {
+        const isVisible = volumenInput.closest('.volumen_block').style.display !== 'none';
+        volumenInput.required = isVisible;
+    }
+}
+
+function toggleNewUnitForm(value) {
+    const isVisible = value === "neuHinzufuegen";
+    toggleVisibility('.neueEinheitFormular', isVisible);
+    toggleVolumeSection(value);
+}
+
+function toggleVolumeSection(value) {
+    const isVolumeVisible = value === '2' || value === 'Liter' || value === "neuHinzufuegen";
+    toggleVisibility('.volumen_block', isVolumeVisible);
+    const volumenInput = document.querySelector('.volumen');
+    if (volumenInput) volumenInput.required = isVolumeVisible;
+}

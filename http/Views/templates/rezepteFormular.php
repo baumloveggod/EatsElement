@@ -48,50 +48,16 @@
 
         <input type="submit" value="Rezept Hinzufügen">
     </form>
-
+    
 <Script src="../templates/formFunctions.js" ></Script>
-    <script defer>
+    <script >
 document.addEventListener("DOMContentLoaded", function() {
-    var zutatenNameInput = document.getElementById('zutaten_name');
-    if (zutatenNameInput) { // Überprüfen, ob das Element existiert
-        zutatenNameInput.addEventListener('blur', function() {
-            var zutatenName = this.value;
-    console.log("Geprüfter Zutatenname:", zutatenName); // Debug: Überprüften Namen anzeigen
-
-    if (zutatenName.length > 0) {
-        let url = `./Views/rezepte.php?action=checkZutat&zutatName=${encodeURIComponent(zutatenName)}`;
-        console.log("Anfrage-URL:", url); // Debug: Anfrage-URL anzeigen
-
-        fetch(url)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log("Antwort-Daten:", data); // Debug: Antwort-Daten anzeigen
-
-            if (data.length > 0) {
-                document.getElementById('existiertUnterAnderemNamen').closest('form').querySelectorAll("input[type='submit']").forEach(function(submitBtn) {
-                    submitBtn.closest('div').style.display = 'none';
-                });
-                console.log("Zutat existiert. Formular wird ausgeblendet."); // Debug: Bestätigung des Ausblendens
-            } else {
-                document.getElementById('existiertUnterAnderemNamen').closest('form').querySelectorAll("input[type='submit']").forEach(function(submitBtn) {
-                    submitBtn.closest('div').style.display = 'block';
-                });
-                console.log("Zutat existiert nicht. Formular wird eingeblendet."); // Debug: Bestätigung des Einblendens
-            }
-        })
-        .catch(error => {
-            console.error('Fehler beim Abrufen der Daten:', error);
-        });
-    } else {
-        console.error("Element mit der ID 'zutaten_name' wurde nicht gefunden.");
-    }
-    });
-    }addZutatBlock();
+    try {
+    addZutatBlock();
+} catch (error) {
+    console.error("Fehler beim Hinzufügen des Zutatenblocks:", error);
+}
+ // Initialer Aufruf, um mindestens einen Zutatenblock hinzuzufügen
 });
 function addZutatBlock() {
     const container = document.getElementById('zutatenContainer');
@@ -102,44 +68,38 @@ function addZutatBlock() {
     newZutatBlock.classList.add('zutatBlock');
     container.appendChild(newZutatBlock);
 
-    // Laden des HTML-Contents über zutatenFormular.php
-    fetch('../templates/zutatenFormular.php')
-    .then(response => response.text())
-    .then(htmlContent => {
-        // HTML-Content anpassen, um eindeutige Namen für die Inputs zu setzen
-        const modifiedHtmlContent = htmlContent.replace(/name="zutaten_name"/g, `name="zutaten[${newIndex}][name]"`)
-                                               .replace(/id="zutaten_name"/g, `id="zutaten_name_${newIndex}"`)
-                                               .replace(/for="zutaten_name"/g, `for="zutaten_name_${newIndex}"`);
+    // HTML für das Namens- und Mengenfeld sowie das Dropdown für die Einheiten
+    const zutatBlockHTML = `
+        <label for="zutaten_${newIndex}_name">Name:</label>
+        <input type="text" id="zutaten_${newIndex}_name" name="zutaten[${newIndex}][name]" required><br><br>
         
-        // HTML für das angepasste Namensfeld setzen
-        newZutatBlock.innerHTML = modifiedHtmlContent;
+        <label for="zutaten_${newIndex}_menge">Menge:</label>
+        <input type="number" id="zutaten_${newIndex}_menge" name="zutaten[${newIndex}][menge]" required><br><br>
         
-        // HTML für das Mengenfeld direkt hinzufügen
-        const mengeHTML = `
-            <label for="zutaten_${newIndex}_menge">Menge:</label>
-            <input type="text" id="zutaten_${newIndex}_menge" name="zutaten[${newIndex}][menge]"><br><br>
-        `;
-        newZutatBlock.innerHTML += mengeHTML;
+        <label for="zutaten_${newIndex}_einheit">Einheit:</label>
+        <select id="zutaten_${newIndex}_einheit" name="zutaten[${newIndex}][einheit]" required>
+            <option value="">Bitte wählen</option>
+            <?php echo generateOptions('einheiten', 'id', 'name'); ?>
+        </select><br><br>
+    `;
+    
+    newZutatBlock.innerHTML = zutatBlockHTML;
+    
+    // Markierung hinzufügen und Listener für den neuen Block initialisieren
+    newZutatBlock.dataset.added = "true";
+    initInputListener(newZutatBlock, newIndex);
+    console.log("Zutatenblock wird hinzugefügt, Index:", newIndex);
 
-        // Event-Listener für das neue Block hinzufügen
-        initInputListener(newZutatBlock, newIndex);
-    })
-    .catch(error => console.error('Fehler beim Laden des Zutatenblocks:', error));
 }
-
 
 function initInputListener(block, index) {
-    const inputs = block.querySelectorAll('input');
-    inputs.forEach(input => {
-        input.addEventListener('input', function(event) {
-            // Prüfen, ob es der erste Input ist und ob ein weiterer Block hinzugefügt werden soll
-            const isInputFilled = event.target.value.trim() !== '';
-            const alreadyAdded = block.dataset.added === "true";
-            if (isInputFilled && !alreadyAdded) {
-                addZutatBlock();
-                block.dataset.added = "true"; // Markieren, dass ein neuer Block hinzugefügt wurde, um Doppelungen zu vermeiden
-            }
-        });
+    const input = block.querySelector(`#zutaten_${index}_name`);
+    input.addEventListener('input', function(event) {
+        const isInputFilled = event.target.value.trim() !== '';
+        if (isInputFilled && !block.nextSibling) {
+            addZutatBlock();
+        }
     });
 }
+
 </script>

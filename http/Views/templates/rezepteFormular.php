@@ -1,4 +1,4 @@
-    <?php
+<?php
     // Fehlerberichterstattung einschalten
     ini_set('display_errors', 1);
     ini_set('display_startup_errors', 1);
@@ -50,56 +50,3 @@
     </form>
     
 <Script src="../templates/formFunctions.js" ></Script>
-    <script >
-document.addEventListener("DOMContentLoaded", function() {
-    try {
-    addZutatBlock();
-} catch (error) {
-    console.error("Fehler beim Hinzufügen des Zutatenblocks:", error);
-}
- // Initialer Aufruf, um mindestens einen Zutatenblock hinzuzufügen
-});
-function addZutatBlock() {
-    const container = document.getElementById('zutatenContainer');
-    const newIndex = container.querySelectorAll('.zutatBlock').length;
-
-    // Erstellen des Zutatenblocks
-    const newZutatBlock = document.createElement('div');
-    newZutatBlock.classList.add('zutatBlock');
-    container.appendChild(newZutatBlock);
-
-    // HTML für das Namens- und Mengenfeld sowie das Dropdown für die Einheiten
-    const zutatBlockHTML = `
-        <label for="zutaten_${newIndex}_name">Name:</label>
-        <input type="text" id="zutaten_${newIndex}_name" name="zutaten[${newIndex}][name]" required><br><br>
-        
-        <label for="zutaten_${newIndex}_menge">Menge:</label>
-        <input type="number" id="zutaten_${newIndex}_menge" name="zutaten[${newIndex}][menge]" required><br><br>
-        
-        <label for="zutaten_${newIndex}_einheit">Einheit:</label>
-        <select id="zutaten_${newIndex}_einheit" name="zutaten[${newIndex}][einheit]" required>
-            <option value="">Bitte wählen</option>
-            <?php echo generateOptions('einheiten', 'id', 'name'); ?>
-        </select><br><br>
-    `;
-    
-    newZutatBlock.innerHTML = zutatBlockHTML;
-    
-    // Markierung hinzufügen und Listener für den neuen Block initialisieren
-    newZutatBlock.dataset.added = "true";
-    initInputListener(newZutatBlock, newIndex);
-    console.log("Zutatenblock wird hinzugefügt, Index:", newIndex);
-
-}
-
-function initInputListener(block, index) {
-    const input = block.querySelector(`#zutaten_${index}_name`);
-    input.addEventListener('input', function(event) {
-        const isInputFilled = event.target.value.trim() !== '';
-        if (isInputFilled && !block.nextSibling) {
-            addZutatBlock();
-        }
-    });
-}
-
-</script>

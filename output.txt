@@ -175,22 +175,86 @@ function generateOptions($tableName, $idColumn, $nameColumn, $isEinheiten = fals
 
 Path: ./http/Views/templates/formFunctions.js
 Content:
-logik
+function toggleForm(checkbox) {
+    var isChecked = checkbox ? checkbox.checked : false; // Sicherstellen, dass checkbox existiert
+    var alternativerNameContainer = document.querySelector('.alternativerNameContainer');
+    var restDesFormulars = document.querySelector('.restDesFormulars');
+    
+    if (alternativerNameContainer && restDesFormulars) {
+        alternativerNameContainer.style.display = isChecked ? 'block' : 'none';
+        restDesFormulars.style.display = isChecked ? 'none' : 'block';
+    }
+    // Setze oder entferne das 'required' Attribut basierend auf dem Zustand des Kontrollkästchens
+    var inputsAlternative = alternativerNameContainer.getElementsByTagName('input');
+    for (var i = 0; i < inputsAlternative.length; i++) {
+        inputsAlternative[i].required = isChecked; // Diese Felder sind nur erforderlich, wenn der Container sichtbar ist
+    }
+
+    var inputsRest = restDesFormulars.getElementsByTagName('input');
+    for (var i = 0; i < inputsRest.length; i++) {
+        if (inputsRest[i].type !== 'submit' && !inputsRest[i].classList.contains('volumen')) { // 'volumen' wird separat behandelt
+            inputsRest[i].required = !isChecked; // Diese Felder sind nur erforderlich, wenn der Container sichtbar ist
+        }
+    }
+
+    // Spezialfall für 'volumen', das nur erforderlich ist, wenn es sichtbar ist
+    var volumenInput = document.querySelector('.volumen');
+    if (volumenInput && volumenInput.closest('.volumen_block').style.display !== 'none') {
+        volumenInput.required = true;
+    } else if (volumenInput) {
+        volumenInput.required = false;
+    }
+    if (!checkbox) {
+        checkNeueEinheit(document.querySelector('.einheit_id').value);
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    // Initial setup
+    var checkbox = document.querySelector('.existiertUnterAnderemNamen');
+    if (checkbox) {
+        toggleForm(checkbox);
+    }
+    
+    // Bind change event listener to the units dropdown
+    var einheitDropdown = document.querySelector('.einheit_id');
+    if (einheitDropdown) {
+        einheitDropdown.addEventListener('change', function() {
+            checkNeueEinheit(this.value);
+        });
+    }
+
+    // Bind change event listener to the base unit dropdown
+    var basisEinheitDropdown = document.querySelector('.basisEinheit');
+    if (basisEinheitDropdown) {
+        basisEinheitDropdown.addEventListener('change', function() {
+            checkBasisEinheit(this.value);
+        });
+    }
+});
+
+function checkNeueEinheit(value) {
+    var neueEinheitFormular = document.querySelector('.neueEinheitFormular');
+    var volumenBlock = document.querySelector('.volumen_block');
+    var volumenInput = document.querySelector('.volumen');
+
+    // Toggle the new unit form visibility
+    neueEinheitFormular.style.display = value === "neuHinzufuegen" ? 'block' : 'none';
+
+    // Adjust visibility and required attribute for the volume input
+    volumenBlock.style.display = value === '2' || value === "neuHinzufuegen" ? 'block' : 'none';
+    volumenInput.required = volumenBlock.style.display === 'block';
+}
+
+function checkBasisEinheit(value) {
+    var volumenBlock = document.querySelector('.volumen_block');
+    var volumenInput = document.querySelector('.volumen');
+
+    if (volumenBlock && volumenInput) {
+        volumenBlock.style.display = value === 'Liter' ? 'block' : 'none';
+        volumenInput.required = value === 'Liter';
+    }
+}
 
 
-nur sichbare felder sind rqueret! 
-bei aufrufen soll zutatenName, Existiert die Zutat unter einem anderen Namen?,  Anderer Name:, unteranderem Name hizufüge, sichabr sein 
-
-
-das fomular soll abschick bar sein wenn 
-entweder
-A Name,Anderer Name gesetzt ist und "Existiert die Zutat unter einem anderen Namen?" abgehackt ist.
-B.1 Name, "Existiert die Zutat unter einem anderen Namen?" nicht abgehackt ist, Haltbarkeit,Planetary Health Diet Category,Kategorie, gestzt ist und Einheit auf Gramm oder ein einheit mit bassi gramm gestzt ist
-B.2 Name, "Existiert die Zutat unter einem anderen Namen?" nicht abgehackt ist, Haltbarkeit,Planetary Health Diet Category,Kategorie, gestzt ist und Einheit auf Liter oder ein einheit mit bassi Liter gestzt ist und das volumen angegbens ist
-B.2 Name, "Existiert die Zutat unter einem anderen Namen?" nicht abgehackt ist, Haltbarkeit,Planetary Health Diet Category,Kategorie, gestzt ist und Einheit auf speziet gestzt ist und der umrechungs faktor angegbens ist.
-B.3.a Name, "Existiert die Zutat unter einem anderen Namen?" nicht abgehackt ist, Haltbarkeit,Planetary Health Diet Category,Kategorie, gestzt ist und Einheit auf neue einheit gestzt ist und (Name, umrechungs Faktor und Bassiseiheit auf Gramm gestzt ist)
-B.3.b Name, "Existiert die Zutat unter einem anderen Namen?" nicht abgehackt ist, Haltbarkeit,Planetary Health Diet Category,Kategorie, gestzt ist und Einheit auf neue einheit gestzt ist und (Name, umrechungs Faktor und Bassiseiheit auf liter, oder auf liter bassiert gestzt ist und (volume gestzt ist))
-B.3.c Name, "Existiert die Zutat unter einem anderen Namen?" nicht abgehackt ist, Haltbarkeit,Planetary Health Diet Category,Kategorie, gestzt ist und Einheit auf neue einheit gestzt ist und (Name, umrechungs Faktor und Bassiseiheit auf seziel gestzt ist)
-
-gas ganze soll dynamisch programiert sein und schlüssel felder wie Existiert die "Zutat unter einem anderen Namen?", Einheit und "Basis Einheit" soll ein triger bekommen um dynamsich das fomular dem entsprechne anzupassen 
 

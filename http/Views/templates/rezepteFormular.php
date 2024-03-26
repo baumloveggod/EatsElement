@@ -32,12 +32,8 @@
     </form>
 
 <Script src="../templates/formFunctions.js" ></Script>  
-
-
     <script defer>
-    document.addEventListener("DOMContentLoaded", function() {
-    addZutatBlock(); // Initial ein Zutatenblock hinzufügen
-    });
+    
     document.addEventListener('input', function(event) {
         if (event.target && event.target.name.match(/^zutaten\[\d+\]\[name\]$/)) {
             const zutatenName = event.target.value;
@@ -167,22 +163,45 @@
             loadEinheiten(einheitenDropdown); // Laden der Einheiten für das neue Dropdown
         });
     });
+    document.addEventListener("DOMContentLoaded", function() {
+        addZutatBlock(); // Initial ein Zutatenblock hinzufügen
+    });
     function loadEinheiten(dropdown, zutatenName) {
-    if (!dropdown || !zutatenName) return; // Sicherstellen, dass Dropdown und Zutatenname vorhanden sind
+        if (!dropdown || !zutatenName) return; // Sicherstellen, dass Dropdown und Zutatenname vorhanden sind
 
-    fetch('/Controllers/ladeEinheiten.php?zutatenName=' + encodeURIComponent(zutatenName))
-        .then(response => response.json())
-        .then(data => {
-            dropdown.innerHTML = ''; // Leeren der bestehenden Optionen
-            data.forEach(einheit => {
-                const option = document.createElement('option');
-                option.value = einheit.id;
-                option.textContent = einheit.name;
-                dropdown.appendChild(option);
+        fetch('/Controllers/ladeEinheiten.php?zutatenName=' + encodeURIComponent(zutatenName))
+            .then(response => response.json())
+            .then(data => {
+                dropdown.innerHTML = ''; // Leeren der bestehenden Optionen
+                data.forEach(einheit => {
+                    const option = document.createElement('option');
+                    option.value = einheit.id;
+                    option.textContent = einheit.name;
+                    dropdown.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error:', error));
+    }
+    document.addEventListener("DOMContentLoaded", function() {
+        // Verweise auf die relevanten DOM-Elemente
+        const einheitDropdown = document.querySelector('.einheit_id');
+        const umrechnungsfaktorFeld = document.querySelector('.umrechnungsfaktorFeld');
+        const neueEinheitFormular = document.querySelector('.neueEinheitFormular');
+
+        // Event-Listener für Änderungen an der Einheitsauswahl
+        einheitDropdown.addEventListener('change', function() {
+            const istGramm = einheitDropdown.selectedOptions[0].text === 'Gramm';
+            
+            // Anzeigen/Verbergen der relevanten Felder basierend auf der Auswahl
+            umrechnungsfaktorFeld.style.display = istGramm ? 'none' : 'block';
+            neueEinheitFormular.style.display = istGramm ? 'none' : 'block';
+
+            // Anpassen der 'required'-Attribute basierend auf der Auswahl
+            umrechnungsfaktorFeld.querySelectorAll('input').forEach(input => {
+                input.required = !istGramm;
             });
-        })
-        .catch(error => console.error('Error:', error));
-}
+        });
+    });
 
 // Initial das Laden der Einheiten für den ersten Block auslösen
     document.addEventListener('DOMContentLoaded', function() {

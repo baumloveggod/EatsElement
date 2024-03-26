@@ -1,3 +1,68 @@
+Path: http\Controllers\ladeEinheiten.php
+Content:
+<?php
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
+    require_once __DIR__ . '/../Utils/db_connect.php';
+    require_once __DIR__ . '/../Utils/SessionManager.php';
+    checkUserAuthentication();
+
+    if ($_SERVER['REQUEST_METHOD'] == 'GET') {
+        $zutatenName = $_GET['zutatenName'];
+    
+    
+    $einheiten = [];
+
+    // Prüfen, ob die Zutat bekannt ist
+    if ($zutatenName) {
+        $sql = "SELECT z.einheit_id, e.name, e.basis_einheit_id FROM zutaten_namen zn 
+                JOIN zutaten z ON zn.zutat_id = z.id 
+                JOIN einheiten e ON z.einheit_id = e.id 
+                WHERE zn.name = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("s", $zutatenName);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $zutatInfo = $result->fetch_assoc();
+
+        if ($zutatInfo) {
+            // Spezielle Logik für bekannte Zutat
+            if ($zutatInfo['basis_einheit_id'] != null) {
+                // Einheiten für spezifische Basiseinheit laden (z.B. Gramm oder Liter)
+                $sql = "SELECT id, name FROM einheiten WHERE id = ? OR basis_einheit_id = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param("ii", $zutatInfo['einheit_id'], $zutatInfo['basis_einheit_id']);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                while ($row = $result->fetch_assoc()) {
+                    $einheiten[] = $row;
+                }
+            } else {
+                // Nur die spezifische Einheit der Zutat anzeigen
+                $einheiten[] = ['id' => $zutatInfo['einheit_id'], 'name' => $zutatInfo['name']];
+            }
+        } else {
+            // Zutat ist unbekannt: Alle Einheiten laden
+            $sql = "SELECT id, name FROM einheiten";
+            $result = $conn->query($sql);
+            while ($row = $result->fetch_assoc()) {
+                $einheiten[] = $row;
+            }
+        }
+    } else {
+        // Zutat ist unbekannt: Alle Einheiten laden
+        $sql = "SELECT id, name FROM einheiten";
+        $result = $conn->query($sql);
+        while ($row = $result->fetch_assoc()) {
+            $einheiten[] = $row;
+        }
+    }
+
+    echo json_encode($einheiten);
+
+}
+
 Path: ./http/Views/pages/rezepte.php
 Content:
 <?php
@@ -212,25 +277,7 @@ Content:
     // Verbindung zur Datenbank herstellen
     require_once '../../Utils/db_connect.php';
 
-    // Funktion zum Überprüfen der Existenz einer Zutat und Rückgabe eines JSON-Objekts für die Autovervollständigung
-    if(isset($_GET['action']) && $_GET['action'] == 'checkZutat' && !empty($_GET['zutatName'])) {
-        $zutatName = $_GET['zutatName'];
-
-        $stmt = $conn->prepare("SELECT id, name FROM zutaten_namen WHERE name LIKE ?");
-        $searchTerm = "%" . $zutatName . "%";
-        $stmt->bind_param("s", $searchTerm);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        $zutaten = [];
-        while($row = $result->fetch_assoc()) {
-            $zutaten[] = ['id' => $row['id'], 'name' => $row['name']];
-        }
-
-        echo json_encode($zutaten);
-        exit;
-    }
-    ?>
+?>
     <form action="rezepte_post.php" method="post" enctype="multipart/form-data">
         <label for="titel">Titel:</label><br>
         <input type="text" id="titel" name="titel" required><br>
@@ -253,7 +300,165 @@ Content:
 
         <input type="submit" value="Rezept Hinzufügen">
     </form>
-    
+
 <Script src="../templates/formFunctions.js" ></Script>
 
+
+    <script defer>
+    document.addEventListener("DOMContentLoaded", function() {
+    addZutatBlock(); // Initial ein Zutatenblock hinzufügen
+    });
+    document.addEventListener('input', function(event) {
+        if (event.target && event.target.name.match(/^zutaten\[\d+\]\[name\]$/)) {
+            const zutatenName = event.target.value;
+            const zutatBlockIndex = event.target.closest('.zutatBlock').dataset.index;
+            const einheitenDropdown = document.getElementById(`einheit_id_${zutatBlockIndex}`);
+            if (einheitenDropdown) {
+                loadEinheiten(einheitenDropdown, zutatenName);
+            }
+        }
+    }); 
+    function addZutatBlock() {
+        const container = document.getElementById('zutatenContainer');
+        const newIndex = container.querySelectorAll('.zutatBlock').length;
+
+        const zutatBlock = document.createElement('div');
+        zutatBlock.classList.add('zutatBlock');
+        zutatBlock.dataset.index = newIndex;
+
+        zutatBlock.innerHTML = `
+            <label>Zutatenname:</label>
+            <input type="text" name="zutaten[${newIndex}][name]" required>
+
+            <label>Menge:</label>
+            <input type="text" name="zutaten[${newIndex}][menge]" required>
+
+            <label>Einheit:</label>
+            <select id="einheit_id_${newIndex}" name="zutaten[${newIndex}][einheit_id]">
+                <!-- Optionen werden dynamisch geladen -->
+            </select>
+
+
+            <button type="button" class="removeZutat" style="display: none;">Entfernen</button>
+        `;
+
+        container.appendChild(zutatBlock);
+
+        const inputs = zutatBlock.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.addEventListener('input', handleInput);
+        });
+
+        const removeBtn = zutatBlock.querySelector('.removeZutat');
+        removeBtn.addEventListener('click', function() {
+            removeZutatBlock(zutatBlock);
+        });
+        // Hier, nachdem der zutatBlock dem DOM hinzugefügt wurde:
+        loadEinheiten(document.getElementById(`einheit_id_${newIndex}`)); // Laden der Einheiten für das neu erstellte Dropdown
+    }
+    function handleInput(event) {
+        const zutatBlock = event.target.closest('.zutatBlock');
+        const index = parseInt(zutatBlock.dataset.index);
+        const container = document.getElementById('zutatenContainer');
+        const totalBlocks = container.querySelectorAll('.zutatBlock').length;
+        const nextIndex = index + 1;
+
+        if (index === totalBlocks - 1) {
+            addZutatBlock(); // Fügt einen neuen Block hinzu, wenn im letzten Block getippt wird
+        }
+
+        // Entfernen-Button anzeigen, wenn ein Feld ausgefüllt wird
+        const removeBtn = zutatBlock.querySelector('.removeZutat');
+        if (event.target.value.trim() !== '') {
+            removeBtn.style.display = 'inline';
+        } else {
+            // Prüfen, ob alle Felder im Block leer sind, bevor der Entfernen-Button versteckt wird
+            const inputsFilled = Array.from(zutatBlock.querySelectorAll('input')).some(input => input.value.trim() !== '');
+            if (!inputsFilled) {
+                removeBtn.style.display = 'none';
+            }
+        }
+    }
+    function removeZutatBlock(block) {
+        const container = document.getElementById('zutatenContainer');
+        block.remove();
+
+        // Neuzuordnung der Indizes und Aktualisierung der name-Attribute für verbleibende Blöcke
+        const remainingBlocks = container.querySelectorAll('.zutatBlock');
+        remainingBlocks.forEach((block, newIndex) => {
+            block.dataset.index = newIndex;
+            const inputs = block.querySelectorAll('input');
+            const select = block.querySelector('select');
+
+            inputs.forEach(input => {
+                const name = input.name;
+                const newName = name.replace(/\[\d+\]/, `[${newIndex}]`); // Ersetzen des Index im Namen
+                input.name = newName;
+            });
+
+            if (select) {
+                const name = select.name;
+                const newName = name.replace(/\[\d+\]/, `[${newIndex}]`);
+                select.name = newName;
+                select.id = `einheit_id_${newIndex}`; // Aktualisiere auch die ID des select-Elements
+            }
+        });
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        document.body.addEventListener('change', function(event) {
+            if (event.target && event.target.matches("#zutatenName")) {
+                const zutatenName = event.target.value;
+                
+                // Assuming your fetch logic here is correct and 'Controllers\ladeEinheiten.php' is accessible,
+                // you might need to adjust the path to match your project structure.
+                fetch('/Controllers/ladeEinheiten.php?zutatenName=' + encodeURIComponent(zutatenName))
+                    .then(response => response.json())
+                    .then(data => {
+                        const einheitenDropdown = document.getElementById('einheit_id');
+                        if (einheitenDropdown) { // Ensure the dropdown exists
+                            einheitenDropdown.innerHTML = ''; // Clear existing options
+                            data.forEach(einheit => {
+                                const option = document.createElement('option');
+                                option.value = einheit.id;
+                                option.textContent = einheit.name;
+                                einheitenDropdown.appendChild(option);
+                            });
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+            }
+        });
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+        const addZutatBtn = document.getElementById('addZutat');
+        addZutatBtn.addEventListener('click', function() {
+            const newIndex = document.querySelectorAll('.zutatBlock').length - 1; // Holen des aktuellen Index
+            const einheitenDropdown = document.getElementById(`einheit_id_${newIndex}`);
+            loadEinheiten(einheitenDropdown); // Laden der Einheiten für das neue Dropdown
+        });
+    });
+    function loadEinheiten(dropdown, zutatenName) {
+    if (!dropdown || !zutatenName) return; // Sicherstellen, dass Dropdown und Zutatenname vorhanden sind
+
+    fetch('/Controllers/ladeEinheiten.php?zutatenName=' + encodeURIComponent(zutatenName))
+        .then(response => response.json())
+        .then(data => {
+            dropdown.innerHTML = ''; // Leeren der bestehenden Optionen
+            data.forEach(einheit => {
+                const option = document.createElement('option');
+                option.value = einheit.id;
+                option.textContent = einheit.name;
+                dropdown.appendChild(option);
+            });
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+// Initial das Laden der Einheiten für den ersten Block auslösen
+    document.addEventListener('DOMContentLoaded', function() {
+        const initialDropdown = document.getElementById('einheit_id_0');
+        loadEinheiten(initialDropdown);
+    });
+
+</script>
 

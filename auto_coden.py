@@ -89,7 +89,7 @@ def git_commit_and_push(commit_message):
 #,''altes_zutaten.php',
 b = ['./http/Views/templates/zutatenFunctions.js','./http/Views/pages/rezepte.php','./http/Views/templates/rezepteFormular.php','./http/Views/templates/rezepte_post.php','./http/Views/templates/einheiten.html','./http/Views/templates/zutaten_post.php','./http/Views/templates/zutatenFormular.php','./http/Views/templates/einheitenFormular.php','./http/Views/pages/einheiten.php', './http/Views/pages/zutaten.php','sql_create']
 # Main script
-a = ['./http/Views/pages/rezepte.php','./http/Views/templates/zutatenFormular.php','./http/Views/templates/rezepteFormular.php','./http/Views/templates/zutatenFunctions.js']
+a = ['http\Controllers\ladeEinheiten.php','./http/Views/pages/rezepte.php','./http/Views/templates/zutatenFormular.php','./http/Views/templates/rezepteFormular.php','./http/Views/templates/zutatenFunctions.js']
 c = ['./http']
 write_file_info_to_output(a, 'output.txt')
 changed_files = get_git_changes()

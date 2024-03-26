@@ -28,34 +28,54 @@
         <?php require '../templates/zutatenFormular.php';?>
         <h2>Vorhandene Zutaten</h2>
         <?php
-// Vorhandene Zutaten auflisten mit Anpassungen
-$sql = "SELECT zutaten.id, 
-               GROUP_CONCAT(zutaten_namen.name SEPARATOR ', ') AS names, 
-               zutaten.uebliche_haltbarkeit, 
-               zutaten.volumen, 
-               kategorien.name AS kategorie_name, 
-               Planetary_Health_Diet_Categories.Kategorie AS phd_kategorie_name, 
-               einheiten.name AS einheit_name
-        FROM zutaten 
-        JOIN zutaten_namen ON zutaten.id = zutaten_namen.zutat_id
-        JOIN kategorien ON zutaten.kategorie_id = kategorien.id
-        JOIN Planetary_Health_Diet_Categories ON zutaten.phd_kategorie_id = Planetary_Health_Diet_Categories.ID
-        JOIN einheiten ON zutaten.einheit_id = einheiten.id
-        GROUP BY zutaten.id
-        ORDER BY names ASC";
+$sql = "SELECT 
+zutaten.id, 
+IFNULL(GROUP_CONCAT(zutaten_namen.name SEPARATOR ', '), 'Kein Name vorhanden') AS names, 
+zutaten.uebliche_haltbarkeit, 
+zutaten.volumen, 
+kategorien.name AS kategorie_name, 
+Planetary_Health_Diet_Categories.Kategorie AS phd_kategorie_name, 
+einheiten.name AS einheit_name
+FROM 
+zutaten 
+LEFT JOIN zutaten_namen ON zutaten.id = zutaten_namen.zutat_id
+LEFT JOIN kategorien ON zutaten.kategorie_id = kategorien.id
+LEFT JOIN Planetary_Health_Diet_Categories ON zutaten.phd_kategorie_id = Planetary_Health_Diet_Categories.ID
+LEFT JOIN einheiten ON zutaten.einheit_id = einheiten.id
+GROUP BY 
+zutaten.id 
+ORDER BY    
+names ASC";
 
+
+if ($conn->error) {
+    die("SQL-Abfrage fehlgeschlagen: " . $conn->error);
+}
 $result = $conn->query($sql);
+if (!$result) {
+    die("Fehler bei der Ausführung der Abfrage: " . $conn->error);
+}
+
+echo "Anzahl der gefundenen Zeilen: " . $result->num_rows;
 
 if ($result->num_rows > 0) {
     echo "<table border='1'>";
     echo "<tr><th>Namen</th><th>Haltbarkeit (Tage)</th><th>Volumen</th><th>Kategorie</th><th>PHD Kategorie</th><th>Einheit</th></tr>";
     while ($row = $result->fetch_assoc()) {
-        echo "<tr><td>" . htmlspecialchars($row['names']) . "</td><td>" . htmlspecialchars($row['uebliche_haltbarkeit']) . "</td><td>" . htmlspecialchars($row['volumen'] ?? '') . "</td><td>" . htmlspecialchars($row['kategorie_name']) . "</td><td>" . htmlspecialchars($row['phd_kategorie_name']) . "</td><td>" . htmlspecialchars($row['einheit_name']) . "</td></tr>";
+        echo "<tr>";
+        echo "<td>" . (isset($row['names']) ? htmlspecialchars($row['names']) : 'Kein Name vorhanden') . "</td>";
+        echo "<td>" . (isset($row['uebliche_haltbarkeit']) ? htmlspecialchars($row['uebliche_haltbarkeit']) : 'N/A') . "</td>";
+        echo "<td>" . (isset($row['volumen']) ? htmlspecialchars($row['volumen']) : 'N/A') . "</td>";
+        echo "<td>" . (isset($row['kategorie_name']) ? htmlspecialchars($row['kategorie_name']) : 'Keine Kategorie') . "</td>";
+        echo "<td>" . (isset($row['phd_kategorie_name']) ? htmlspecialchars($row['phd_kategorie_name']) : 'Keine PHD Kategorie') . "</td>";
+        echo "<td>" . (isset($row['einheit_name']) ? htmlspecialchars($row['einheit_name']) : 'Keine Einheit') . "</td>";
+        echo "</tr>";
     }
     echo "</table>";
 } else {
     echo "Keine Zutaten gefunden.";
 }
+
 ?>
  </body>
  </html>

@@ -1,606 +1,67 @@
-Path: ./http/Views/pages/rezepte.php
+Path: http\Controllers\ladeEinheiten.php
 Content:
 <?php
-// Fehlerberichterstattung einschalten
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-// Verbindung zur Datenbank herstellen
-require_once '../../Utils/db_connect.php';
-
-require_once '../templates/rezepte_post.php';
-?>
-
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <title>Rezept Hinzufügen</title>
-</head>
-<body>
-    <h2>Neues Rezept hinzufügen</h2>
-    <?php include '../templates/rezepteFormular.php'; ?>
-
-    <h2>Vorhandene Rezepte</h2>
-    <table border="1">
-        <tr>
-            <th>Titel</th>
-            <th>Autor</th>
-            <th>Untertitel</th>
-            <th>Zubereitungszeit</th>
-            <th>Personenanzahl</th>
-            <th>Bilder</th>
-            <th>Zutaten</th>
-        </tr>
-        <?php
-        $sql = "SELECT 
-        r.id, 
-        r.titel, 
-        r.autor, 
-        r.untertitel, 
-        r.bilder, 
-        r.beschreibung, 
-        r.zubereitungszeit, 
-        r.basis_personenanzahl, 
-        zn.name AS zutaten_name, 
-        rz.menge, 
-        e.name AS einheit
-    FROM 
-        rezepte r
-    LEFT JOIN 
-        rezept_zutaten rz ON r.id = rz.rezept_id
-    LEFT JOIN 
-        zutaten z ON rz.zutat_id = z.id
-    LEFT JOIN 
-        zutaten_namen zn ON z.id = zn.zutat_id
-    LEFT JOIN 
-        einheiten e ON rz.einheit_id = e.id
-    GROUP BY 
-        r.id, rz.zutat_id
-    ORDER BY 
-        r.id, zn.name;
-    ";
-        $result = $conn->query($sql);
-
-        $rezepte = [];
-        if ($result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                $rezeptId = $row['id'];
-                if (!isset($rezepte[$rezeptId])) {
-                    $rezepte[$rezeptId] = [
-                        'titel' => $row['titel'],
-                        'autor' => $row['autor'],
-                        'untertitel' => $row['untertitel'],
-                        'bilder' => $row['bilder'],
-                        'beschreibung' => $row['beschreibung'],
-                        'zubereitungszeit' => $row['zubereitungszeit'],
-                        'basis_personenanzahl' => $row['basis_personenanzahl'],
-                        'zutaten' => []
-                    ];
-                }
-                if ($row['zutaten_name']) { // Überprüfen, ob der Eintrag eine Zutat hat
-                    $rezepte[$rezeptId]['zutaten'][] = htmlspecialchars($row['zutaten_name']) . " " . htmlspecialchars($row['menge']) . " " . htmlspecialchars($row['einheit']);
-                }
-            }
-
-            foreach ($rezepte as $rezept) {
-                echo "<tr>";
-                echo "<td>" . htmlspecialchars($rezept['titel']?? '') . "</td>";
-                echo "<td>" . htmlspecialchars($rezept['autor']?? '') . "</td>";
-                echo "<td>" . htmlspecialchars($rezept['untertitel']?? '') . "</td>";
-                echo "<td>" . htmlspecialchars($rezept['zubereitungszeit']?? '') . " Minuten</td>";
-                echo "<td>" . htmlspecialchars($rezept['basis_personenanzahl']?? '') . "</td>";
-                echo "<td>";
-                if ($rezept['bilder']) {
-                    $bilder = explode(',', $rezept['bilder']);
-                    foreach ($bilder as $bild) {
-                        echo "<img src='" . htmlspecialchars($bild ?? '') . "' alt='Bild' height='100' /> ";
-                    }
-                }
-                echo "</td>";
-                echo "<td>" . implode(', ', $rezept['zutaten']?? '') . "</td>";
-                echo "</tr>";
-            }
-        } else {
-            echo "<tr><td colspan='7'>Keine Rezepte gefunden.</td></tr>";
-        }
-        ?>
-    </table>
-</body>
-</html>
-
-
-Path: ./http/Views/templates/rezepteFormular.php
-Content:
-<?php
-    // Fehlerberichterstattung einschalten
     ini_set('display_errors', 1);
     ini_set('display_startup_errors', 1);
     error_reporting(E_ALL);
+    require_once __DIR__ . '/../Utils/db_connect.php';
+    require_once __DIR__ . '/../Utils/SessionManager.php';
+    checkUserAuthentication();
 
-    // Verbindung zur Datenbank herstellen
-    require_once '../../Utils/db_connect.php';
-
-?>
-    <form action="rezepte_post.php" method="post" enctype="multipart/form-data">
-        <label for="titel">Titel:</label><br>
-        <input type="text" id="titel" name="titel" required><br>
-
-        <label for="untertitel">Untertitel:</label><br>
-        <input type="text" id="untertitel" name="untertitel"><br>
-
-        <label for="zubereitungszeit">Zubereitungszeit (in Minuten):</label><br>
-        <input type="number" id="zubereitungszeit" name="zubereitungszeit" required><br>
-
-        <label for="basis_personenanzahl">Basis Personenanzahl:</label><br>
-        <input type="number" id="basis_personenanzahl" name="basis_personenanzahl" required><br>
-
-        <label for="bilder">Bilder:</label><br>
-        <input type="file" id="bilder" name="bilder"><br>
-
-        <div id="zutatenContainer">
-        </div>
-        <br>
-
-        <input type="submit" value="Rezept Hinzufügen">
-    </form>
-
-<Script src="../templates/formFunctions.js" ></Script>
-
-
-    <script defer>
-    document.addEventListener("DOMContentLoaded", function() {
-    addZutatBlock(); // Initial ein Zutatenblock hinzufügen
-    });
-    document.addEventListener('input', function(event) {
-        if (event.target && event.target.name.match(/^zutaten\[\d+\]\[name\]$/)) {
-            const zutatenName = event.target.value;
-            const zutatBlockIndex = event.target.closest('.zutatBlock').dataset.index;
-            const einheitenDropdown = document.getElementById(`einheit_id_${zutatBlockIndex}`);
-            if (einheitenDropdown) {
-                loadEinheiten(einheitenDropdown, zutatenName);
-            }
-        }
-    }); 
-    function addZutatBlock() {
-        const container = document.getElementById('zutatenContainer');
-        const newIndex = container.querySelectorAll('.zutatBlock').length;
-
-        const zutatBlock = document.createElement('div');
-        zutatBlock.classList.add('zutatBlock');
-        zutatBlock.dataset.index = newIndex;
-
-        zutatBlock.innerHTML = `
-            <label>Zutatenname:</label>
-            <input type="text" name="zutaten[${newIndex}][name]" required>
-
-            <label>Menge:</label>
-            <input type="text" name="zutaten[${newIndex}][menge]" required>
-
-            <label>Einheit:</label>
-            <select id="einheit_id_${newIndex}" name="zutaten[${newIndex}][einheit_id]">
-                <!-- Optionen werden dynamisch geladen -->
-            </select>
-
-
-            <button type="button" class="removeZutat" style="display: none;">Entfernen</button>
-        `;
-
-        container.appendChild(zutatBlock);
-
-        const inputs = zutatBlock.querySelectorAll('input');
-        inputs.forEach(input => {
-            input.addEventListener('input', handleInput);
-        });
-
-        const removeBtn = zutatBlock.querySelector('.removeZutat');
-        removeBtn.addEventListener('click', function() {
-            removeZutatBlock(zutatBlock);
-        });
-        // Hier, nachdem der zutatBlock dem DOM hinzugefügt wurde:
-        loadEinheiten(document.getElementById(`einheit_id_${newIndex}`)); // Laden der Einheiten für das neu erstellte Dropdown
-    }
-    function handleInput(event) {
-        const zutatBlock = event.target.closest('.zutatBlock');
-        const index = parseInt(zutatBlock.dataset.index);
-        const container = document.getElementById('zutatenContainer');
-        const totalBlocks = container.querySelectorAll('.zutatBlock').length;
-        const nextIndex = index + 1;
-
-        if (index === totalBlocks - 1) {
-            addZutatBlock(); // Fügt einen neuen Block hinzu, wenn im letzten Block getippt wird
-        }
-
-        // Entfernen-Button anzeigen, wenn ein Feld ausgefüllt wird
-        const removeBtn = zutatBlock.querySelector('.removeZutat');
-        if (event.target.value.trim() !== '') {
-            removeBtn.style.display = 'inline';
-        } else {
-            // Prüfen, ob alle Felder im Block leer sind, bevor der Entfernen-Button versteckt wird
-            const inputsFilled = Array.from(zutatBlock.querySelectorAll('input')).some(input => input.value.trim() !== '');
-            if (!inputsFilled) {
-                removeBtn.style.display = 'none';
-            }
-        }
-    }
-    function removeZutatBlock(block) {
-        const container = document.getElementById('zutatenContainer');
-        block.remove();
-
-        // Neuzuordnung der Indizes und Aktualisierung der name-Attribute für verbleibende Blöcke
-        const remainingBlocks = container.querySelectorAll('.zutatBlock');
-        remainingBlocks.forEach((block, newIndex) => {
-            block.dataset.index = newIndex;
-            const inputs = block.querySelectorAll('input');
-            const select = block.querySelector('select');
-
-            inputs.forEach(input => {
-                const name = input.name;
-                const newName = name.replace(/\[\d+\]/, `[${newIndex}]`); // Ersetzen des Index im Namen
-                input.name = newName;
-            });
-
-            if (select) {
-                const name = select.name;
-                const newName = name.replace(/\[\d+\]/, `[${newIndex}]`);
-                select.name = newName;
-                select.id = `einheit_id_${newIndex}`; // Aktualisiere auch die ID des select-Elements
-            }
-        });
-    }
-    document.addEventListener('DOMContentLoaded', function() {
-        document.body.addEventListener('change', function(event) {
-            if (event.target && event.target.matches("#zutatenName")) {
-                const zutatenName = event.target.value;
-                
-                // Assuming your fetch logic here is correct and 'Controllers\ladeEinheiten.php' is accessible,
-                // you might need to adjust the path to match your project structure.
-                fetch('/Controllers/ladeEinheiten.php?zutatenName=' + encodeURIComponent(zutatenName))
-                    .then(response => response.json())
-                    .then(data => {
-                        const einheitenDropdown = document.getElementById('einheit_id');
-                        if (einheitenDropdown) { // Ensure the dropdown exists
-                            einheitenDropdown.innerHTML = ''; // Clear existing options
-                            data.forEach(einheit => {
-                                const option = document.createElement('option');
-                                option.value = einheit.id;
-                                option.textContent = einheit.name;
-                                einheitenDropdown.appendChild(option);
-                            });
-                        }
-                    })
-                    .catch(error => console.error('Error:', error));
-            }
-        });
-    });
-    document.addEventListener('DOMContentLoaded', function() {
-        const addZutatBtn = document.getElementById('addZutat');
-        addZutatBtn.addEventListener('click', function() {
-            const newIndex = document.querySelectorAll('.zutatBlock').length - 1; // Holen des aktuellen Index
-            const einheitenDropdown = document.getElementById(`einheit_id_${newIndex}`);
-            loadEinheiten(einheitenDropdown); // Laden der Einheiten für das neue Dropdown
-        });
-    });
-    function loadEinheiten(dropdown, zutatenName) {
-    if (!dropdown || !zutatenName) return; // Sicherstellen, dass Dropdown und Zutatenname vorhanden sind
-
-    fetch('/Controllers/ladeEinheiten.php?zutatenName=' + encodeURIComponent(zutatenName))
-        .then(response => response.json())
-        .then(data => {
-            dropdown.innerHTML = ''; // Leeren der bestehenden Optionen
-            data.forEach(einheit => {
-                const option = document.createElement('option');
-                option.value = einheit.id;
-                option.textContent = einheit.name;
-                dropdown.appendChild(option);
-            });
-        })
-        .catch(error => console.error('Error:', error));
-}
-
-// Initial das Laden der Einheiten für den ersten Block auslösen
-    document.addEventListener('DOMContentLoaded', function() {
-        const initialDropdown = document.getElementById('einheit_id_0');
-        loadEinheiten(initialDropdown);
-    });
-
-</script>
-
-Path: ./http/Views/templates/rezepte_post.php
-Content:
-
-
-Path: ./http/Views/templates/zutaten_post.php
-Content:
-<?php
-// Fehlerberichterstattung einschalten
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-// Verbindung zur Datenbank herstellen
-require_once '../../Utils/db_connect.php';
-
-require '../templates/einheiten_post.php';
-
-// Überprüfen, ob das Formular gesendet wurde
-function insert_into_Zutaten() {
-    // Überprüfen, ob das Formular gesendet wurde und die Aktion "Zutat Unter Anderem Namen Hinzufügen" ist
-    if (isset($_POST['aktion_name']) && $_POST['aktion_name'] === "Zutat Unter Anderem Namen Hinzufügen") {
- // Daten aus dem Formular holen
- $alternativerName = $_POST['alternativerName'];
-
- // Suche nach einer Zutat mit dem alternativen Namen
- $stmt = $conn->prepare("SELECT zutat_id FROM zutaten_namen WHERE name = ?");
- $stmt->bind_param("s", $alternativerName);
- $stmt->execute();
- $result = $stmt->get_result();
-
- if ($result->num_rows > 0) {
-     // Zutat existiert, also füge den neuen Namen hinzu
-     $row = $result->fetch_assoc();
-     $zutatId = $row['zutat_id'];
-
-     // Neuen Namen zur zutaten_namen Tabelle hinzufügen
-     $zutaten_name = $_POST['zutaten_name']; // Der "neue" Name der Zutat
-     $stmt = $conn->prepare("INSERT INTO zutaten_namen (name, zutat_id) VALUES (?, ?)");
-     $stmt->bind_param("si", $zutaten_name, $zutatId);
-     if ($stmt->execute()) {
-  echo "<p>Neuer Name erfolgreich hinzugefügt.</p>";
-     } else {
-  echo "<p>Fehler beim Hinzufügen des neuen Namens: " . $stmt->error . "</p>";
-     }
- } else {
-     // Zutat nicht gefunden
-     echo "<p>Die Zutat unter dem Namen '$alternativerName' wurde nicht gefunden. Bitte überprüfen Sie den Namen und versuchen Sie es erneut.</p>";
- }
+    if ($_SERVER['REQUEST_METHOD'] == 'GET') {
+        $zutatenName = $_GET['zutatenName'];
     
- $stmt->close();
-    }else{
- //zutaten_name : alternativerName : haltbarkeit : kategorie_id : phd_kategorie_id : einheit_id : name : einheit_umrechnungsfaktor : basisEinheit : umrechnungsfaktor : volumen
- foreach ($_POST as $a => $value) {
-     echo $a . " : ";
- }
- 
- if ($_POST['einheit_id'] === 'neuHinzufuegen') {
-  
-     // Führe die Funktion zum Hinzufügen der neuen Einheit aus und erhalte die neue Einheits-ID
-     $einheit_id = insert_into_Eineheiten();
- }
- else{
-     $einheit_id = $_POST['einheit_id'];
- }
- $hatSpezifischenUmrechnungsfaktor = $_POST['basisEinheit'] === 'speziell';
- $haltbarkeit = $_POST['haltbarkeit'] ?? null;
- $volumen = $_POST['volumen'] ?? null;
- $kategorie_id = $_POST['kategorie_id'] ?? null;
- $phd_kategorie_id = $_POST['phd_kategorie_id'] ?? null;
- $spezifischer_umrechnungsfaktor = ($hatSpezifischenUmrechnungsfaktor) ? $_POST['einheit_id'] === 'neuHinzufuegen' ? $_POST['einheit_umrechnungsfaktor']:$_POST['umrechnungsfaktor'] : null;
-
- // Prepared Statement zum Hinzufügen der Zutat vorbereiten
- $stmt = $conn->prepare("INSERT INTO zutaten (uebliche_haltbarkeit, volumen, kategorie_id, phd_kategorie_id, einheit_id, spezifischer_umrechnungsfaktor) VALUES (?, ?, ?, ?, ?, ?)");
- echo $haltbarkeit . " : " .  $volumen . " : " . $kategorie_id . " : " . $phd_kategorie_id . " : " . $einheit_id . " : " . $spezifischer_umrechnungsfaktor;
- // Parameter binden
- $stmt->bind_param("idiiid", $haltbarkeit, $volumen, $kategorie_id, $phd_kategorie_id, $einheit_id, $spezifischer_umrechnungsfaktor);
-
-     // Versuchen, die Prepared Statement auszuführen
-     if ($stmt->execute()) {
-  if (empty($_POST['zutaten_name'])) {
-      echo "<p>Name is required.</p>";
-      // Handle the error appropriately - perhaps by not proceeding with the DB insert
-  }
-  $zutaten_name = $_POST['zutaten_name'];
-
-  // Assuming $stmt->execute() was successful and $name is the name of the ingredient
-  $zutatId = $conn->insert_id; // Retrieves the ID of the last inserted row
-  $stmt = $conn->prepare("INSERT INTO zutaten_namen (name, zutat_id) VALUES (?, ?)");
-  $stmt->bind_param("si", $zutaten_name, $zutatId);
-  if (!$stmt->execute()) {
-      echo "<p>Fehler beim Hinzufügen des Namens der Zutat: " . $stmt->error . "</p>";
-  }
-
-  echo "<p>Zutat erfolgreich hinzugefügt!</p>";
-     } else {
-  echo "<p>Fehler beim Hinzufügen der Zutat: " . $stmt->error . "</p>";
-     }
-
-     // Prepared Statement schließen
-     $stmt->close();
- }
-    }
-?>
-
-Path: ./http/Views/templates/zutatenFormular.php
-Content:
-<?php
-// Fehlerberichterstattung einschalten
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-// Verbindung zur Datenbank herstellen
-require_once '../../Utils/db_connect.php';
-
-require '../templates/einheiten_post.php';
-
-// Funktion, um Optionen für ein Dropdown-Menü zu generieren, erweitert um den speziellen Umrechnungsfaktor-Status
-function generateOptions($tableName, $idColumn, $nameColumn, $isEinheiten = false) {
-    global $conn;
-    $options = '';
-    $sql = $isEinheiten ? "SELECT $idColumn, $nameColumn, basis_einheit_id, hat_spezifischen_umrechnungsfaktor FROM $tableName ORDER BY $nameColumn ASC" : "SELECT $idColumn, $nameColumn FROM $tableName ORDER BY $nameColumn ASC";
-    $result = $conn->query($sql);
-    if ($result->num_rows > 0) {
-        while($row = $result->fetch_assoc()) {
-            if ($isEinheiten) {
-                $options .= "<option value='" . $row[$idColumn] . "' data-basis='" . $row['basis_einheit_id'] . "' data-spezifischer-umrechnungsfaktor='" . $row['hat_spezifischen_umrechnungsfaktor'] . "'>" . htmlspecialchars($row[$nameColumn]) . "</option>";
-            } else {
-                $options .= "<option value='" . $row[$idColumn] . "'>" . htmlspecialchars($row[$nameColumn]) . "</option>";
-            }
-        }
-    }
-    return $options;
-}
-?>
-<form action=<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?> method="post">
-    <label for="zutaten_name">Name:</label>
-    <input type="text" class="zutaten_name" name="zutaten_name"><br><br>
-    <div class="zutatenFormularContainer">
     
-        <label for="existiertUnterAnderemNamen">Existiert die Zutat unter einem anderen Namen?</label>
-        <input type="checkbox" class="existiertUnterAnderemNamen" name="existiertUnterAnderemNamen" onchange="toggleForm(this)" checked>
-        
-        <div class="alternativerNameContainer" style="display:block;">
-            <label for="alternativerName">Anderer Name:</label>
-            <input type="text" class="alternativerName" name="alternativerName"><br><br>
-            <input type="submit" name="aktion_name" value="Zutat Unter Anderem Namen Hinzufügen">
-        </div>
+    $einheiten = [];
 
-        <div class="restDesFormulars" style="display:none;">
+    // Prüfen, ob die Zutat bekannt ist
+    if ($zutatenName) {
+        $sql = "SELECT z.einheit_id, e.name, e.basis_einheit_id FROM zutaten_namen zn 
+                JOIN zutaten z ON zn.zutat_id = z.id 
+                JOIN einheiten e ON z.einheit_id = e.id 
+                WHERE zn.name = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("s", $zutatenName);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $zutatInfo = $result->fetch_assoc();
 
-            <label for="haltbarkeit">Haltbarkeit (in Tagen):</label>
-            <input type="number" class="haltbarkeit" name="haltbarkeit" ><br><br>
-      
-      
-            <label for="kategorie_id">Kategorie:</label>
-            <select class="kategorie_id" name="kategorie_id" >
-                <option value="">Bitte wählen</option>    
-                <?php echo generateOptions('kategorien', 'id', 'name'); ?>
-            </select><br><br>
-            
-            <label for="phd_kategorie_id">Planetary Health Diet Category:</label>
-            <select class="phd_kategorie_id" name="phd_kategorie_id" >
-                <option value="">Bitte wählen</option> 
-                <?php echo generateOptions('Planetary_Health_Diet_Categories', 'ID', 'Kategorie'); ?>
-            </select><br><br>
-            
-            <label for="einheit_id">Einheit:</label>
-            <select class="einheit_id" name="einheit_id">
-                <option value="">Bitte wählen</option>
-                <?php echo generateOptions('einheiten', 'id', 'name', true); ?>
-                <option value="neuHinzufuegen">Neu hinzufügen...</option>
-            </select><br><br>
-            
-            <div class="neueEinheitFormular" style="display:none;"> 
-                <?php require '../templates/einheitenFormular.html';?>
-            </div>
-            <div class="umrechnungsfaktorFeld" style="display: none;">
-                <label for="umrechnungsfaktor">Umrechnungsfaktor:</label>
-                <input type="number" class="umrechnungsfaktor" name="umrechnungsfaktor" step="0.01" required>
-                <div> bei "spezieller Basis" ist die Referenz immer Gramm</div><br><br>
-            </div>
-
-            <div class="volumen_block" style="display:none;">
-                <label for="volumen">Volumen:</label>
-                <input type="text" class="volumen" name="volumen">
-                Wichtig für PHD, da die Berechnung mit Gramm arbeitet<br><br>
-            </div>      
-        </div>
-    </div>
-    <input type="submit" value="Zutat Hinzufügen">   
-</form>
-
-
-Path: ./http/Views/templates/einheitenFormular.php
-Content:
-<label for="name">Name:</label>
-    <input type="text" id="name" name="name" ><br><br>
-    
-    <label for="einheit_umrechnungsfaktor">Umrechnungsfaktor:</label>
-    <input type="number" id="einheit_umrechnungsfaktor" name="einheit_umrechnungsfaktor" step="0.01" >
-    <div id="info_speziel"> bei "spezieler Bassis ist die referenc immer Gramm</div><br><br>
-    
-    <label for="basisEinheit">Basis Einheit:</label>
-    <select id="basisEinheit" name="basisEinheit">
-        <option value="">Bitte wählen</option>     
-        <option value="Liter">Liter</option>
-        <option value="Gramm">Gramm</option>
-        <option value="speziell">speziell</option>
-    </select><br><br>
-
-Path: ./http/Views/pages/einheiten.php
-Content:
-<?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-require_once '../../Utils/SessionManager.php';
-require_once '../../Utils/db_connect.php';
-checkUserAuthentication();
-
-
-include '../templates/einheiten_post.php';
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['name'], $_POST['umrechnungsfaktor'], $_POST['basisEinheit'])) {
-    insert_into_Eineheiten();
-}
-
-// Berechne die Anzahl der notwendigen Durchläufe für die paginierte Anzeige
-$countSql = "SELECT COUNT(id) AS total FROM einheiten";
-$countResult = $conn->query($countSql);
-$countRow = $countResult->fetch_assoc();
-$totalUnits = $countRow['total'];
-
-$batchSize = 5; // Festlegung der Anzahl der Einheiten pro Batch
-$loops = ceil($totalUnits / $batchSize); // Berechnung der Anzahl der Durchläufe
-?>
-
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <?php include '../templates/header.php'; ?>
-    <title>Einheiten Verwaltung</title>
-</head>
-<body>
-    <?php include '../templates/navigation.php'; ?>
-    
-    <main>
-        <h2>Einheiten Verwaltung</h2>
-        
-        <h3>Einheit hinzufügen</h3>
-        
-            <form action="" method="post">
-                <?php include '../templates/einheitenFormular.html';?>
-                <input type="submit" value="Einheit Hinzufügen" id="einheitHinzufuegenButton">
-            </form>
-
-        <h3>Vorhandene Einheiten</h3>
-        <table>
-            <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Umrechnungsfaktor</th>
-                        <th>Basis Einheit ID</th>
-                        <th>hat_spezifischen_umrechnungsfaktor</th>
-                    </tr>
-                </thead>
-            <tbody>
-                <?php 
-                for ($i = 0; $i < $loops; $i++) {
-                    $offset = $i * $batchSize;
-                    $sql = "SELECT id, name, umrechnungsfaktor_zu_basis, basis_einheit_id, hat_spezifischen_umrechnungsfaktor FROM einheiten ORDER BY name ASC LIMIT $offset, $batchSize";
-                    $result = $conn->query($sql);
-
-                    while ($row = $result->fetch_assoc()) {
-                        // Ausgabe jedes Datensatzes
-                        echo "<tr>";
-                        echo "<td>" . htmlspecialchars($row['name']) . "</td>";
-                        echo "<td>" . htmlspecialchars($row['umrechnungsfaktor_zu_basis']) . "</td>";
-                        echo "<td>" . (is_null($row['basis_einheit_id']) ? 'NULL' : htmlspecialchars($row['basis_einheit_id'])) . "</td>";
-                        echo "<td>" . (htmlspecialchars($row['hat_spezifischen_umrechnungsfaktor']) ? 'ja' : 'Nein') . "</td>";
-                        echo "</tr>";
-                    }
+        if ($zutatInfo) {
+            // Spezielle Logik für bekannte Zutat
+            if ($zutatInfo['basis_einheit_id'] != null) {
+                // Einheiten für spezifische Basiseinheit laden (z.B. Gramm oder Liter)
+                $sql = "SELECT id, name FROM einheiten WHERE id = ? OR basis_einheit_id = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param("ii", $zutatInfo['einheit_id'], $zutatInfo['basis_einheit_id']);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                while ($row = $result->fetch_assoc()) {
+                    $einheiten[] = $row;
                 }
-                ?>
-            </tbody>
-        </table>
+            } else {
+                // Nur die spezifische Einheit der Zutat anzeigen
+                $einheiten[] = ['id' => $zutatInfo['einheit_id'], 'name' => $zutatInfo['name']];
+            }
+        } else {
+            // Zutat ist unbekannt: Alle Einheiten laden
+            $sql = "SELECT id, name FROM einheiten";
+            $result = $conn->query($sql);
+            while ($row = $result->fetch_assoc()) {
+                $einheiten[] = $row;
+            }
+        }
+    } else {
+        // Zutat ist unbekannt: Alle Einheiten laden
+        $sql = "SELECT id, name FROM einheiten";
+        $result = $conn->query($sql);
+        while ($row = $result->fetch_assoc()) {
+            $einheiten[] = $row;
+        }
+    }
 
-    </main>
-    
-    <?php include '../templates/footer.php'; ?>
-</body>
-</html>
+    echo json_encode($einheiten);
 
+}
 
 Path: ./http/Views/pages/zutaten.php
 Content:
@@ -687,189 +148,183 @@ if ($result->num_rows > 0) {
  </html>
 
 
-Path: sql_create
+Path: ./http/Views/templates/zutatenFormular.php
 Content:
-CREATE TABLE users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL, -- Speichern Sie hier Hashes, nicht die tatsächlichen Passwörter
-    cookie_auth_token VARCHAR(255), -- Ein langes, zufälliges Token für die Authentifizierung via Cookie
-    freundes_token VARCHAR(255) UNIQUE,
-    einkaufsoption VARCHAR(255) DEFAULT 'ueblicheVerpackungsgroesse',
-    is_temporary BOOLEAN NOT NULL DEFAULT 0,
-    anzahl_personen_einstellung INT DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    current_editing_recipe_id INT DEFAULT NULL;
-);
+<?php
+// Fehlerberichterstattung einschalten
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-CREATE TABLE essenplan (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    datum DATE NOT NULL,
-    anzahl_personen INT NOT NULL,
-    rezept_id INT, 
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (rezept_id) REFERENCES rezepte(id)
-);
+// Verbindung zur Datenbank herstellen
+require_once '../../Utils/db_connect.php';
+
+require '../templates/einheiten_post.php';
+
+// Funktion, um Optionen für ein Dropdown-Menü zu generieren, erweitert um den speziellen Umrechnungsfaktor-Status
+function generateOptions($tableName, $idColumn, $nameColumn, $isEinheiten = false) {
+    global $conn;
+    $options = '';
+    $sql = $isEinheiten ? "SELECT $idColumn, $nameColumn, basis_einheit_id, hat_spezifischen_umrechnungsfaktor FROM $tableName ORDER BY $nameColumn ASC" : "SELECT $idColumn, $nameColumn FROM $tableName ORDER BY $nameColumn ASC";
+    $result = $conn->query($sql);
+    if ($result->num_rows > 0) {
+        while($row = $result->fetch_assoc()) {
+            if ($isEinheiten) {
+                $options .= "<option value='" . $row[$idColumn] . "' data-basis='" . $row['basis_einheit_id'] . "' data-spezifischer-umrechnungsfaktor='" . $row['hat_spezifischen_umrechnungsfaktor'] . "'>" . htmlspecialchars($row[$nameColumn]) . "</option>";
+            } else {
+                $options .= "<option value='" . $row[$idColumn] . "'>" . htmlspecialchars($row[$nameColumn]) . "</option>";
+            }
+        }
+    }
+    return $options;
+}
+?>
+<form action=<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?> method="post">
+    <label for="zutaten_name">Name:</label>
+    <input type="text" class="zutaten_name" name="zutaten_name"><br><br>
+    <div class="zutatenFormularContainer">
+    
+        <label for="existiertUnterAnderemNamen">Existiert die Zutat unter einem anderen Namen?</label>
+        <input type="checkbox" class="existiertUnterAnderemNamen" name="existiertUnterAnderemNamen" onchange="toggleForm(this)" checked>
+        
+        <div class="alternativerNameContainer" style="display:block;">
+            <label for="alternativerName">Anderer Name:</label>
+            <input type="text" class="alternativerName" name="alternativerName"><br><br>
+            <input type="submit" name="aktion_name" value="Zutat Unter Anderem Namen Hinzufügen">
+        </div>
+
+        <div class="restDesFormulars" style="display:none;">
+
+            <label for="haltbarkeit">Haltbarkeit (in Tagen):</label>
+            <input type="number" class="haltbarkeit" name="haltbarkeit" ><br><br>
+      
+      
+            <label for="kategorie_id">Kategorie:</label>
+            <select class="kategorie_id" name="kategorie_id" >
+                <option value="">Bitte wählen</option>    
+                <?php echo generateOptions('kategorien', 'id', 'name'); ?>
+            </select><br><br>
+            
+            <label for="phd_kategorie_id">Planetary Health Diet Category:</label>
+            <select class="phd_kategorie_id" name="phd_kategorie_id" >
+                <option value="">Bitte wählen</option> 
+                <?php echo generateOptions('Planetary_Health_Diet_Categories', 'ID', 'Kategorie'); ?>
+            </select><br><br>
+            
+            <label for="einheit_id">Einheit:</label>
+            <select class="einheit_id" name="einheit_id">
+                <option value="">Bitte wählen</option>
+                <?php echo generateOptions('einheiten', 'id', 'name', true); ?>
+                <option value="neuHinzufuegen">Neu hinzufügen...</option>
+            </select><br><br>
+            
+            <div class="neueEinheitFormular" style="display:none;"> 
+                <?php require '../templates/einheitenFormular.html';?>
+            </div>
+            <div class="umrechnungsfaktorFeld" style="display: none;">
+                <label for="umrechnungsfaktor">Umrechnungsfaktor:</label>
+                <input type="number" class="umrechnungsfaktor" name="umrechnungsfaktor" step="0.01">
+                <div> bei "spezieller Basis" ist die Referenz immer Gramm</div><br><br>
+            </div>
+
+            <div class="volumen_block" style="display:none;">
+                <label for="volumen">Volumen:</label>
+                <input type="text" class="volumen" name="volumen">
+                Wichtig für PHD, da die Berechnung mit Gramm arbeitet<br><br>
+            </div>      
+        </div>
+    </div>
+    <input type="submit" value="Zutat Hinzufügen">   
+</form>
 
 
-CREATE TABLE zutaten (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    uebliche_haltbarkeit INT DEFAULT 7 COMMENT 'Haltbarkeit in Tagen',
-    kategorie_id INT DEFAULT NULL,
-    phd_kategorie_id INT,
-    volumen DECIMAL(10, 2),
-    einheit_id INT,   
-    spezifischer_umrechnungsfaktor DECIMAL(10, 2),
-    FOREIGN KEY (phd_kategorie_id) REFERENCES Planetary_Health_Diet_Categories(ID),
-    FOREIGN KEY (kategorie_id) REFERENCES kategorien(id),
-    FOREIGN KEY (einheit_id) REFERENCES einheiten(id)
-);
+Path: ./http/Views/templates/zutatenFormular.php
+Content:
+<?php
+// Fehlerberichterstattung einschalten
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-CREATE TABLE kategorien (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    sortierreihenfolge INT NOT NULL
-);
+// Verbindung zur Datenbank herstellen
+require_once '../../Utils/db_connect.php';
 
-CREATE TABLE bilder (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    bild_url VARCHAR(255) NOT NULL,
-    user_id INT NOT NULL, -- Optional, falls Sie Bilder pro Benutzer trennen möchten
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
+require '../templates/einheiten_post.php';
 
+// Funktion, um Optionen für ein Dropdown-Menü zu generieren, erweitert um den speziellen Umrechnungsfaktor-Status
+function generateOptions($tableName, $idColumn, $nameColumn, $isEinheiten = false) {
+    global $conn;
+    $options = '';
+    $sql = $isEinheiten ? "SELECT $idColumn, $nameColumn, basis_einheit_id, hat_spezifischen_umrechnungsfaktor FROM $tableName ORDER BY $nameColumn ASC" : "SELECT $idColumn, $nameColumn FROM $tableName ORDER BY $nameColumn ASC";
+    $result = $conn->query($sql);
+    if ($result->num_rows > 0) {
+        while($row = $result->fetch_assoc()) {
+            if ($isEinheiten) {
+                $options .= "<option value='" . $row[$idColumn] . "' data-basis='" . $row['basis_einheit_id'] . "' data-spezifischer-umrechnungsfaktor='" . $row['hat_spezifischen_umrechnungsfaktor'] . "'>" . htmlspecialchars($row[$nameColumn]) . "</option>";
+            } else {
+                $options .= "<option value='" . $row[$idColumn] . "'>" . htmlspecialchars($row[$nameColumn]) . "</option>";
+            }
+        }
+    }
+    return $options;
+}
+?>
+<form action=<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?> method="post">
+    <label for="zutaten_name">Name:</label>
+    <input type="text" class="zutaten_name" name="zutaten_name"><br><br>
+    <div class="zutatenFormularContainer">
+    
+        <label for="existiertUnterAnderemNamen">Existiert die Zutat unter einem anderen Namen?</label>
+        <input type="checkbox" class="existiertUnterAnderemNamen" name="existiertUnterAnderemNamen" onchange="toggleForm(this)" checked>
+        
+        <div class="alternativerNameContainer" style="display:block;">
+            <label for="alternativerName">Anderer Name:</label>
+            <input type="text" class="alternativerName" name="alternativerName"><br><br>
+            <input type="submit" name="aktion_name" value="Zutat Unter Anderem Namen Hinzufügen">
+        </div>
 
-CREATE TABLE rezepte (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    titel VARCHAR(255) NOT NULL,
-    autor VARCHAR(255),
-    untertitel TEXT,
-    bilder TEXT,
-    beschreibung TEXT,
-    zubereitungszeit INT,
-    basis_personenanzahl INT DEFAULT 4
+        <div class="restDesFormulars" style="display:none;">
 
-);
+            <label for="haltbarkeit">Haltbarkeit (in Tagen):</label>
+            <input type="number" class="haltbarkeit" name="haltbarkeit" ><br><br>
+      
+      
+            <label for="kategorie_id">Kategorie:</label>
+            <select class="kategorie_id" name="kategorie_id" >
+                <option value="">Bitte wählen</option>    
+                <?php echo generateOptions('kategorien', 'id', 'name'); ?>
+            </select><br><br>
+            
+            <label for="phd_kategorie_id">Planetary Health Diet Category:</label>
+            <select class="phd_kategorie_id" name="phd_kategorie_id" >
+                <option value="">Bitte wählen</option> 
+                <?php echo generateOptions('Planetary_Health_Diet_Categories', 'ID', 'Kategorie'); ?>
+            </select><br><br>
+            
+            <label for="einheit_id">Einheit:</label>
+            <select class="einheit_id" name="einheit_id">
+                <option value="">Bitte wählen</option>
+                <?php echo generateOptions('einheiten', 'id', 'name', true); ?>
+                <option value="neuHinzufuegen">Neu hinzufügen...</option>
+            </select><br><br>
+            
+            <div class="neueEinheitFormular" style="display:none;"> 
+                <?php require '../templates/einheitenFormular.html';?>
+            </div>
+            <div class="umrechnungsfaktorFeld" style="display: none;">
+                <label for="umrechnungsfaktor">Umrechnungsfaktor:</label>
+                <input type="number" class="umrechnungsfaktor" name="umrechnungsfaktor" step="0.01">
+                <div> bei "spezieller Basis" ist die Referenz immer Gramm</div><br><br>
+            </div>
 
-
-CREATE TABLE rezept_zutaten (
-    rezept_id INT,
-    zutat_id INT,
-    menge DECIMAL(10, 2),
-    einheit_id INT NOT NULL,
-    FOREIGN KEY (einheit_id) REFERENCES einheiten(id),
-    PRIMARY KEY (rezept_id, zutat_id),
-    FOREIGN KEY (rezept_id) REFERENCES rezepte(id),
-    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
-);
-CREATE TABLE einkaufsliste (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    zutat_id INT,
-    menge VARCHAR(255),
-    gekauft BOOLEAN DEFAULT FALSE,
-    verbrauchsdatum DATE, -- Hinzugefügtes Feld für das Verbrauchsdatum
-    gefaess_id INT DEFAULT NULL,
-    FOREIGN KEY (gefaess_id) REFERENCES unverpackte_gefaesse(id),
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
-);
-
-CREATE TABLE vorratsschrank (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    zutat_id INT,
-    menge VARCHAR(255),
-    verbrauchsdatum DATE, -- Hinzugefügtes Feld für das Verbrauchsdatum
-    gefaess_id INT DEFAULT NULL,
-    FOREIGN KEY (gefaess_id) REFERENCES unverpackte_gefaesse(id),
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
-);
-
-CREATE TABLE zutaten_namen (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    zutat_id INT NOT NULL,
-    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
-);
-
-CREATE TABLE konventionen (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    single_name_id INT NOT NULL,
-    plural_name_id INT,
-    zutat_id INT NOT NULL,
-    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
-);
-
-CREATE TABLE freundschaftsanfragen (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    sender_id INT NOT NULL,
-    empfaenger_id INT NOT NULL,
-    status ENUM('pending', 'accepted', 'declined') NOT NULL,
-    FOREIGN KEY (sender_id) REFERENCES users(id),
-    FOREIGN KEY (empfaenger_id) REFERENCES users(id)
-);
-
-CREATE TABLE freunde (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id_1 INT NOT NULL,
-    user_id_2 INT NOT NULL,
-    FOREIGN KEY (user_id_1) REFERENCES users(id),
-    FOREIGN KEY (user_id_2) REFERENCES users(id)
-);
-
-CREATE TABLE unverpackte_gefaesse (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    volumen DECIMAL(10,2) NOT NULL COMMENT 'Volumen in Litern oder Kilogramm',
-    beschreibung TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-CREATE TABLE einheiten (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(50) NOT NULL,
-    umrechnungsfaktor_zu_basis DECIMAL(10, 2),
-    basis_einheit_id INT NULL,
-    volumen DECIMAL(10, 2),
-    hat_spezifischen_umrechnungsfaktor BOOLEAN NOT NULL DEFAULT FALSE,
-    FOREIGN KEY (basis_einheit_id) REFERENCES einheiten(id)
-);
--- Basiseinheiten einfügen
-INSERT INTO einheiten (name, umrechnungsfaktor_zu_basis) VALUES ('Gramm', 1), ('Liter', 1);
-INSERT INTO einheiten (name, umrechnungsfaktor_zu_basis, basis_einheit_id) VALUES ('Kilogramm', 1000, 1), ('Pfund', 453.59, 1), ('Unze', 28.35, 1);
-INSERT INTO einheiten (name, umrechnungsfaktor_zu_basis, basis_einheit_id) VALUES ('Milliliter', 0.001, 2), ('Teelöffel', 0.005, 2), ('Esslöffel', 0.015, 2), ('Tasse', 0.24, 2);
-
-CREATE TABLE zutaten_saisonalitaet (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    zutat_id INT NOT NULL,
-    saison_start DATE NOT NULL,
-    saison_ende DATE NOT NULL,
-    FOREIGN KEY (zutat_id) REFERENCES zutaten(id)
-);
-
-CREATE TABLE Planetary_Health_Diet_Categories (
-    ID INT PRIMARY KEY,
-    Kategorie VARCHAR(255),
-    Taegliche_Menge_g INT,
-    Beispiele TEXT
-);
-INSERT INTO Planetary_Health_Diet_Categories (ID, Kategorie, Taegliche_Menge_g, Beispiele) VALUES
-(1, 'Getreide (Vollkorn)', 232, 'Vollkornprodukte, unverarbeitete Mais-, Weizen-, Reis- oder Haferprodukte'),
-(2, 'Hülsenfrüchte', 50, 'Linsen, Bohnen, Erbsen, Kichererbsen'),
-(3, 'Gemüse', 300, 'Ein Mix aus verschiedenen Gemüsesorten'),
-(4, 'Obst', 200, 'Äpfel, Bananen, Orangen, Beeren'),
-(5, 'Nüsse und Samen', 50, ''),
-(6, 'Fleisch (Rot und verarbeitet)', 14, 'Begrenzen auf rotes und verarbeitetes Fleisch'),
-(7, 'Geflügel', 29, ''),
-(8, 'Fisch', 28, ''),
-(9, 'Milchprodukte', 250, 'Milch, Joghurt, Käse'),
-(10, 'Eier', 13, 'Entspricht etwa 1,5 Eiern pro Woche'),
-(11, 'Pflanzliche Öle', 40, 'Olivenöl, Rapsöl, Sonnenblumenöl'),
-(12, 'Zucker', 31, ''),
-(13, 'Stärkehaltiges Gemüse', 50, 'Kartoffeln, Süßkartoffeln');
+            <div class="volumen_block" style="display:none;">
+                <label for="volumen">Volumen:</label>
+                <input type="text" class="volumen" name="volumen">
+                Wichtig für PHD, da die Berechnung mit Gramm arbeitet<br><br>
+            </div>      
+        </div>
+    </div>
+    <input type="submit" value="Zutat Hinzufügen">   
+</form>
 
 

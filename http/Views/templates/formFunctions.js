@@ -78,4 +78,16 @@ function checkBasisEinheit(value) {
         volumenInput.required = value === 'Liter';
     }
 }
+document.querySelector('.einheit_id').addEventListener('change', function() {
+    const neueEinheitOption = this.value === 'neuHinzufuegen';
+    const nameInput = document.getElementById('name');
+    const umrechnungsfaktorInput = document.getElementById('einheit_umrechnungsfaktor');
+    if(neueEinheitOption) {
+        nameInput.setAttribute('required', '');
+        umrechnungsfaktorInput.setAttribute('required', '');
+    } else {
+        nameInput.removeAttribute('required');
+        umrechnungsfaktorInput.removeAttribute('required');
+    }
+});
 

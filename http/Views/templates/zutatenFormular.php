@@ -71,7 +71,7 @@ function generateOptions($tableName, $idColumn, $nameColumn, $isEinheiten = fals
             </div>
             <div class="umrechnungsfaktorFeld" style="display: none;">
                 <label for="umrechnungsfaktor">Umrechnungsfaktor:</label>
-                <input type="number" class="umrechnungsfaktor" name="umrechnungsfaktor" step="0.01" required>
+                <input type="number" class="umrechnungsfaktor" name="umrechnungsfaktor" step="0.01">
                 <div> bei "spezieller Basis" ist die Referenz immer Gramm</div><br><br>
             </div>
 

@@ -27,7 +27,7 @@ function generateOptions($tableName, $idColumn, $nameColumn, $isEinheiten = fals
     return $options;
 }
 ?>
-<form action= $action method="post">
+<form action=<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?> method="post">
     <label for="zutaten_name">Name:</label>
     <input type="text" class="zutaten_name" name="zutaten_name"><br><br>
     <div class="zutatenFormularContainer">
@@ -79,8 +79,8 @@ function generateOptions($tableName, $idColumn, $nameColumn, $isEinheiten = fals
                 <label for="volumen">Volumen:</label>
                 <input type="text" class="volumen" name="volumen">
                 Wichtig für PHD, da die Berechnung mit Gramm arbeitet<br><br>
-            </div>
-            <input type="submit" value="Zutat Hinzufügen">         
+            </div>      
         </div>
     </div>
+    <input type="submit" value="Zutat Hinzufügen">   
 </form>

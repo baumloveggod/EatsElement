@@ -31,7 +31,7 @@
         <input type="submit" value="Rezept Hinzufügen">
     </form>
 
-<Script src="../templates/formFunctions.js" ></Script>
+<Script src="../templates/formFunctions.js" ></Script>  
 
 
     <script defer>

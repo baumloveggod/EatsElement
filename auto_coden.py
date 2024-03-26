@@ -91,7 +91,7 @@ b = ['./http/Views/templates/zutatenFunctions.js','./http/Views/pages/rezepte.ph
 # Main script
 a = ['http\Controllers\ladeEinheiten.php','./http/Views/pages/rezepte.php','./http/Views/templates/zutatenFormular.php','./http/Views/templates/rezepteFormular.php','./http/Views/templates/zutatenFunctions.js']
 c = ['./http']
-d = ['http\Controllers\ladeEinheiten.php','./http/Views/pages/zutaten.php','./http/Views/templates/zutatenFormular.php','./http/Views/templates/zutatenFormular.php','./http/Views/templates/zutatenFunctions.js']
+d = ['./http/Views/pages/zutaten.php','./http/Views/templates/']
 write_file_info_to_output(d, 'output.txt')
 changed_files = get_git_changes()
 if changed_files:  # Only proceed if there are changed files

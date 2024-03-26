@@ -31,6 +31,25 @@ function toggleForm(checkbox) {
         checkNeueEinheit(document.querySelector('.einheit_id').value);
     }
 }
+document.addEventListener("DOMContentLoaded", function() {
+    const checkBox = document.querySelector('.existiertUnterAnderemNamen');
+    const alternativerNameContainer = document.querySelector('.alternativerNameContainer');
+    const restDesFormulars = document.querySelector('.restDesFormulars');
+
+    // Event-Listener, der bei Änderung des Kontrollkästchens aufgerufen wird
+    checkBox.addEventListener('change', function() {
+        if (this.checked) {
+            alternativerNameContainer.style.display = 'block';
+            restDesFormulars.style.display = 'none';
+        } else {
+            alternativerNameContainer.style.display = 'none';
+            restDesFormulars.style.display = 'block';
+        }
+    });
+
+    // Initialer Aufruf der Funktion zur korrekten Anzeige basierend auf dem aktuellen Zustand
+    checkBox.dispatchEvent(new Event('change'));
+});
 
 document.addEventListener("DOMContentLoaded", function() {
     // Initial setup
@@ -78,16 +97,4 @@ function checkBasisEinheit(value) {
         volumenInput.required = value === 'Liter';
     }
 }
-document.querySelector('.einheit_id').addEventListener('change', function() {
-    const neueEinheitOption = this.value === 'neuHinzufuegen';
-    const nameInput = document.getElementById('name');
-    const umrechnungsfaktorInput = document.getElementById('einheit_umrechnungsfaktor');
-    if(neueEinheitOption) {
-        nameInput.setAttribute('required', '');
-        umrechnungsfaktorInput.setAttribute('required', '');
-    } else {
-        nameInput.removeAttribute('required');
-        umrechnungsfaktorInput.removeAttribute('required');
-    }
-});
 

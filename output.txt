@@ -366,7 +366,7 @@ require_once '../../Utils/db_connect.php';
 function insert_into_Rezepte() {
     global $conn; // Stelle sicher, dass die Datenbankverbindung verfügbar ist
     echo '<pre>Empfangene Zutaten: ';
-    print_r($_POST['zutaten']);
+    print_r($_POST['zutaten'] );
     echo '</pre>';
     // Schritt 1: Daten vom Formular empfangen
     $titel = $_POST['titel'] ?? '';
@@ -396,17 +396,17 @@ function insert_into_Rezepte() {
     $rezeptId = $stmt->insert_id;
     // Schritt 4 & 5: Zutaten überprüfen, hinzufügen falls neu und in `rezept_zutaten` einfügen
     // Vor der Verarbeitung den letzten Zutaten-Eintrag entfernen, falls leer
-    if (isset($_POST['zutaten']) && is_array($_POST['zutaten'])) {
+    if (isset($zutaten) && is_array($zutaten)) {
         // Entferne den letzten Eintrag, falls die einheit_id nicht existiert
-        $letzteZutatKey = array_key_last($_POST['zutaten']);
-        if (!isset($_POST['zutaten'][$letzteZutatKey]['einheit_id'])) {
-            unset($_POST['zutaten'][$letzteZutatKey]);
+        $letzteZutatKey = array_key_last($zutaten);
+        if (!isset($zutaten[$letzteZutatKey]['einheit_id'])) {
+            unset($zutaten[$letzteZutatKey]);
         }
     }
     
-    if (!isset($_POST['zutaten']) || !is_array($_POST['zutaten'])) {
+    if (!isset($zutaten) || !is_array($zutaten)) {
         echo '<pre>zutaten ist klein aray: ';
-        print_r($_POST['zutaten']);
+        print_r($zutaten);
         echo '</pre>';
     }
 

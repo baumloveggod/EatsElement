@@ -1,72 +1,74 @@
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    addZutatBlock(); // Initial einen Zutatenblock hinzufügen
+<?php
+// Enable error reporting for development
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-    function addZutatBlock() {
-        const container = document.getElementById('zutatenContainer');
-        const newIndex = container.querySelectorAll('.zutatBlock').length;
+// Include necessary files
+require_once __DIR__ . '/../Utils/db_connect.php';
+require_once __DIR__ . '/../Utils/SessionManager.php';
 
-        const zutatBlock = document.createElement('div');
-        zutatBlock.classList.add('zutatBlock');
-        zutatBlock.dataset.index = newIndex;
+// Ensure user authentication
+checkUserAuthentication();
 
-        zutatBlock.innerHTML = `
-            <label>Zutatenname:</label>
-            <input type="text" name="zutaten[${newIndex}][name]" class="zutatenName" required>
+// Handle GET request
+if ($_SERVER['REQUEST_METHOD'] == 'GET') {
+    $zutatenName = isset($_GET['zutatenName']) ? $_GET['zutatenName'] : null;
+    $einheiten = [];
 
-            <label>Menge:</label>
-            <input type="text" name="zutaten[${newIndex}][menge]" required>
+    // Execute only if zutatenName is provided
+    if ($zutatenName) {
+        // Prepare and execute query to fetch zutat info
+        $stmt = $conn->prepare("SELECT z.einheit_id, e.name, e.basis_einheit_id 
+                                FROM zutaten_namen zn 
+                                JOIN zutaten z ON zn.zutat_id = z.id 
+                                JOIN einheiten e ON z.einheit_id = e.id 
+                                WHERE zn.name = ?");
+        $stmt->bind_param("s", $zutatenName);
+        $stmt->execute();
+        $zutatInfo = $stmt->get_result()->fetch_assoc();
 
-            <label>Einheit:</label>
-            <select name="zutaten[${newIndex}][einheit_id]" id="einheit_id_${newIndex}">
-                <!-- Optionen werden dynamisch geladen -->
-            </select>
+        if ($zutatInfo) {
+            // Handle known zutat cases
+            $whereClause = $zutatInfo['basis_einheit_id'] ? "WHERE id = ? OR basis_einheit_id = ?" : "WHERE basis_einheit_id = ?";
+            $sql = "SELECT id, name FROM einheiten $whereClause";
+            $stmt = $conn->prepare($sql);
 
-            <button type="button" class="removeZutat">Entfernen</button>
-        `;
+            if ($zutatInfo['basis_einheit_id']) {
+                $stmt->bind_param("ii", $zutatInfo['einheit_id'], $zutatInfo['basis_einheit_id']);
+            } else {
+                $stmt->bind_param("i", $zutatInfo['einheit_id']);
+            }
 
-        container.appendChild(zutatBlock);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $einheiten[] = $row;
+            }
 
-        loadEinheiten(newIndex); // Lädt Einheiten für den aktuellen Zutatenblock
-
-        const removeBtn = zutatBlock.querySelector('.removeZutat');
-        removeBtn.addEventListener('click', function() {
-            removeZutatBlock(zutatBlock);
-        });
-
-        zutatBlock.querySelector('.zutatenName').addEventListener('change', function(event) {
-            loadEinheiten(newIndex, event.target.value); // Lädt Einheiten basierend auf dem geänderten Zutatennamen
-        });
+            if (!$zutatInfo['basis_einheit_id'] && in_array($zutatInfo['einheit_id'], [0, 1])) {
+                // Add specific handling for einheit_id 0 and 1 if needed
+                $einheiten[] = ['id' => $zutatInfo['einheit_id'], 'name' => $zutatInfo['name']];
+            }
+        } else {
+            // Zutat is unknown: Load all einheiten
+            $einheiten = loadAllEinheiten($conn);
+        }
+    } else {
+        // Zutat is not provided: Load all einheiten
+        $einheiten = loadAllEinheiten($conn);
     }
 
-    function loadEinheiten(index, zutatenName = '') {
-        const dropdown = document.getElementById(`einheit_id_${index}`);
-        if (!dropdown) return;
+    echo json_encode($einheiten);
+}
 
-        // Hier Ihr fetch-Request, um die Einheiten basierend auf `zutatenName` zu laden,
-        // z.B. fetch('/Controllers/ladeEinheiten.php?zutatenName=' + encodeURIComponent(zutatenName))
-        // Denken Sie daran, Ihren tatsächlichen Endpunkt und die Logik zum Befüllen des Dropdowns einzufügen
+// Function to load all einheiten from the database
+function loadAllEinheiten($conn) {
+    $einheiten = [];
+    $result = $conn->query("SELECT id, name FROM einheiten");
+    while ($row = $result->fetch_assoc()) {
+        $einheiten[] = $row;
     }
-
-    function removeZutatBlock(block) {
-        block.remove();
-        // Nach dem Entfernen müssen wir die Indizes der übrigen Zutatenblöcke aktualisieren
-        updateZutatenBlockIndices();
-    }
-
-    function updateZutatenBlockIndices() {
-        const zutatenBlocks = document.querySelectorAll('.zutatBlock');
-        zutatenBlocks.forEach((block, newIndex) => {
-            block.dataset.index = newIndex;
-            block.querySelectorAll('input, select').forEach(element => {
-                const name = element.name.replace(/\[\d+\]/, `[${newIndex}]`);
-                element.name = name;
-
-                if (element.tagName === 'SELECT') {
-                    element.id = `einheit_id_${newIndex}`;
-                }
-            });
-        });
-    }
-});
-</script>
+    return $einheiten;
+}
+?>

@@ -8,7 +8,7 @@
     require_once '../../Utils/db_connect.php';
 
 ?>
-    <form action="rezepte_post.php" method="post" enctype="multipart/form-data">
+    <form action=<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?> method="post" enctype="multipart/form-data">
         <label for="titel">Titel:</label><br>
         <input type="text" id="titel" name="titel" required><br>
 
@@ -54,10 +54,10 @@
 
         zutatBlock.innerHTML = `
             <label>Zutatenname:</label>
-            <input type="text" name="zutaten[${newIndex}][name]" required>
+            <input type="text" name="zutaten[${newIndex}][name]">
 
             <label>Menge:</label>
-            <input type="text" name="zutaten[${newIndex}][menge]" required>
+            <input type="text" name="zutaten[${newIndex}][menge]">
 
             <label>Einheit:</label>
             <select id="einheit_id_${newIndex}" name="zutaten[${newIndex}][einheit_id]">
@@ -81,6 +81,7 @@
         });
         // Hier, nachdem der zutatBlock dem DOM hinzugefügt wurde:
         loadEinheiten(document.getElementById(`einheit_id_${newIndex}`)); // Laden der Einheiten für das neu erstellte Dropdown
+        updateRequiredAttributes();
     }
     function handleInput(event) {
         const zutatBlock = event.target.closest('.zutatBlock');
@@ -104,6 +105,27 @@
                 removeBtn.style.display = 'none';
             }
         }
+        updateRequiredAttributes();
+    }
+    function updateRequiredAttributes() {
+        const container = document.getElementById('zutatenContainer');
+        const zutatBlocks = container.querySelectorAll('.zutatBlock');
+
+        zutatBlocks.forEach((block, index) => {
+            const isLastBlock = index === zutatBlocks.length - 1;
+            const inputs = block.querySelectorAll('input, select');
+            
+            inputs.forEach(input => {
+                // Setzen oder Entfernen des required-Attributs basierend auf der Position des Blocks
+                input.required = !isLastBlock;
+            });
+
+            // Verwalten der Anzeige des Entfernen-Buttons
+            const removeBtn = block.querySelector('.removeZutat');
+            if(removeBtn) {
+                removeBtn.style.display = isLastBlock && zutatBlocks.length > 1 ? 'inline' : 'none';
+            }
+        });
     }
     function removeZutatBlock(block) {
         const container = document.getElementById('zutatenContainer');
@@ -202,8 +224,7 @@
             });
         });
     });
-
-// Initial das Laden der Einheiten für den ersten Block auslösen
+    // Initial das Laden der Einheiten für den ersten Block auslösen
     document.addEventListener('DOMContentLoaded', function() {
         const initialDropdown = document.getElementById('einheit_id_0');
         loadEinheiten(initialDropdown);

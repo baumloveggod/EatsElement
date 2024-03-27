@@ -41,12 +41,13 @@ function insert_into_Rezepte() {
     // Schritt 4 & 5: Zutaten überprüfen, hinzufügen falls neu und in `rezept_zutaten` einfügen
     // Vor der Verarbeitung den letzten Zutaten-Eintrag entfernen, falls leer
     if (isset($_POST['zutaten']) && is_array($_POST['zutaten'])) {
-        // Entferne den letzten Eintrag, falls der Name leer ist
+        // Entferne den letzten Eintrag, falls die einheit_id nicht existiert
         $letzteZutatKey = array_key_last($_POST['zutaten']);
-        if (empty($_POST['zutaten'][$letzteZutatKey]['name'])) {
+        if (!isset($_POST['zutaten'][$letzteZutatKey]['einheit_id'])) {
             unset($_POST['zutaten'][$letzteZutatKey]);
         }
     }
+    
     if (!isset($_POST['zutaten']) || !is_array($_POST['zutaten'])) {
         echo '<pre>zutaten ist klein aray: ';
         print_r($_POST['zutaten']);
@@ -72,7 +73,7 @@ function insert_into_Rezepte() {
             $zutatId = $row['id'];
         } else {
             // Zutat existiert nicht, also füge sie hinzu
-            $neueZutatSql = "INSERT INTO zutaten (name, kategorie_id) VALUES ('$zutatenName', 'ID_für_neue_Zutaten')"; // Ersetze 'ID_für_neue_Zutaten' mit der tatsächlichen ID
+            $neueZutatSql = "INSERT INTO zutaten (kategorie_id) VALUES (1)"; // Ersetze 'ID_für_neue_Zutaten' mit der tatsächlichen ID
             if ($conn->query($neueZutatSql) === TRUE) {
                 $zutatId = $conn->insert_id;
                 // Füge auch einen Eintrag in zutaten_namen hinzu, um den Namen der Zutat zu speichern

@@ -94,7 +94,7 @@ c = ['./http']
 d = ['./http/Views/pages/zutaten.php','./http/Views/templates/']
 e = ['./http/Views/pages/zutaten.php','./http/Views/templates/zutatenFormular.php','./http/Views/templates/formFunctions.js']
 
-f = ['./http/Views/pages/rezepte.php','./http/Views/templates/rezepteFormular.php','./http/Views/templates/rezepte_post.php','./http/Views/pages/zutaten.php','./http/Views/templates/zutatenFormular.php','./http/Views/templates/formFunctions.js','sql']
+f = ['./http/Views/pages/rezepte.php','./http/Views/templates/rezepteFormular.php','./http/Views/templates/rezepte_post.php','./http/Views/pages/zutaten.php','./http/Views/templates/zutatenFormular.php','./http/Views/templates/formFunctions.js','./sql']
 write_file_info_to_output(f, 'output.txt')
 changed_files = get_git_changes()
 if changed_files:  # Only proceed if there are changed files

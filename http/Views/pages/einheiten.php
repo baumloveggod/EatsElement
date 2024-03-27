@@ -9,10 +9,15 @@ checkUserAuthentication();
 
 
 include '../templates/einheiten_post.php';
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['name'], $_POST['umrechnungsfaktor'], $_POST['basisEinheit'])) {
-    insert_into_Eineheiten();
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    error_log("POST-Anfrage empfangen");
+    if (isset($_POST['name'], $_POST['umrechnungsfaktor'], $_POST['basisEinheit'])) {
+        error_log("Alle erwarteten POST-Parameter vorhanden.");
+        insert_into_Eineheiten();
+    } else {
+        error_log("Einer oder mehrere erwartete POST-Parameter fehlen.");
+    }
 }
-
 // Berechne die Anzahl der notwendigen Durchläufe für die paginierte Anzeige
 $countSql = "SELECT COUNT(id) AS total FROM einheiten";
 $countResult = $conn->query($countSql);

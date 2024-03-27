@@ -27,9 +27,6 @@ function generateOptions($tableName, $idColumn, $nameColumn, $isEinheiten = fals
     return $options;
 }
 ?>
-<form action=<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?> method="post">
-    <label for="zutaten_name">Name:</label>
-    <input type="text" class="zutaten_name" name="zutaten_name"><br><br>
     <div class="zutatenFormularContainer">
     
         <label for="existiertUnterAnderemNamen">Existiert die Zutat unter einem anderen Namen?</label>

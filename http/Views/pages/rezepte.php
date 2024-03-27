@@ -8,6 +8,11 @@ error_reporting(E_ALL);
 require_once '../../Utils/db_connect.php';
 
 require_once '../templates/rezepte_post.php';
+
+// Überprüfen Sie, ob das Formular gesendet wurde
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    insert_into_Rezepte();
+}
 ?>
 
 <!DOCTYPE html>

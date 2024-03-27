@@ -47,6 +47,11 @@ function insert_into_Rezepte() {
             unset($_POST['zutaten'][$letzteZutatKey]);
         }
     }
+    if (!isset($_POST['zutaten']) || !is_array($_POST['zutaten'])) {
+        echo '<pre>zutaten ist klein aray: ';
+        print_r($_POST['zutaten']);
+        echo '</pre>';
+    }
 
 
     foreach ($zutaten as $zutat) {
@@ -59,7 +64,8 @@ function insert_into_Rezepte() {
         $einheitId = $zutat['einheit_id'];
     
         // Überprüfe, ob die Zutat existiert
-        $sql = "SELECT id FROM zutaten WHERE name = '$zutatenName' LIMIT 1";
+        // Annahme: Die Tabelle `zutaten_namen` enthält den Namen der Zutat und ist mit `zutaten` über `zutat_id` verknüpft
+        $sql = "SELECT z.id FROM zutaten z JOIN zutaten_namen zn ON z.id = zn.zutat_id WHERE zn.name = '$zutatenName' LIMIT 1";
         $result = $conn->query($sql);
         if ($result->num_rows > 0) {
             $row = $result->fetch_assoc();
@@ -70,7 +76,11 @@ function insert_into_Rezepte() {
             if ($conn->query($neueZutatSql) === TRUE) {
                 $zutatId = $conn->insert_id;
                 // Füge auch einen Eintrag in zutaten_namen hinzu, um den Namen der Zutat zu speichern
-                $conn->query("INSERT INTO zutaten_namen (name, zutat_id) VALUES ('$zutatenName', '$zutatId')");
+                // Beispiel für das Einfügen eines neuen Namens in zutaten_namen (Annahme)
+                $stmt = $conn->prepare("INSERT INTO zutaten_namen (name, zutat_id) VALUES (?, ?)");
+                $stmt->bind_param("si", $zutatenName, $zutatId);
+                $stmt->execute();
+
             } else {
                 // Fehlerbehandlung, falls das Hinzufügen der Zutat fehlschlägt
                 continue; // Überspringe diese Zutat und fahre mit der nächsten fort

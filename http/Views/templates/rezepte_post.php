@@ -9,7 +9,9 @@ require_once '../../Utils/db_connect.php';
 
 function insert_into_Rezepte() {
     global $conn; // Stelle sicher, dass die Datenbankverbindung verfügbar ist
-    
+    echo '<pre>Empfangene Zutaten: ';
+    print_r($_POST['zutaten']);
+    echo '</pre>';
     // Schritt 1: Daten vom Formular empfangen
     $titel = $_POST['titel'] ?? '';
     $untertitel = $_POST['untertitel'] ?? '';
@@ -36,9 +38,21 @@ function insert_into_Rezepte() {
     $stmt->bind_param("ssssii", $titel, $autor, $untertitel, $bilderDB, $zubereitungszeit, $basis_personenanzahl);
     $stmt->execute();
     $rezeptId = $stmt->insert_id;
-    
     // Schritt 4 & 5: Zutaten überprüfen, hinzufügen falls neu und in `rezept_zutaten` einfügen
+    // Vor der Verarbeitung den letzten Zutaten-Eintrag entfernen, falls leer
+    if (isset($_POST['zutaten']) && is_array($_POST['zutaten'])) {
+        // Entferne den letzten Eintrag, falls der Name leer ist
+        $letzteZutatKey = array_key_last($_POST['zutaten']);
+        if (empty($_POST['zutaten'][$letzteZutatKey]['name'])) {
+            unset($_POST['zutaten'][$letzteZutatKey]);
+        }
+    }
+
+
     foreach ($zutaten as $zutat) {
+        echo '<pre>Verarbeite Zutat: ';
+        print_r($zutat);
+        echo '</pre>';
         // Annahme: $zutat enthält 'name', 'menge', und 'einheit_id'
         $zutatenName = $conn->real_escape_string($zutat['name']);
         $menge = $zutat['menge'];

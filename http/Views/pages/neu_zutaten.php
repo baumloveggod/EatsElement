@@ -20,15 +20,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <title>Zutat Aktualisieren</title>
+    <script>
+        // Definieren Sie die Funktion vor dem Laden des Formulars, idealerweise im <head>
+        function befuellenNamenFeld() {
+            var ausgewaehlterName = document.getElementById('zutaten_id').options[document.getElementById('zutaten_id').selectedIndex].text;
+            document.getElementById('zutatenName').value = ausgewaehlterName; // Korrektur der ID auf 'zutaten_id'
+        };
+    </script>
 </head>
 <body>
     <h2>Zutat Aktualisieren</h2>
+    
     
     <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
         <?php 
         // Generieren des Dropdown-Menüs für Zutatennamen
         echo "<label for='zutaten_id'>Zutatenname:</label>";
-        echo "<select id='zutaten_id' name='zutaten_id'>";
+        echo "<select id='zutaten_id' name='zutaten_id' onchange='befuellenNamenFeld()'>";
         $kategorieId = getKategorieId($conn, "Neu Zutaten"); // Funktion zum Abrufen der Kategorie-ID
         $zutaten = getZutatenByKategorieId($conn, $kategorieId);
         foreach ($zutaten as $zutat) {
@@ -38,10 +46,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         ?>
         
         <label for="zutaten_name">Name:</label>
-        <input type="text" class="zutaten_name" name="zutaten_name"><br><br>
+        <input type="text" id="zutatenName" class="zutaten_name" name="zutaten_name"><br><br>
+        
         <?php require '../templates/zutatenFormular.php'; // Beibehaltung des ursprünglichen Formulars mit Anpassungen ?>
         <Script src="../templates/formFunctions.js"></Script>
-    </form>
 </body>
 </html>
 

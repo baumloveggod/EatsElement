@@ -92,10 +92,10 @@ b = ['./http/Views/templates/zutatenFunctions.js','./http/Views/pages/rezepte.ph
 a = ['http\Controllers\ladeEinheiten.php','./http/Views/pages/rezepte.php','./http/Views/templates/zutatenFormular.php','./http/Views/templates/rezepteFormular.php','./http/Views/templates/zutatenFunctions.js']
 c = ['./http']
 d = ['./http/Views/pages/zutaten.php','./http/Views/templates/']
-e = ['./http/Views/pages/zutaten.php','./http/Views/templates/zutatenFormular.php','./http/Views/templates/formFunctions.js']
+e = ['./http/Views/pages/zutaten.php','./http/Views/templates/zutatenFormular.php','./http/Views/templates/formFunctions.js','./http\Views\templates\zutaten_post.php']
 
 f = ['./http/Views/pages/rezepte.php','./http/Views/templates/rezepteFormular.php','./http/Views/templates/rezepte_post.php','./http/Views/pages/zutaten.php','./http/Views/templates/zutatenFormular.php','./http/Views/templates/formFunctions.js','./sql_create']
-g = ['./http\Views\pages\einheiten.php','./http\Views\templates\einheiten_post.php','./http\Views\templates\einheitenFormular.html']
+g = ['./http\Views\pages\einheiten.php','./http\Views\templates\einheiten_post.php','./http\Views\templates\einheitenFormular.html',]
 write_file_info_to_output(e, 'output.txt')
 changed_files = get_git_changes()
 if changed_files:  # Only proceed if there are changed files

@@ -33,8 +33,8 @@ function generateOptions($tableName, $idColumn, $nameColumn, $isEinheiten = fals
         <input type="checkbox" class="existiertUnterAnderemNamen" name="existiertUnterAnderemNamen" onchange="toggleForm(this)" checked>
         
         <div class="alternativerNameContainer" style="display:block;">
-            <label for="alternativerName">Anderer Name:</label>
-            <select class="alternativerName" name="alternativerName">
+            <label for="alternativerName_id">Anderer Name:</label>
+            <select class="alternativerName_id" name="alternativerName_id">
                 <?php echo generateOptions('zutaten_namen', 'zutat_id', 'name'); // Passen Sie die Tabelle und Spaltennamen entsprechend an ?>
             </select><br><br>
             <input type="submit" name="aktion_name" value="Zutat Unter Anderem Namen Hinzufügen">

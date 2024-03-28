@@ -34,7 +34,9 @@ function generateOptions($tableName, $idColumn, $nameColumn, $isEinheiten = fals
         
         <div class="alternativerNameContainer" style="display:block;">
             <label for="alternativerName">Anderer Name:</label>
-            <input type="text" class="alternativerName" name="alternativerName"><br><br>
+            <select class="alternativerName" name="alternativerName">
+                <?php echo generateOptions('zutaten_namen', 'zutat_id', 'name'); // Passen Sie die Tabelle und Spaltennamen entsprechend an ?>
+            </select><br><br>
             <input type="submit" name="aktion_name" value="Zutat Unter Anderem Namen Hinzufügen">
         </div>
 

@@ -96,7 +96,7 @@ e = ['./http/Views/pages/zutaten.php','./http/Views/templates/zutatenFormular.ph
 
 f = ['./http/Views/pages/rezepte.php','./http/Views/templates/rezepteFormular.php','./http/Views/templates/rezepte_post.php','./http/Views/pages/zutaten.php','./http/Views/templates/zutatenFormular.php','./http/Views/templates/formFunctions.js','./sql_create']
 g = ['./http\Views\pages\einheiten.php','./http\Views\templates\einheiten_post.php','./http\Views\templates\einheitenFormular.html']
-write_file_info_to_output(d, 'output.txt')
+write_file_info_to_output(e, 'output.txt')
 changed_files = get_git_changes()
 if changed_files:  # Only proceed if there are changed files
     commit_message = generate_commit_message(changed_files)
